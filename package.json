@@ -21,7 +21,8 @@
     "db:docker": "docker compose up -d",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "db:prepare": "node scripts/db-prepare.js"
+    "db:prepare": "node scripts/db-prepare.js",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1027.0",
