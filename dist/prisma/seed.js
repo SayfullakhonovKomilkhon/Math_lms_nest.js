@@ -1,0 +1,257 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
+const bcrypt = __importStar(require("bcrypt"));
+const prisma = new client_1.PrismaClient();
+function isDatabaseUnreachable(err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Can't reach database") || msg.includes('ECONNREFUSED')) {
+        return true;
+    }
+    if (err && typeof err === 'object' && 'code' in err) {
+        const code = err.code;
+        return code === 'P1001' || code === 'P1017';
+    }
+    return false;
+}
+function printDatabaseHelp() {
+    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('PostgreSQL недоступен (не отвечает на подключение).');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.error('Сначала на машине должен работать сервер на хосте и порту из DATABASE_URL');
+    console.error('(часто localhost:5432).\n');
+    console.error('— С Docker: установите Docker Desktop, затем из папки mathcenter-backend:\n');
+    console.error('   npm run db:prepare\n');
+    console.error('— Без Docker (macOS): brew install postgresql@16 && brew services start postgresql@16');
+    console.error('  создайте БД и пользователя, пропишите DATABASE_URL в .env, затем:\n');
+    console.error('   npx prisma db push && npx prisma db seed\n');
+    console.error('— Postgres.app: https://postgresapp.com/\n');
+    console.error('Если команда `docker` не найдена — см. вывод `npm run db:prepare` (там подсказки).\n');
+    console.error('Пример URL для docker-compose (на macOS лучше 127.0.0.1, не localhost):\n');
+    console.error('   postgresql://mathcenter:mathcenter@127.0.0.1:5432/mathcenter?schema=public\n');
+}
+async function main() {
+    console.log('Seeding database...');
+    const hashPassword = (pw) => bcrypt.hash(pw, 10);
+    const superAdminHash = await hashPassword('Admin123!');
+    const superAdminUser = await prisma.user.upsert({
+        where: { email: 'admin@mathcenter.uz' },
+        update: {},
+        create: {
+            email: 'admin@mathcenter.uz',
+            passwordHash: superAdminHash,
+            role: client_1.Role.SUPER_ADMIN,
+        },
+    });
+    console.log('Created super admin:', superAdminUser.email);
+    const adminHash = await hashPassword('Admin123!');
+    await prisma.user.upsert({
+        where: { email: 'manager@mathcenter.uz' },
+        update: {},
+        create: {
+            email: 'manager@mathcenter.uz',
+            passwordHash: adminHash,
+            role: client_1.Role.ADMIN,
+        },
+    });
+    console.log('Created admin: manager@mathcenter.uz');
+    const teacher1Hash = await hashPassword('Teacher123!');
+    const teacher1User = await prisma.user.upsert({
+        where: { email: 'teacher1@mathcenter.uz' },
+        update: {},
+        create: {
+            email: 'teacher1@mathcenter.uz',
+            passwordHash: teacher1Hash,
+            role: client_1.Role.TEACHER,
+        },
+    });
+    const teacher1 = await prisma.teacher.upsert({
+        where: { userId: teacher1User.id },
+        update: {},
+        create: {
+            userId: teacher1User.id,
+            fullName: 'Bobur Toshmatov',
+            phone: '+998901111111',
+            ratePerStudent: 50000,
+        },
+    });
+    console.log('Created teacher 1:', teacher1.fullName);
+    const teacher2Hash = await hashPassword('Teacher123!');
+    const teacher2User = await prisma.user.upsert({
+        where: { email: 'teacher2@mathcenter.uz' },
+        update: {},
+        create: {
+            email: 'teacher2@mathcenter.uz',
+            passwordHash: teacher2Hash,
+            role: client_1.Role.TEACHER,
+        },
+    });
+    const teacher2 = await prisma.teacher.upsert({
+        where: { userId: teacher2User.id },
+        update: {},
+        create: {
+            userId: teacher2User.id,
+            fullName: 'Gulnora Rashidova',
+            phone: '+998902222222',
+            ratePerStudent: 55000,
+        },
+    });
+    console.log('Created teacher 2:', teacher2.fullName);
+    const group1 = await prisma.group.upsert({
+        where: { id: 'group-seed-1' },
+        update: {},
+        create: {
+            id: 'group-seed-1',
+            name: 'Algebra 9A',
+            teacherId: teacher1.id,
+            maxStudents: 20,
+            schedule: { days: ['MONDAY', 'WEDNESDAY', 'FRIDAY'], time: '09:00', duration: 90 },
+        },
+    });
+    const group2 = await prisma.group.upsert({
+        where: { id: 'group-seed-2' },
+        update: {},
+        create: {
+            id: 'group-seed-2',
+            name: 'Geometry 10B',
+            teacherId: teacher2.id,
+            maxStudents: 15,
+            schedule: { days: ['TUESDAY', 'THURSDAY'], time: '14:00', duration: 120 },
+        },
+    });
+    const group3 = await prisma.group.upsert({
+        where: { id: 'group-seed-3' },
+        update: {},
+        create: {
+            id: 'group-seed-3',
+            name: 'Olympiad Prep',
+            teacherId: teacher1.id,
+            maxStudents: 10,
+            schedule: { days: ['SATURDAY'], time: '10:00', duration: 180 },
+        },
+    });
+    console.log('Created 3 groups:', group1.name, group2.name, group3.name);
+    const studentsData = [
+        { email: 'student1@mathcenter.uz', fullName: 'Alisher Karimov', gender: client_1.Gender.MALE, groupId: group1.id },
+        { email: 'student2@mathcenter.uz', fullName: 'Malika Yusupova', gender: client_1.Gender.FEMALE, groupId: group1.id },
+        { email: 'student3@mathcenter.uz', fullName: 'Jasur Mirzaev', gender: client_1.Gender.MALE, groupId: group2.id },
+        { email: 'student4@mathcenter.uz', fullName: 'Nodira Xasanova', gender: client_1.Gender.FEMALE, groupId: group2.id },
+        { email: 'student5@mathcenter.uz', fullName: 'Otabek Nazarov', gender: client_1.Gender.MALE, groupId: group3.id },
+    ];
+    const createdStudentIds = [];
+    for (const s of studentsData) {
+        const hash = await hashPassword('Student123!');
+        const user = await prisma.user.upsert({
+            where: { email: s.email },
+            update: {},
+            create: {
+                email: s.email,
+                passwordHash: hash,
+                role: client_1.Role.STUDENT,
+            },
+        });
+        const student = await prisma.student.upsert({
+            where: { userId: user.id },
+            update: {},
+            create: {
+                userId: user.id,
+                fullName: s.fullName,
+                gender: s.gender,
+                groupId: s.groupId,
+                monthlyFee: 500000,
+            },
+        });
+        createdStudentIds.push(student.id);
+    }
+    console.log('Created 5 students');
+    const parentsData = [
+        { email: 'parent1@mathcenter.uz', fullName: 'Karim Karimov', studentId: createdStudentIds[0] },
+        { email: 'parent2@mathcenter.uz', fullName: 'Yusuf Yusupov', studentId: createdStudentIds[1] },
+    ];
+    for (const p of parentsData) {
+        const hash = await hashPassword('Parent123!');
+        const user = await prisma.user.upsert({
+            where: { email: p.email },
+            update: {},
+            create: {
+                email: p.email,
+                passwordHash: hash,
+                role: client_1.Role.PARENT,
+            },
+        });
+        await prisma.parent.upsert({
+            where: { userId: user.id },
+            update: {},
+            create: {
+                userId: user.id,
+                fullName: p.fullName,
+                studentId: p.studentId,
+            },
+        });
+    }
+    console.log('Created 2 parents');
+    await prisma.auditLog.create({
+        data: {
+            userId: superAdminUser.id,
+            action: 'SEED',
+            entity: 'System',
+            details: { seededAt: new Date().toISOString() },
+        },
+    });
+    console.log('\nSeeding complete!');
+    console.log('');
+    console.log('Test credentials:');
+    console.log('  Super Admin: admin@mathcenter.uz / Admin123!');
+    console.log('  Admin:       manager@mathcenter.uz / Admin123!');
+    console.log('  Teacher 1:   teacher1@mathcenter.uz / Teacher123!');
+    console.log('  Teacher 2:   teacher2@mathcenter.uz / Teacher123!');
+    console.log('  Student 1:   student1@mathcenter.uz / Student123!');
+    console.log('  Parent 1:    parent1@mathcenter.uz / Parent123!');
+}
+main()
+    .catch((e) => {
+    if (isDatabaseUnreachable(e)) {
+        printDatabaseHelp();
+    }
+    else {
+        console.error(e);
+    }
+    process.exit(1);
+})
+    .finally(async () => {
+    await prisma.$disconnect();
+});
+//# sourceMappingURL=seed.js.map

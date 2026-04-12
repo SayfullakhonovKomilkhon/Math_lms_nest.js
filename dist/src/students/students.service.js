@@ -1,0 +1,216 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StudentsService = void 0;
+const common_1 = require("@nestjs/common");
+const bcrypt = __importStar(require("bcrypt"));
+const client_1 = require("@prisma/client");
+const prisma_service_1 = require("../prisma/prisma.service");
+const studentSelect = {
+    id: true,
+    fullName: true,
+    phone: true,
+    birthDate: true,
+    gender: true,
+    enrolledAt: true,
+    groupId: true,
+    monthlyFee: true,
+    isActive: true,
+    createdAt: true,
+    updatedAt: true,
+    user: { select: { id: true, email: true, role: true, isActive: true } },
+    group: { select: { id: true, name: true } },
+};
+let StudentsService = class StudentsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async create(dto, actorId) {
+        const passwordHash = await bcrypt.hash(dto.password, 10);
+        const student = await this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: {
+                    email: dto.email,
+                    passwordHash,
+                    role: client_1.Role.STUDENT,
+                },
+            });
+            return tx.student.create({
+                data: {
+                    userId: user.id,
+                    fullName: dto.fullName,
+                    phone: dto.phone,
+                    birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
+                    gender: dto.gender,
+                    groupId: dto.groupId,
+                    monthlyFee: dto.monthlyFee ?? 0,
+                },
+                select: studentSelect,
+            });
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'CREATE',
+                entity: 'Student',
+                entityId: student.id,
+                details: { email: dto.email, fullName: dto.fullName },
+            },
+        });
+        return student;
+    }
+    async findAll() {
+        return this.prisma.student.findMany({ select: studentSelect });
+    }
+    async findOne(id, requestingUser) {
+        const student = await this.prisma.student.findUnique({
+            where: { id },
+            select: { ...studentSelect, group: { select: { id: true, name: true, teacherId: true } } },
+        });
+        if (!student) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        if (requestingUser?.role === client_1.Role.TEACHER) {
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { userId: requestingUser.id },
+            });
+            if (!teacher || student.group?.id !== student.groupId) {
+                const teacherGroups = await this.prisma.group.findMany({
+                    where: { teacherId: teacher?.id },
+                    select: { id: true },
+                });
+                const groupIds = teacherGroups.map((g) => g.id);
+                if (!student.groupId || !groupIds.includes(student.groupId)) {
+                    throw new common_1.ForbiddenException('You can only view students in your groups');
+                }
+            }
+        }
+        return student;
+    }
+    async findMyProfile(userId) {
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+            select: studentSelect,
+        });
+        if (!student) {
+            throw new common_1.NotFoundException('Student profile not found');
+        }
+        return student;
+    }
+    async update(id, dto, actorId) {
+        const existing = await this.prisma.student.findUnique({ where: { id } });
+        if (!existing) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        const updated = await this.prisma.student.update({
+            where: { id },
+            data: {
+                ...dto,
+                birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+            },
+            select: studentSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'UPDATE',
+                entity: 'Student',
+                entityId: id,
+                details: dto,
+            },
+        });
+        return updated;
+    }
+    async assignGroup(id, groupId, actorId) {
+        const existing = await this.prisma.student.findUnique({ where: { id } });
+        if (!existing) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        if (!group) {
+            throw new common_1.NotFoundException('Group not found');
+        }
+        const updated = await this.prisma.student.update({
+            where: { id },
+            data: { groupId },
+            select: studentSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'ASSIGN_GROUP',
+                entity: 'Student',
+                entityId: id,
+                details: { groupId },
+            },
+        });
+        return updated;
+    }
+    async deactivate(id, actorId) {
+        const existing = await this.prisma.student.findUnique({ where: { id } });
+        if (!existing) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        const updated = await this.prisma.student.update({
+            where: { id },
+            data: { isActive: false },
+            select: studentSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'DEACTIVATE',
+                entity: 'Student',
+                entityId: id,
+            },
+        });
+        return updated;
+    }
+};
+exports.StudentsService = StudentsService;
+exports.StudentsService = StudentsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+], StudentsService);
+//# sourceMappingURL=students.service.js.map

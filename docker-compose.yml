@@ -1,0 +1,41 @@
+# Локальная PostgreSQL + Redis для разработки.
+# Запуск: docker compose up -d
+# Затем: npx prisma db push && npx prisma db seed
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mathcenter-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: mathcenter
+      POSTGRES_PASSWORD: mathcenter
+      POSTGRES_DB: mathcenter
+    volumes:
+      - mathcenter_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mathcenter -d mathcenter']
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: mathcenter-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - mathcenter_redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mathcenter_pgdata:
+  mathcenter_redisdata:
