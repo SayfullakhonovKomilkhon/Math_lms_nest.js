@@ -257,7 +257,7 @@ export class GradesService {
 
     return grades.map((g) => ({
       ...g,
-      scorePercent: g.maxScore > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+      scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
       groupName: g.group.name,
     }));
   }

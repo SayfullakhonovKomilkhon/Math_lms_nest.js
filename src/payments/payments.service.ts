@@ -127,8 +127,8 @@ export class PaymentsService {
     else if (isPending) currentStatus = 'PENDING';
 
     const lastConfirmed = history.find((p) => p.status === PaymentStatus.CONFIRMED);
-    let nextPaymentDate = null;
-    let daysUntilPayment = null;
+    let nextPaymentDate: Date | null = null;
+    let daysUntilPayment: number | null = null;
 
     if (lastConfirmed && lastConfirmed.nextPaymentDate) {
       nextPaymentDate = lastConfirmed.nextPaymentDate;

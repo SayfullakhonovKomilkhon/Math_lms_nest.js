@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
+import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { UpdateParentDto } from './dto/update-parent.dto';
@@ -83,7 +84,7 @@ export class ParentsService {
         id: true,
         fullName: true,
         phone: true,
-        child: {
+        student: {
           select: {
             id: true,
             fullName: true,
@@ -151,7 +152,7 @@ export class ParentsService {
 
     return grades.map((g) => ({
       ...g,
-      scorePercent: g.maxScore > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+      scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
       groupName: g.group.name,
     }));
   }
