@@ -29,10 +29,61 @@ export declare class GradesController {
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        comment: string | null;
         maxScore: import("@prisma/client/runtime/library").Decimal;
+        comment: string | null;
         gradedAt: Date;
     })[]>;
+    findMy(query: {
+        lessonType?: string;
+        from?: string;
+        to?: string;
+    }, userId: string): Promise<{
+        scorePercent: number;
+        groupName: string;
+        group: {
+            name: string;
+        };
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        groupId: string;
+        studentId: string;
+        date: Date;
+        lessonType: import(".prisma/client").$Enums.LessonType;
+        score: import("@prisma/client/runtime/library").Decimal;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
+        comment: string | null;
+        gradedAt: Date;
+    }[]>;
+    findMyStats(userId: string): Promise<{
+        averageScore: number;
+        totalWorks: number;
+        byMonth: {
+            month: string;
+            averageScore: number;
+        }[];
+        byType: {
+            lessonType: string;
+            averageScore: number;
+            count: number;
+        }[];
+    }>;
+    getMyRating(query: {
+        period?: 'month' | 'quarter' | 'all';
+    }, userId: string): Promise<{
+        myPlace: number;
+        totalStudents: number;
+        myAverageScore: number;
+        isVisible: boolean;
+        rating: {
+            studentId: string;
+            fullName: string;
+            averageScore: number;
+            totalWorks: number;
+            attendancePercent: number;
+            place: number;
+        }[];
+    }>;
     getRating(groupId: string, query: RatingQueryDto, user: {
         id: string;
         role: Role;
@@ -67,8 +118,8 @@ export declare class GradesController {
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        comment: string | null;
         maxScore: import("@prisma/client/runtime/library").Decimal;
+        comment: string | null;
         gradedAt: Date;
     }>;
 }

@@ -45,6 +45,9 @@ let GroupsController = class GroupsController {
     archive(id, actorId) {
         return this.groupsService.archive(id, actorId);
     }
+    updateRatingVisibility(id, isRatingVisible, user) {
+        return this.groupsService.updateRatingVisibility(id, isRatingVisible, user);
+    }
 };
 exports.GroupsController = GroupsController;
 __decorate([
@@ -107,6 +110,17 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], GroupsController.prototype, "archive", null);
+__decorate([
+    (0, common_1.Patch)(':id/rating-visibility'),
+    (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Toggle rating visibility for students' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('isRatingVisible')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Boolean, Object]),
+    __metadata("design:returntype", void 0)
+], GroupsController.prototype, "updateRatingVisibility", null);
 exports.GroupsController = GroupsController = __decorate([
     (0, swagger_1.ApiTags)('groups'),
     (0, swagger_1.ApiBearerAuth)(),

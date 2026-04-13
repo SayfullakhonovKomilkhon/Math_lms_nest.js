@@ -215,6 +215,108 @@ let GradesService = class GradesService {
             totalWorks: grades.length,
         };
     }
+    async findMy(query, userId) {
+        const student = await this.prisma.student.findUnique({ where: { userId } });
+        if (!student)
+            throw new common_1.NotFoundException('Student profile not found');
+        const where = { studentId: student.id };
+        if (query.lessonType)
+            where.lessonType = query.lessonType;
+        if (query.from || query.to) {
+            where.date = {};
+            if (query.from)
+                where.date.gte = new Date(query.from);
+            if (query.to)
+                where.date.lte = new Date(query.to);
+        }
+        const grades = await this.prisma.grade.findMany({
+            where,
+            include: {
+                group: { select: { name: true } },
+            },
+            orderBy: { date: 'desc' },
+        });
+        return grades.map((g) => ({
+            ...g,
+            scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+            groupName: g.group.name,
+        }));
+    }
+    async findMyStats(userId) {
+        const student = await this.prisma.student.findUnique({ where: { userId } });
+        if (!student)
+            throw new common_1.NotFoundException('Student profile not found');
+        const grades = await this.prisma.grade.findMany({
+            where: { studentId: student.id },
+            orderBy: { date: 'asc' },
+        });
+        const stats = {
+            averageScore: 0,
+            totalWorks: grades.length,
+            byMonth: [],
+            byType: [],
+        };
+        if (grades.length === 0)
+            return stats;
+        let totalScore = 0;
+        let totalMax = 0;
+        const byMonthMap = new Map();
+        const byTypeMap = new Map();
+        for (const g of grades) {
+            const gScore = Number(g.score);
+            const gMax = Number(g.maxScore);
+            totalScore += gScore;
+            totalMax += gMax;
+            const monthKey = `${g.date.getFullYear()}-${String(g.date.getMonth() + 1).padStart(2, '0')}`;
+            if (!byMonthMap.has(monthKey)) {
+                byMonthMap.set(monthKey, { total: 0, max: 0 });
+            }
+            const m = byMonthMap.get(monthKey);
+            m.total += gScore;
+            m.max += gMax;
+            if (!byTypeMap.has(g.lessonType)) {
+                byTypeMap.set(g.lessonType, { total: 0, max: 0, count: 0 });
+            }
+            const t = byTypeMap.get(g.lessonType);
+            t.total += gScore;
+            t.max += gMax;
+            t.count++;
+        }
+        stats.averageScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 100 * 100) / 100 : 0;
+        stats.byMonth = Array.from(byMonthMap.entries()).map(([month, data]) => ({
+            month,
+            averageScore: data.max > 0 ? Math.round((data.total / data.max) * 100 * 100) / 100 : 0,
+        }));
+        stats.byType = Array.from(byTypeMap.entries()).map(([lessonType, data]) => ({
+            lessonType,
+            count: data.count,
+            averageScore: data.max > 0 ? Math.round((data.total / data.max) * 100 * 100) / 100 : 0,
+        }));
+        return stats;
+    }
+    async findMyRating(query, userId) {
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+        });
+        if (!student)
+            throw new common_1.NotFoundException('Student profile not found');
+        if (!student.groupId) {
+            return { myPlace: 0, totalStudents: 0, myAverageScore: 0, isVisible: false, rating: [] };
+        }
+        const group = await this.prisma.group.findUnique({ where: { id: student.groupId } });
+        if (!group) {
+            return { myPlace: 0, totalStudents: 0, myAverageScore: 0, isVisible: false, rating: [] };
+        }
+        const ratingList = await this.getRating(student.groupId, { period: query.period }, { id: userId, role: client_1.Role.STUDENT });
+        const myEntry = ratingList.find((r) => r.studentId === student.id);
+        return {
+            myPlace: myEntry ? myEntry.place : 0,
+            totalStudents: ratingList.length,
+            myAverageScore: myEntry ? myEntry.averageScore : 0,
+            isVisible: group.isRatingVisible,
+            rating: group.isRatingVisible ? ratingList : [],
+        };
+    }
 };
 exports.GradesService = GradesService;
 exports.GradesService = GradesService = __decorate([

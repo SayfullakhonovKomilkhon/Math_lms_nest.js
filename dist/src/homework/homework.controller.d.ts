@@ -45,6 +45,40 @@ export declare class HomeworkController {
         youtubeUrl: string | null;
         dueDate: Date | null;
     }[]>;
+    findMy(limit: string, userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        group: {
+            id: string;
+            name: string;
+        };
+        text: string;
+        imageUrls: string[];
+        youtubeUrl: string | null;
+        dueDate: Date | null;
+    }[]>;
+    findMyLatest(userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        group: {
+            id: string;
+            name: string;
+        };
+        text: string;
+        imageUrls: string[];
+        youtubeUrl: string | null;
+        dueDate: Date | null;
+    } | null>;
     findLatest(groupId: string): Promise<{
         id: string;
         createdAt: Date;

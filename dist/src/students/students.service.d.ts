@@ -80,26 +80,28 @@ export declare class StudentsService {
         monthlyFee: import("@prisma/client/runtime/library").Decimal;
     }>;
     findMyProfile(userId: string): Promise<{
-        id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        user: {
-            id: string;
-            email: string;
-            role: import(".prisma/client").$Enums.Role;
-            isActive: boolean;
+        totalLessons: number;
+        attendanceStats: {
+            present: number;
+            absent: number;
+            late: number;
+            percentage: number;
         };
+        id: string;
         fullName: string;
         phone: string | null;
         group: {
             id: string;
+            teacher: {
+                fullName: string;
+                phone: string | null;
+            };
             name: string;
+            schedule: import("@prisma/client/runtime/library").JsonValue;
         } | null;
         birthDate: Date | null;
         gender: import(".prisma/client").$Enums.Gender;
         enrolledAt: Date;
-        groupId: string | null;
         monthlyFee: import("@prisma/client/runtime/library").Decimal;
     }>;
     update(id: string, dto: UpdateStudentDto, actorId: string): Promise<{

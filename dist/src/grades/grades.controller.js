@@ -34,6 +34,15 @@ let GradesController = class GradesController {
     findAll(query, user) {
         return this.service.findAll(query, user);
     }
+    findMy(query, userId) {
+        return this.service.findMy(query, userId);
+    }
+    findMyStats(userId) {
+        return this.service.findMyStats(userId);
+    }
+    getMyRating(query, userId) {
+        return this.service.findMyRating(query, userId);
+    }
     getRating(groupId, query, user) {
         return this.service.getRating(groupId, query, user);
     }
@@ -65,6 +74,35 @@ __decorate([
     __metadata("design:paramtypes", [query_grades_dto_1.QueryGradesDto, Object]),
     __metadata("design:returntype", void 0)
 ], GradesController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('my'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own grades' }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], GradesController.prototype, "findMy", null);
+__decorate([
+    (0, common_1.Get)('my/stats'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own grade stats' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], GradesController.prototype, "findMyStats", null);
+__decorate([
+    (0, common_1.Get)('my/rating'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own place in group rating' }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], GradesController.prototype, "getMyRating", null);
 __decorate([
     (0, common_1.Get)('rating/:groupId'),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),

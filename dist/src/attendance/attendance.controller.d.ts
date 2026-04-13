@@ -29,11 +29,31 @@ export declare class AttendanceController {
         createdAt: Date;
         groupId: string;
         studentId: string;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        editReason: string | null;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
+        editReason: string | null;
+    })[]>;
+    findMy(query: {
+        from?: string;
+        to?: string;
+        groupId?: string;
+    }, userId: string): Promise<({
+        group: {
+            id: string;
+            name: string;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        groupId: string;
+        studentId: string;
+        date: Date;
+        lessonType: import(".prisma/client").$Enums.LessonType;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
+        editedAt: Date | null;
+        editReason: string | null;
     })[]>;
     getSummary(query: SummaryQueryDto, user: {
         id: string;
@@ -55,10 +75,10 @@ export declare class AttendanceController {
         createdAt: Date;
         groupId: string;
         studentId: string;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        editReason: string | null;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
+        editReason: string | null;
     }>;
 }

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentsController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
 const parents_service_1 = require("./parents.service");
@@ -32,6 +33,21 @@ let ParentsController = class ParentsController {
     }
     getMyProfile(userId) {
         return this.parentsService.findMyProfile(userId);
+    }
+    getChildAttendance(query, userId) {
+        return this.parentsService.getChildAttendance(userId, query);
+    }
+    getChildGrades(query, userId) {
+        return this.parentsService.getChildGrades(userId, query);
+    }
+    getChildHomework(userId) {
+        return this.parentsService.getChildHomework(userId);
+    }
+    getChildPayments(userId) {
+        return this.parentsService.getChildPayments(userId);
+    }
+    uploadChildReceipt(file, userId) {
+        return this.parentsService.uploadChildReceipt(userId, file);
     }
     findOne(id) {
         return this.parentsService.findOne(id);
@@ -60,6 +76,65 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "getMyProfile", null);
+__decorate([
+    (0, common_1.Get)('me/child/attendance'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get child attendance' }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "getChildAttendance", null);
+__decorate([
+    (0, common_1.Get)('me/child/grades'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get child grades' }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "getChildGrades", null);
+__decorate([
+    (0, common_1.Get)('me/child/homework'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get child homework' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "getChildHomework", null);
+__decorate([
+    (0, common_1.Get)('me/child/payments'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get child payment history' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "getChildPayments", null);
+__decorate([
+    (0, common_1.Post)('me/child/payments/receipt'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary' },
+            },
+            required: ['file'],
+        },
+    }),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload payment receipt for child' }),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "uploadChildReceipt", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),

@@ -31,8 +31,8 @@ export declare class GradesService {
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: Prisma.Decimal;
-        comment: string | null;
         maxScore: Prisma.Decimal;
+        comment: string | null;
         gradedAt: Date;
     })[]>;
     update(id: string, dto: EditGradeDto, user: {
@@ -47,8 +47,8 @@ export declare class GradesService {
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: Prisma.Decimal;
-        comment: string | null;
         maxScore: Prisma.Decimal;
+        comment: string | null;
         gradedAt: Date;
     }>;
     getRating(groupId: string, query: RatingQueryDto, user: {
@@ -73,5 +73,56 @@ export declare class GradesService {
     }): Promise<{
         averageScore: number;
         totalWorks: number;
+    }>;
+    findMy(query: {
+        lessonType?: string;
+        from?: string;
+        to?: string;
+    }, userId: string): Promise<{
+        scorePercent: number;
+        groupName: string;
+        group: {
+            name: string;
+        };
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        groupId: string;
+        studentId: string;
+        date: Date;
+        lessonType: import(".prisma/client").$Enums.LessonType;
+        score: Prisma.Decimal;
+        maxScore: Prisma.Decimal;
+        comment: string | null;
+        gradedAt: Date;
+    }[]>;
+    findMyStats(userId: string): Promise<{
+        averageScore: number;
+        totalWorks: number;
+        byMonth: {
+            month: string;
+            averageScore: number;
+        }[];
+        byType: {
+            lessonType: string;
+            averageScore: number;
+            count: number;
+        }[];
+    }>;
+    findMyRating(query: {
+        period?: 'month' | 'quarter' | 'all';
+    }, userId: string): Promise<{
+        myPlace: number;
+        totalStudents: number;
+        myAverageScore: number;
+        isVisible: boolean;
+        rating: {
+            studentId: string;
+            fullName: string;
+            averageScore: number;
+            totalWorks: number;
+            attendancePercent: number;
+            place: number;
+        }[];
     }>;
 }

@@ -100,6 +100,30 @@ let AttendanceService = class AttendanceService {
             orderBy: { date: 'desc' },
         });
     }
+    async findMy(query, userId) {
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+        });
+        if (!student)
+            throw new common_1.NotFoundException('Student profile not found');
+        const where = { studentId: student.id };
+        if (query.groupId)
+            where.groupId = query.groupId;
+        if (query.from || query.to) {
+            where.date = {};
+            if (query.from)
+                where.date.gte = new Date(query.from);
+            if (query.to)
+                where.date.lte = new Date(query.to);
+        }
+        return this.prisma.attendance.findMany({
+            where,
+            include: {
+                group: { select: { id: true, name: true } },
+            },
+            orderBy: { date: 'desc' },
+        });
+    }
     async update(id, dto, user) {
         const record = await this.prisma.attendance.findUnique({ where: { id } });
         if (!record)

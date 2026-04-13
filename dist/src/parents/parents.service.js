@@ -46,6 +46,7 @@ exports.ParentsService = void 0;
 const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const client_1 = require("@prisma/client");
+const payments_service_1 = require("../payments/payments.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const parentSelect = {
     id: true,
@@ -57,8 +58,9 @@ const parentSelect = {
     student: { select: { id: true, fullName: true, groupId: true } },
 };
 let ParentsService = class ParentsService {
-    constructor(prisma) {
+    constructor(prisma, paymentsService) {
         this.prisma = prisma;
+        this.paymentsService = paymentsService;
     }
     async create(dto, actorId) {
         const student = await this.prisma.student.findUnique({
@@ -110,12 +112,102 @@ let ParentsService = class ParentsService {
     async findMyProfile(userId) {
         const parent = await this.prisma.parent.findUnique({
             where: { userId },
-            select: parentSelect,
+            select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                student: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        gender: true,
+                        enrolledAt: true,
+                        group: {
+                            select: {
+                                id: true,
+                                name: true,
+                                schedule: true,
+                                teacher: {
+                                    select: { fullName: true, phone: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
         if (!parent) {
             throw new common_1.NotFoundException('Parent profile not found');
         }
         return parent;
+    }
+    async getChildByIdGuard(userId) {
+        const parent = await this.prisma.parent.findUnique({ where: { userId } });
+        if (!parent)
+            throw new common_1.NotFoundException('Parent profile not found');
+        return parent.studentId;
+    }
+    async getChildAttendance(userId, query) {
+        const studentId = await this.getChildByIdGuard(userId);
+        const where = { studentId };
+        if (query.from || query.to) {
+            where.date = {};
+            if (query.from)
+                where.date.gte = new Date(query.from);
+            if (query.to)
+                where.date.lte = new Date(query.to);
+        }
+        return this.prisma.attendance.findMany({
+            where,
+            include: { group: { select: { name: true } } },
+            orderBy: { date: 'desc' },
+        });
+    }
+    async getChildGrades(userId, query) {
+        const studentId = await this.getChildByIdGuard(userId);
+        const where = { studentId };
+        if (query.lessonType)
+            where.lessonType = query.lessonType;
+        if (query.from || query.to) {
+            where.date = {};
+            if (query.from)
+                where.date.gte = new Date(query.from);
+            if (query.to)
+                where.date.lte = new Date(query.to);
+        }
+        const grades = await this.prisma.grade.findMany({
+            where,
+            include: { group: { select: { name: true } } },
+            orderBy: { date: 'desc' },
+        });
+        return grades.map((g) => ({
+            ...g,
+            scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+            groupName: g.group.name,
+        }));
+    }
+    async getChildHomework(userId) {
+        const studentId = await this.getChildByIdGuard(userId);
+        const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+        if (!student || !student.groupId)
+            return [];
+        return this.prisma.homework.findMany({
+            where: { groupId: student.groupId },
+            orderBy: { createdAt: 'desc' },
+            take: 6,
+            include: {
+                teacher: { select: { fullName: true } },
+            },
+        });
+    }
+    async getChildPayments(userId) {
+        const studentId = await this.getChildByIdGuard(userId);
+        const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+        return this.paymentsService.findMy(student.userId);
+    }
+    async uploadChildReceipt(userId, file) {
+        const studentId = await this.getChildByIdGuard(userId);
+        return this.paymentsService.uploadReceipt(file, studentId, userId);
     }
     async update(id, dto, actorId) {
         const existing = await this.prisma.parent.findUnique({ where: { id } });
@@ -132,6 +224,7 @@ let ParentsService = class ParentsService {
 exports.ParentsService = ParentsService;
 exports.ParentsService = ParentsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        payments_service_1.PaymentsService])
 ], ParentsService);
 //# sourceMappingURL=parents.service.js.map

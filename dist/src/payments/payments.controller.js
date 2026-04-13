@@ -37,6 +37,9 @@ let PaymentsController = class PaymentsController {
     getDebtors() {
         return this.service.getDebtors();
     }
+    findMy(userId) {
+        return this.service.findMy(userId);
+    }
     findByStudent(studentId, user) {
         return this.service.findByStudent(studentId, user);
     }
@@ -78,6 +81,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "getDebtors", null);
+__decorate([
+    (0, common_1.Get)('my'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get payment status for current student' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "findMy", null);
 __decorate([
     (0, common_1.Get)('student/:studentId'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN, client_1.Role.STUDENT, client_1.Role.PARENT),

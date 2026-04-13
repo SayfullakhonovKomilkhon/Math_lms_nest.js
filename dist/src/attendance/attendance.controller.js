@@ -34,6 +34,9 @@ let AttendanceController = class AttendanceController {
     findAll(query, user) {
         return this.service.findAll(query, user);
     }
+    findMy(query, userId) {
+        return this.service.findMy(query, userId);
+    }
     getSummary(query, user) {
         return this.service.getSummary(query, user);
     }
@@ -62,6 +65,16 @@ __decorate([
     __metadata("design:paramtypes", [query_attendance_dto_1.QueryAttendanceDto, Object]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('my'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own attendance records' }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "findMy", null);
 __decorate([
     (0, common_1.Get)('summary'),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),

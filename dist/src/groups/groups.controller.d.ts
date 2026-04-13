@@ -110,4 +110,24 @@ export declare class GroupsController {
             students: number;
         };
     }>;
+    updateRatingVisibility(id: string, isRatingVisible: boolean, user: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        name: string;
+        maxStudents: number;
+        schedule: import("@prisma/client/runtime/library").JsonValue;
+        archivedAt: Date | null;
+        _count: {
+            students: number;
+        };
+    }>;
 }

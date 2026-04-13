@@ -102,6 +102,43 @@ let PaymentsService = class PaymentsService {
             orderBy: { createdAt: 'desc' },
         });
     }
+    async findMy(userId) {
+        const student = await this.prisma.student.findUnique({ where: { userId } });
+        if (!student)
+            throw new common_1.NotFoundException('Student profile not found');
+        const history = await this.prisma.payment.findMany({
+            where: { studentId: student.id },
+            select: paymentSelect,
+            orderBy: { createdAt: 'desc' },
+        });
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const thisMonthPayments = history.filter((p) => new Date(p.createdAt) >= startOfMonth);
+        const isPaid = thisMonthPayments.some((p) => p.status === client_1.PaymentStatus.CONFIRMED);
+        const isPending = thisMonthPayments.some((p) => p.status === client_1.PaymentStatus.PENDING);
+        let currentStatus = 'UNPAID';
+        if (isPaid)
+            currentStatus = 'PAID';
+        else if (isPending)
+            currentStatus = 'PENDING';
+        const lastConfirmed = history.find((p) => p.status === client_1.PaymentStatus.CONFIRMED);
+        let nextPaymentDate = null;
+        let daysUntilPayment = null;
+        if (lastConfirmed && lastConfirmed.nextPaymentDate) {
+            nextPaymentDate = lastConfirmed.nextPaymentDate;
+            const diffTime = nextPaymentDate.getTime() - now.getTime();
+            daysUntilPayment = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+        return {
+            currentMonth: {
+                status: currentStatus,
+                amount: Number(student.monthlyFee),
+                nextPaymentDate,
+                daysUntilPayment,
+            },
+            history,
+        };
+    }
     async uploadReceipt(file, studentId, actorId) {
         if (!file)
             throw new common_1.BadRequestException('File is required');

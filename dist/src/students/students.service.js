@@ -131,12 +131,61 @@ let StudentsService = class StudentsService {
     async findMyProfile(userId) {
         const student = await this.prisma.student.findUnique({
             where: { userId },
-            select: studentSelect,
+            select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                birthDate: true,
+                gender: true,
+                enrolledAt: true,
+                monthlyFee: true,
+                group: {
+                    select: {
+                        id: true,
+                        name: true,
+                        schedule: true,
+                        teacher: {
+                            select: {
+                                fullName: true,
+                                phone: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
         if (!student) {
             throw new common_1.NotFoundException('Student profile not found');
         }
-        return student;
+        let totalLessons = 0;
+        const attendanceStats = { present: 0, absent: 0, late: 0, percentage: 0 };
+        if (student.group) {
+            totalLessons = await this.prisma.attendance.groupBy({
+                by: ['date'],
+                where: { groupId: student.group.id },
+            }).then(res => res.length);
+            const attendance = await this.prisma.attendance.findMany({
+                where: { studentId: student.id },
+            });
+            attendance.forEach((record) => {
+                if (record.status === 'PRESENT')
+                    attendanceStats.present++;
+                if (record.status === 'ABSENT')
+                    attendanceStats.absent++;
+                if (record.status === 'LATE')
+                    attendanceStats.late++;
+            });
+            const totalAttended = attendanceStats.present + attendanceStats.late;
+            const totalRecorded = totalAttended + attendanceStats.absent;
+            attendanceStats.percentage = totalRecorded > 0
+                ? Math.round((totalAttended / totalRecorded) * 100)
+                : 0;
+        }
+        return {
+            ...student,
+            totalLessons,
+            attendanceStats,
+        };
     }
     async update(id, dto, actorId) {
         const existing = await this.prisma.student.findUnique({ where: { id } });

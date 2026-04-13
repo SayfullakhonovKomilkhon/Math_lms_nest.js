@@ -33,6 +33,12 @@ let HomeworkController = class HomeworkController {
     findAll(groupId, user) {
         return this.service.findAll(groupId, user);
     }
+    findMy(limit, userId) {
+        return this.service.findMy(limit ? parseInt(limit, 10) : 10, userId);
+    }
+    findMyLatest(userId) {
+        return this.service.findMyLatest(userId);
+    }
     findLatest(groupId) {
         return this.service.findLatest(groupId);
     }
@@ -64,6 +70,25 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], HomeworkController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('my'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own homework' }),
+    __param(0, (0, common_1.Query)('limit')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], HomeworkController.prototype, "findMy", null);
+__decorate([
+    (0, common_1.Get)('my/latest'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get latest homework' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], HomeworkController.prototype, "findMyLatest", null);
 __decorate([
     (0, common_1.Get)('latest/:groupId'),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN, client_1.Role.STUDENT, client_1.Role.PARENT),

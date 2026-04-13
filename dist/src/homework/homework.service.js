@@ -84,6 +84,23 @@ let HomeworkService = class HomeworkService {
             orderBy: { createdAt: 'desc' },
         });
     }
+    async findMy(limit, userId) {
+        const student = await this.prisma.student.findUnique({ where: { userId } });
+        if (!student || !student.groupId)
+            return [];
+        return this.prisma.homework.findMany({
+            where: { groupId: student.groupId },
+            select: hwSelect,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+        });
+    }
+    async findMyLatest(userId) {
+        const student = await this.prisma.student.findUnique({ where: { userId } });
+        if (!student || !student.groupId)
+            return null;
+        return this.findLatest(student.groupId);
+    }
     async update(id, dto, user) {
         const hw = await this.prisma.homework.findUnique({ where: { id } });
         if (!hw)

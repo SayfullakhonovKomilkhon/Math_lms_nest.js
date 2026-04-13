@@ -64,6 +64,40 @@ export declare class HomeworkService {
         youtubeUrl: string | null;
         dueDate: Date | null;
     } | null>;
+    findMy(limit: number, userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        group: {
+            id: string;
+            name: string;
+        };
+        text: string;
+        imageUrls: string[];
+        youtubeUrl: string | null;
+        dueDate: Date | null;
+    }[]>;
+    findMyLatest(userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        group: {
+            id: string;
+            name: string;
+        };
+        text: string;
+        imageUrls: string[];
+        youtubeUrl: string | null;
+        dueDate: Date | null;
+    } | null>;
     update(id: string, dto: UpdateHomeworkDto, user: {
         id: string;
         role: Role;

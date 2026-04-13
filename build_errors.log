@@ -1,0 +1,40 @@
+
+> mathcenter-backend@0.0.1 build
+> nest build
+
+[96msrc/announcements/announcements.service.ts[0m:[93m24[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'announcement' does not exist on type 'PrismaService'.
+
+[7m24[0m     return this.prisma.announcement.create({
+[7m  [0m [91m                       ~~~~~~~~~~~~[0m
+[96msrc/announcements/announcements.service.ts[0m:[93m59[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'announcement' does not exist on type 'PrismaService'.
+
+[7m59[0m       return this.prisma.announcement.findMany({
+[7m  [0m [91m                         ~~~~~~~~~~~~[0m
+[96msrc/announcements/announcements.service.ts[0m:[93m73[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'announcement' does not exist on type 'PrismaService'.
+
+[7m73[0m     return this.prisma.announcement.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~~~[0m
+[96msrc/announcements/announcements.service.ts[0m:[93m87[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'announcement' does not exist on type 'PrismaService'.
+
+[7m87[0m     return this.prisma.announcement.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~~~[0m
+[96msrc/grades/grades.service.ts[0m:[93m358[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isRatingVisible' does not exist on type '{ id: string; isActive: boolean; createdAt: Date; updatedAt: Date; name: string; teacherId: string; maxStudents: number; schedule: JsonValue; archivedAt: Date | null; }'.
+
+[7m358[0m       isVisible: group.isRatingVisible,
+[7m   [0m [91m                       ~~~~~~~~~~~~~~~[0m
+[96msrc/grades/grades.service.ts[0m:[93m359[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'isRatingVisible' does not exist on type '{ id: string; isActive: boolean; createdAt: Date; updatedAt: Date; name: string; teacherId: string; maxStudents: number; schedule: JsonValue; archivedAt: Date | null; }'.
+
+[7m359[0m       rating: group.isRatingVisible ? ratingList : [],
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~[0m
+[96msrc/groups/groups.service.ts[0m:[93m167[0m:[93m15[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'isRatingVisible' does not exist in type '(Without<GroupUpdateInput, GroupUncheckedUpdateInput> & GroupUncheckedUpdateInput) | (Without<...> & GroupUpdateInput)'.
+
+[7m167[0m       data: { isRatingVisible },
+[7m   [0m [91m              ~~~~~~~~~~~~~~~[0m
+
+  [96mnode_modules/.prisma/client/index.d.ts[0m:[93m8491[0m:[93m5[0m
+    [7m8491[0m     data: XOR<GroupUpdateInput, GroupUncheckedUpdateInput>
+    [7m    [0m [96m    ~~~~[0m
+    The expected type comes from property 'data' which is declared here on type '{ select?: GroupSelect<DefaultArgs> | null | undefined; include?: GroupInclude<DefaultArgs> | null | undefined; data: (Without<...> & GroupUncheckedUpdateInput) | (Without<...> & GroupUpdateInput); where: GroupWhereUniqueInput; }'
+
+Found 7 error(s).
+

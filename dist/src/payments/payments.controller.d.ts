@@ -54,6 +54,35 @@ export declare class PaymentsController {
         monthlyFee: import("@prisma/client/runtime/library").Decimal;
         lastPaymentDate: Date | null;
     }[]>;
+    findMy(userId: string): Promise<{
+        currentMonth: {
+            status: string;
+            amount: number;
+            nextPaymentDate: Date | null;
+            daysUntilPayment: number | null;
+        };
+        history: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            student: {
+                id: string;
+                fullName: string;
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                monthlyFee: import("@prisma/client/runtime/library").Decimal;
+            };
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            nextPaymentDate: Date | null;
+            rejectReason: string | null;
+            receiptUrl: string | null;
+            confirmedAt: Date | null;
+            rejectedAt: Date | null;
+        }[];
+    }>;
     findByStudent(studentId: string, user: {
         id: string;
         role: Role;

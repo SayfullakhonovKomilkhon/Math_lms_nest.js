@@ -73,6 +73,35 @@ export declare class PaymentsService {
         confirmedAt: Date | null;
         rejectedAt: Date | null;
     }[]>;
+    findMy(userId: string): Promise<{
+        currentMonth: {
+            status: string;
+            amount: number;
+            nextPaymentDate: Date | null;
+            daysUntilPayment: number | null;
+        };
+        history: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            student: {
+                id: string;
+                fullName: string;
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                monthlyFee: Prisma.Decimal;
+            };
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            amount: Prisma.Decimal;
+            nextPaymentDate: Date | null;
+            rejectReason: string | null;
+            receiptUrl: string | null;
+            confirmedAt: Date | null;
+            rejectedAt: Date | null;
+        }[];
+    }>;
     uploadReceipt(file: Express.Multer.File, studentId: string, actorId: string): Promise<{
         id: string;
         createdAt: Date;

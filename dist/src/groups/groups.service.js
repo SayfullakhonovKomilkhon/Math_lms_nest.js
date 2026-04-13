@@ -149,6 +149,24 @@ let GroupsService = class GroupsService {
         });
         return updated;
     }
+    async updateRatingVisibility(id, isRatingVisible, user) {
+        const group = await this.findOne(id, user);
+        const updated = await this.prisma.group.update({
+            where: { id: group.id },
+            data: { isRatingVisible },
+            select: groupSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: user.id,
+                action: 'UPDATE_RATING_VISIBILITY',
+                entity: 'Group',
+                entityId: id,
+                details: { isRatingVisible },
+            },
+        });
+        return updated;
+    }
 };
 exports.GroupsService = GroupsService;
 exports.GroupsService = GroupsService = __decorate([
