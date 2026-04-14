@@ -22,7 +22,8 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:prepare": "node scripts/db-prepare.js",
-    "postinstall": "node scripts/prisma-generate.js"
+    "postinstall": "node scripts/prisma-generate.js",
+    "prestart:prod": "npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1027.0",
