@@ -39,31 +39,99 @@ async function main() {
 
   const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
 
-  // Super Admin
-  const superAdminHash = await hashPassword('Admin123!');
-  const superAdminUser = await prisma.user.upsert({
-    where: { email: 'admin@mathcenter.uz' },
-    update: {},
-    create: {
-      email: 'admin@mathcenter.uz',
-      passwordHash: superAdminHash,
-      role: Role.SUPER_ADMIN,
-    },
-  });
-  console.log('Created super admin:', superAdminUser.email);
-
   // Admin
-  const adminHash = await hashPassword('Admin123!');
+  const adminHash = await hashPassword('123456');
   await prisma.user.upsert({
-    where: { email: 'manager@mathcenter.uz' },
-    update: {},
+    where: { email: 'admin@math.com' },
+    update: { passwordHash: adminHash },
     create: {
-      email: 'manager@mathcenter.uz',
+      email: 'admin@math.com',
       passwordHash: adminHash,
       role: Role.ADMIN,
     },
   });
-  console.log('Created admin: manager@mathcenter.uz');
+  console.log('Created admin: admin@math.com');
+
+  // Teacher
+  const teacherHash = await hashPassword('123456');
+  const teacherUser = await prisma.user.upsert({
+    where: { email: 'teacher@math.com' },
+    update: { passwordHash: teacherHash },
+    create: {
+      email: 'teacher@math.com',
+      passwordHash: teacherHash,
+      role: Role.TEACHER,
+    },
+  });
+  const teacher = await prisma.teacher.upsert({
+    where: { userId: teacherUser.id },
+    update: {},
+    create: {
+      userId: teacherUser.id,
+      fullName: 'Default Teacher',
+      phone: '+998900000001',
+      ratePerStudent: 50000,
+    },
+  });
+  console.log('Created teacher: teacher@math.com');
+
+  // Student
+  const studentHash = await hashPassword('123456');
+  const studentUser = await prisma.user.upsert({
+    where: { email: 'student@math.com' },
+    update: { passwordHash: studentHash },
+    create: {
+      email: 'student@math.com',
+      passwordHash: studentHash,
+      role: Role.STUDENT,
+    },
+  });
+  const student = await prisma.student.upsert({
+    where: { userId: studentUser.id },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      fullName: 'Default Student',
+      gender: Gender.MALE,
+      monthlyFee: 500000,
+    },
+  });
+  console.log('Created student: student@math.com');
+
+  // Parent
+  const parentHash = await hashPassword('123456');
+  const parentUser = await prisma.user.upsert({
+    where: { email: 'parent@math.com' },
+    update: { passwordHash: parentHash },
+    create: {
+      email: 'parent@math.com',
+      passwordHash: parentHash,
+      role: Role.PARENT,
+    },
+  });
+  await prisma.parent.upsert({
+    where: { userId: parentUser.id },
+    update: {},
+    create: {
+      userId: parentUser.id,
+      fullName: 'Default Parent',
+      studentId: student.id,
+    },
+  });
+  console.log('Created parent: parent@math.com');
+
+  // Super Admin
+  const superAdminHash = await hashPassword('123456');
+  const superAdminUser = await prisma.user.upsert({
+    where: { email: 'superadmin@math.com' },
+    update: { passwordHash: superAdminHash },
+    create: {
+      email: 'superadmin@math.com',
+      passwordHash: superAdminHash,
+      role: Role.SUPER_ADMIN,
+    },
+  });
+  console.log('Created super admin: superadmin@math.com');
 
   // Teacher 1
   const teacher1Hash = await hashPassword('Teacher123!');
