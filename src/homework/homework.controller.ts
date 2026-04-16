@@ -8,8 +8,11 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { HomeworkService } from './homework.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
@@ -18,13 +21,28 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { S3Service } from '../common/services/s3.service';
 
 @ApiTags('homework')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('homework')
 export class HomeworkController {
-  constructor(private service: HomeworkService) {}
+  constructor(
+    private service: HomeworkService,
+    private s3: S3Service,
+  ) {}
+
+  @Post('upload-image')
+  @Roles(Role.TEACHER)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } })
+  @ApiOperation({ summary: 'Upload homework image to S3' })
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    const url = await this.s3.uploadFile(file, 'homework');
+    return { url };
+  }
 
   @Post()
   @Roles(Role.TEACHER)
