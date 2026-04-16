@@ -102,6 +102,13 @@ export class PaymentsController {
     return this.service.uploadReceipt(file, studentId, actorId);
   }
 
+  @Get(':id/receipt')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.PARENT)
+  @ApiOperation({ summary: 'Get presigned URL for payment receipt' })
+  getReceiptUrl(@Param('id') id: string) {
+    return this.service.getReceiptUrl(id);
+  }
+
   @Patch(':id/confirm')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Confirm payment' })

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -60,5 +61,14 @@ export class S3Service {
     );
 
     return `${this.endpoint}/${this.bucket}/${key}`;
+  }
+
+  async getPresignedUrl(fileUrl: string, expiresIn = 300): Promise<string> {
+    // Extract key from full URL: http://endpoint/bucket/key
+    const prefix = `${this.endpoint}/${this.bucket}/`;
+    const key = fileUrl.startsWith(prefix) ? fileUrl.slice(prefix.length) : fileUrl;
+
+    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+    return getSignedUrl(this.client, command, { expiresIn });
   }
 }
