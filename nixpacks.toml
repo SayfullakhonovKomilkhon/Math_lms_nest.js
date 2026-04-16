@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ['...', 'openssl']
+
+[start]
+cmd = 'npm run start:railway'
+

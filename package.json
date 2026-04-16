@@ -20,8 +20,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:docker": "docker compose up -d",
     "db:push": "prisma db push",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:prepare": "node scripts/db-prepare.js",
+    "start:railway": "npm run db:migrate:deploy && npm run start:prod",
     "postinstall": "node scripts/prisma-generate.js"
   },
   "dependencies": {
