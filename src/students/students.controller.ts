@@ -81,6 +81,16 @@ export class StudentsController {
     return this.studentsService.assignGroup(id, dto.groupId, actorId);
   }
 
+  @Patch(':id/remove-group')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Remove student from group' })
+  removeFromGroup(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.studentsService.removeFromGroup(id, actorId);
+  }
+
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Deactivate student' })

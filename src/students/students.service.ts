@@ -197,6 +197,29 @@ export class StudentsService {
     return updated;
   }
 
+  async removeFromGroup(id: string, actorId: string) {
+    const existing = await this.prisma.student.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Student not found');
+
+    const updated = await this.prisma.student.update({
+      where: { id },
+      data: { groupId: null },
+      select: studentSelect,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'REMOVE_FROM_GROUP',
+        entity: 'Student',
+        entityId: id,
+        details: { previousGroupId: existing.groupId },
+      },
+    });
+
+    return updated;
+  }
+
   async assignGroup(id: string, groupId: string, actorId: string) {
     const existing = await this.prisma.student.findUnique({ where: { id } });
     if (!existing) {
