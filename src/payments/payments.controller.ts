@@ -18,12 +18,14 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto, RejectPaymentDto } from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { UploadThrottleGuard } from '../common/guards/upload-throttle.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -77,6 +79,8 @@ export class PaymentsController {
 
   @Post('upload-receipt')
   @Roles(Role.PARENT, Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(UploadThrottleGuard)
+  @Throttle({ default: { limit: 20, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({

@@ -2,10 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
-import * as path from 'path';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MIME_TYPE_TO_EXTENSION: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+};
 
 @Injectable()
 export class S3Service {
@@ -34,16 +39,16 @@ export class S3Service {
   ): Promise<string> {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(
-        `Invalid file type. Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,
+        'Недопустимый тип файла. Разрешены: JPG, PNG, WebP, PDF',
       );
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException('File size exceeds 10MB limit');
+      throw new BadRequestException('Файл слишком большой. Максимальный размер: 10MB');
     }
 
-    const ext = path.extname(file.originalname).toLowerCase();
-    const key = `${folder}/${Date.now()}-${uuidv4()}${ext}`;
+    const ext = MIME_TYPE_TO_EXTENSION[file.mimetype];
+    const key = `${folder}/${uuidv4()}.${ext}`;
 
     await this.client.send(
       new PutObjectCommand({

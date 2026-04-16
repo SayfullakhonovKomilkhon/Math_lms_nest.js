@@ -4,6 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AttendanceStatus, Role } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkAttendanceDto } from './dto/bulk-attendance.dto';
 import { EditAttendanceDto } from './dto/edit-attendance.dto';
@@ -11,7 +13,10 @@ import { QueryAttendanceDto, SummaryQueryDto } from './dto/query-attendance.dto'
 
 @Injectable()
 export class AttendanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('notifications') private notificationsQueue: Queue,
+  ) {}
 
   private async assertTeacherOwnsGroup(userId: string, groupId: string) {
     const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
@@ -54,6 +59,15 @@ export class AttendanceService {
         }),
       ),
     );
+
+    // Enqueue absence alerts for ABSENT students
+    const absentRecords = dto.records.filter((r) => r.status === AttendanceStatus.ABSENT);
+    for (const r of absentRecords) {
+      await this.notificationsQueue.add('send-absence-alert', {
+        studentId: r.studentId,
+        date: dto.date,
+      });
+    }
 
     return { saved: results.length };
   }

@@ -242,6 +242,8 @@ model Achievement {
   icon        String
   description String
   createdAt   DateTime        @default(now())
+
+  @@unique([studentId, type, month, year])
 }
 
 model Notification {
@@ -275,4 +277,13 @@ model Announcement {
   groupId   String?
   group     Group?   @relation(fields: [groupId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  label     String?
+  updatedBy String?
+  updatedAt DateTime @updatedAt
 }

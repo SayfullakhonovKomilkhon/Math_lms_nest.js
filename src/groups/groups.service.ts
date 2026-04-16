@@ -10,6 +10,7 @@ const groupSelect = {
   maxStudents: true,
   schedule: true,
   isActive: true,
+  isRatingVisible: true,
   archivedAt: true,
   createdAt: true,
   updatedAt: true,

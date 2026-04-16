@@ -66,8 +66,11 @@ export class HomeworkController {
   @Get('latest/:groupId')
   @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN, Role.STUDENT, Role.PARENT)
   @ApiOperation({ summary: 'Get latest homework for a group' })
-  findLatest(@Param('groupId') groupId: string) {
-    return this.service.findLatest(groupId);
+  findLatest(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: { id: string; role: Role },
+  ) {
+    return this.service.findLatest(groupId, user);
   }
 
   @Patch(':id')

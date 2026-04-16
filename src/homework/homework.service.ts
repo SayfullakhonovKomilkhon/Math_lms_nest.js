@@ -4,6 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
@@ -22,7 +24,10 @@ const hwSelect = {
 
 @Injectable()
 export class HomeworkService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('notifications') private notificationsQueue: Queue,
+  ) {}
 
   private async getTeacher(userId: string) {
     const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
@@ -42,7 +47,7 @@ export class HomeworkService {
   async create(dto: CreateHomeworkDto, user: { id: string; role: Role }) {
     const teacher = await this.assertTeacherOwnsGroup(user.id, dto.groupId);
 
-    return this.prisma.homework.create({
+    const homework = await this.prisma.homework.create({
       data: {
         groupId: dto.groupId,
         teacherId: teacher.id,
@@ -53,6 +58,13 @@ export class HomeworkService {
       },
       select: hwSelect,
     });
+
+    await this.notificationsQueue.add('send-homework-notification', {
+      groupId: dto.groupId,
+      homeworkId: homework.id,
+    });
+
+    return homework;
   }
 
   async findAll(groupId: string, user: { id: string; role: Role }) {
@@ -78,7 +90,24 @@ export class HomeworkService {
     });
   }
 
-  async findLatest(groupId: string) {
+  async findLatest(groupId: string, user?: { id: string; role: Role }) {
+    if (user?.role === Role.STUDENT) {
+      const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+      if (!student || student.groupId !== groupId) {
+        throw new ForbiddenException('You can only view your own group homework');
+      }
+    }
+
+    if (user?.role === Role.PARENT) {
+      const parent = await this.prisma.parent.findUnique({
+        where: { userId: user.id },
+        include: { student: true },
+      });
+      if (!parent || parent.student.groupId !== groupId) {
+        throw new ForbiddenException("You can only view your child's group homework");
+      }
+    }
+
     return this.prisma.homework.findFirst({
       where: { groupId },
       select: hwSelect,
