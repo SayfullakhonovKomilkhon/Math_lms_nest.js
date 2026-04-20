@@ -12,6 +12,7 @@ import { Role } from '@prisma/client';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { AssignGroupDto } from './dto/assign-group.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -47,6 +48,18 @@ export class StudentsController {
   @ApiOperation({ summary: 'Get own student profile' })
   getMyProfile(@CurrentUser('id') userId: string) {
     return this.studentsService.findMyProfile(userId);
+  }
+
+  @Patch('me')
+  @Roles(Role.STUDENT)
+  @ApiOperation({
+    summary: 'Update own account data (name, phone, email, password)',
+  })
+  updateMyProfile(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateMyProfileDto,
+  ) {
+    return this.studentsService.updateMyProfile(userId, dto);
   }
 
   @Get(':id')

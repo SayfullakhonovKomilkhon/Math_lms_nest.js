@@ -1,13 +1,17 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 
 const studentSelect = {
   id: true,
@@ -167,6 +171,100 @@ export class StudentsService {
       totalLessons,
       attendanceStats,
     };
+  }
+
+  /**
+   * Allow a logged-in STUDENT to update their own account data:
+   * full name, phone, email (login) and password.
+   * Changing email or password requires the current password.
+   */
+  async updateMyProfile(userId: string, dto: UpdateMyProfileDto) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
+    if (!student || !student.user) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    const wantsEmailChange = !!dto.email && dto.email !== student.user.email;
+    const wantsPasswordChange = !!dto.newPassword;
+
+    if (wantsEmailChange || wantsPasswordChange) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'Current password is required to change email or password',
+        );
+      }
+      const ok = await bcrypt.compare(
+        dto.currentPassword,
+        student.user.passwordHash,
+      );
+      if (!ok) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+    }
+
+    if (wantsEmailChange) {
+      const clash = await this.prisma.user.findUnique({
+        where: { email: dto.email! },
+      });
+      if (clash && clash.id !== student.user.id) {
+        throw new ConflictException('Email is already in use');
+      }
+    }
+
+    const userData: { email?: string; passwordHash?: string } = {};
+    if (wantsEmailChange) userData.email = dto.email!;
+    if (wantsPasswordChange) {
+      userData.passwordHash = await bcrypt.hash(dto.newPassword!, 10);
+    }
+
+    const studentData: { fullName?: string; phone?: string | null } = {};
+    if (typeof dto.fullName === 'string' && dto.fullName.trim()) {
+      studentData.fullName = dto.fullName.trim();
+    }
+    if (typeof dto.phone === 'string') {
+      studentData.phone = dto.phone.trim() || null;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userData).length > 0) {
+        await tx.user.update({
+          where: { id: student.user.id },
+          data: userData,
+        });
+        if (userData.passwordHash) {
+          // Force re-login on other devices after password change
+          await tx.refreshToken.deleteMany({
+            where: { userId: student.user.id },
+          });
+        }
+      }
+      if (Object.keys(studentData).length > 0) {
+        await tx.student.update({
+          where: { id: student.id },
+          data: studentData,
+        });
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'UPDATE_OWN_PROFILE',
+        entity: 'Student',
+        entityId: student.id,
+        details: {
+          fullNameChanged: !!studentData.fullName,
+          phoneChanged: 'phone' in studentData,
+          emailChanged: wantsEmailChange,
+          passwordChanged: wantsPasswordChange,
+        },
+      },
+    });
+
+    return this.findMyProfile(userId);
   }
 
   async update(id: string, dto: UpdateStudentDto, actorId: string) {
