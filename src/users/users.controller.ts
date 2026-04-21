@@ -29,6 +29,17 @@ class CreateStaffDto {
   phone?: string;
 }
 
+class UpdateUserDto {
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
+}
+
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -117,6 +128,17 @@ export class UsersController {
   @ApiOperation({ summary: 'Deactivate a user account' })
   deactivate(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.usersService.deactivate(id, actorId);
+  }
+
+  @Patch(':id')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update user credentials (email / password)' })
+  updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.usersService.updateCredentials(id, dto, actorId);
   }
 
   @Get(':id')

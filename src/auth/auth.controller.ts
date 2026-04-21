@@ -1,6 +1,8 @@
 import {
   Controller,
   Post,
+  Get,
+  Patch,
   Body,
   UseGuards,
   Request,
@@ -17,6 +19,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -57,6 +60,28 @@ export class AuthController {
     @Body() body: Partial<RefreshDto>,
   ) {
     await this.authService.logout(userId, body.refreshToken);
+  }
+
+  @Get('me')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  getMe(@CurrentUser('id') userId: string) {
+    return this.authService.getMe(userId);
+  }
+
+  @Patch('me')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update own login email and/or password',
+    description:
+      'Current password is required. Returns the updated user plus a fresh token pair.',
+  })
+  updateMe(@CurrentUser('id') userId: string, @Body() dto: UpdateMeDto) {
+    return this.authService.updateMe(userId, dto);
   }
 
   private decodeRefreshToken(token: string): { sub: string } {

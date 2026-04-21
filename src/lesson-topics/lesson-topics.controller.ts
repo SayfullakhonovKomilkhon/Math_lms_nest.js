@@ -49,4 +49,16 @@ export class LessonTopicsController {
   findNext(@Param('groupId') groupId: string) {
     return this.service.findNext(groupId);
   }
+
+  @Get('suggestions')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Get distinct topic name suggestions across all groups',
+  })
+  findSuggestions(@Query() query: { q?: string; limit?: string }) {
+    return this.service.findSuggestions({
+      q: query.q,
+      limit: query.limit ? Number(query.limit) : undefined,
+    });
+  }
 }

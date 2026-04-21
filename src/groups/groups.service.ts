@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { PaymentStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
@@ -92,7 +92,7 @@ export class GroupsService {
   async findStudents(groupId: string, user: { id: string; role: Role }) {
     await this.findOne(groupId, user);
 
-    return this.prisma.student.findMany({
+    const students = await this.prisma.student.findMany({
       where: { groupId },
       select: {
         id: true,
@@ -104,6 +104,24 @@ export class GroupsService {
         user: { select: { email: true } },
       },
     });
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const paidThisMonth = await this.prisma.payment.findMany({
+      where: {
+        studentId: { in: students.map((s) => s.id) },
+        status: PaymentStatus.CONFIRMED,
+        confirmedAt: { gte: startOfMonth },
+      },
+      select: { studentId: true },
+    });
+    const paidSet = new Set(paidThisMonth.map((p) => p.studentId));
+
+    return students.map((s) => ({
+      ...s,
+      hasPaidThisMonth: paidSet.has(s.id),
+    }));
   }
 
   async update(id: string, dto: UpdateGroupDto, actorId: string) {

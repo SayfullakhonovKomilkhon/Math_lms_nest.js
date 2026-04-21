@@ -80,4 +80,28 @@ export class LessonTopicsService {
       orderBy: { date: 'asc' },
     });
   }
+
+  async findSuggestions(query: { q?: string; limit?: number }) {
+    const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 300);
+    const where: Prisma.LessonTopicWhereInput = {};
+    if (query.q && query.q.trim()) {
+      where.topic = { contains: query.q.trim(), mode: 'insensitive' };
+    }
+
+    const rows = await this.prisma.lessonTopic.findMany({
+      where,
+      select: { topic: true, date: true },
+      orderBy: { date: 'desc' },
+      take: limit * 4,
+    });
+
+    const seen = new Map<string, { topic: string; lastUsedAt: Date }>();
+    for (const r of rows) {
+      const key = r.topic.trim().toLowerCase();
+      if (!key) continue;
+      if (!seen.has(key)) seen.set(key, { topic: r.topic, lastUsedAt: r.date });
+      if (seen.size >= limit) break;
+    }
+    return Array.from(seen.values());
+  }
 }
