@@ -13,95 +13,305 @@ exports.AnnouncementsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const notifications_service_1 = require("../notifications/notifications.service");
 let AnnouncementsService = class AnnouncementsService {
-    constructor(prisma) {
+    constructor(prisma, notifications) {
         this.prisma = prisma;
+        this.notifications = notifications;
     }
-    async create(dto, user) {
-        if (user.role === client_1.Role.TEACHER) {
+    async create(dto, actor) {
+        if (actor.role === client_1.Role.TEACHER) {
             if (!dto.groupId) {
-                throw new common_1.ForbiddenException('Teachers must specify a groupId');
+                throw new common_1.ForbiddenException('Учитель может создавать объявления только для своих групп');
             }
-            const teacher = await this.prisma.teacher.findUnique({ where: { userId: user.id } });
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { userId: actor.id },
+            });
             if (!teacher)
-                throw new common_1.ForbiddenException('Teacher profile not found');
-            const group = await this.prisma.group.findUnique({ where: { id: dto.groupId } });
+                throw new common_1.ForbiddenException('Профиль учителя не найден');
+            const group = await this.prisma.group.findUnique({
+                where: { id: dto.groupId },
+            });
             if (!group || group.teacherId !== teacher.id) {
-                throw new common_1.ForbiddenException('You can only create announcements for your own groups');
+                throw new common_1.ForbiddenException('Вы можете создавать объявления только для своих групп');
             }
         }
-        return this.prisma.announcement.create({
+        const isPinned = !!dto.isPinned &&
+            (actor.role === client_1.Role.ADMIN || actor.role === client_1.Role.SUPER_ADMIN);
+        const announcement = await this.prisma.announcement.create({
             data: {
                 title: dto.title,
                 message: dto.message,
-                authorId: user.id,
+                authorId: actor.id,
                 groupId: dto.groupId || null,
+                isPinned,
             },
             include: {
-                author: { select: { email: true } },
+                author: {
+                    select: {
+                        id: true,
+                        role: true,
+                        email: true,
+                        teacher: { select: { fullName: true } },
+                    },
+                },
                 group: { select: { id: true, name: true } },
             },
         });
+        await this.sendNotifications(announcement.id, announcement.groupId, announcement.title);
+        return this.shapeAnnouncement(announcement, false, null);
     }
-    async findMy(user) {
-        let groupId = null;
-        if (user.role === client_1.Role.STUDENT) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
-            groupId = student?.groupId ?? null;
-        }
-        else if (user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({
-                where: { userId: user.id },
-                include: { student: true },
-            });
-            groupId = parent?.student?.groupId ?? null;
-        }
-        else if (user.role === client_1.Role.TEACHER) {
-            const teacher = await this.prisma.teacher.findUnique({ where: { userId: user.id } });
-            if (!teacher)
-                return [];
-            const myGroups = await this.prisma.group.findMany({
-                where: { teacherId: teacher.id },
-                select: { id: true },
-            });
-            const groupIds = myGroups.map((g) => g.id);
-            return this.prisma.announcement.findMany({
-                where: {
-                    OR: [{ groupId: null }, { groupId: { in: groupIds } }],
-                },
+    async getMy(actor, query) {
+        const page = query.page ?? 1;
+        const limit = query.limit ?? 20;
+        const skip = (page - 1) * limit;
+        const where = await this.buildAccessFilter(actor);
+        const [items, total, unreadCount] = await this.prisma.$transaction([
+            this.prisma.announcement.findMany({
+                where,
                 include: {
-                    author: { select: { email: true } },
+                    author: {
+                        select: {
+                            id: true,
+                            role: true,
+                            email: true,
+                            teacher: { select: { fullName: true } },
+                        },
+                    },
                     group: { select: { id: true, name: true } },
+                    reads: {
+                        where: { userId: actor.id },
+                        select: { readAt: true },
+                    },
                 },
-                orderBy: { createdAt: 'desc' },
-                take: 20,
-            });
-        }
-        return this.prisma.announcement.findMany({
-            where: {
-                OR: [{ groupId: null }, ...(groupId ? [{ groupId }] : [])],
+                orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+                skip,
+                take: limit,
+            }),
+            this.prisma.announcement.count({ where }),
+            this.prisma.announcement.count({
+                where: { AND: [where, { reads: { none: { userId: actor.id } } }] },
+            }),
+        ]);
+        const data = items.map((a) => this.shapeAnnouncement(a, a.reads.length > 0, a.reads[0]?.readAt ?? null));
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.max(1, Math.ceil(total / limit)),
+                unreadCount,
             },
-            include: {
-                author: { select: { email: true } },
-                group: { select: { id: true, name: true } },
+        };
+    }
+    async getAll(query) {
+        const page = query.page ?? 1;
+        const limit = query.limit ?? 20;
+        const skip = (page - 1) * limit;
+        const where = query.groupId ? { groupId: query.groupId } : {};
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.announcement.findMany({
+                where,
+                include: {
+                    author: {
+                        select: {
+                            id: true,
+                            role: true,
+                            email: true,
+                            teacher: { select: { fullName: true } },
+                        },
+                    },
+                    group: { select: { id: true, name: true } },
+                    _count: { select: { reads: true } },
+                },
+                orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+                skip,
+                take: limit,
+            }),
+            this.prisma.announcement.count({ where }),
+        ]);
+        const data = items.map((a) => ({
+            ...this.shapeAnnouncement(a, false, null),
+            readCount: a._count.reads,
+        }));
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.max(1, Math.ceil(total / limit)),
             },
-            orderBy: { createdAt: 'desc' },
-            take: 20,
+        };
+    }
+    async markAsRead(announcementId, userId) {
+        const exists = await this.prisma.announcement.findUnique({
+            where: { id: announcementId },
+            select: { id: true },
+        });
+        if (!exists)
+            throw new common_1.NotFoundException('Объявление не найдено');
+        await this.prisma.announcementRead.upsert({
+            where: { announcementId_userId: { announcementId, userId } },
+            update: { readAt: new Date() },
+            create: { announcementId, userId },
+        });
+        return { success: true };
+    }
+    async markAllAsRead(actor) {
+        const where = await this.buildAccessFilter(actor);
+        const ids = await this.prisma.announcement.findMany({
+            where: { AND: [where, { reads: { none: { userId: actor.id } } }] },
+            select: { id: true },
+        });
+        if (ids.length === 0)
+            return { success: true, count: 0 };
+        await this.prisma.announcementRead.createMany({
+            data: ids.map((a) => ({ announcementId: a.id, userId: actor.id })),
+            skipDuplicates: true,
+        });
+        return { success: true, count: ids.length };
+    }
+    async togglePin(id) {
+        const current = await this.prisma.announcement.findUnique({
+            where: { id },
+            select: { id: true, isPinned: true },
+        });
+        if (!current)
+            throw new common_1.NotFoundException('Объявление не найдено');
+        return this.prisma.announcement.update({
+            where: { id },
+            data: { isPinned: !current.isPinned },
+            select: { id: true, isPinned: true },
         });
     }
-    async findAll() {
-        return this.prisma.announcement.findMany({
-            include: {
-                author: { select: { email: true } },
-                group: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
+    async delete(id, actor) {
+        const announcement = await this.prisma.announcement.findUnique({
+            where: { id },
         });
+        if (!announcement)
+            throw new common_1.NotFoundException('Объявление не найдено');
+        if (actor.role === client_1.Role.TEACHER && announcement.authorId !== actor.id) {
+            throw new common_1.ForbiddenException('Вы можете удалять только свои объявления');
+        }
+        await this.prisma.announcement.delete({ where: { id } });
+        return { success: true };
+    }
+    async getUnreadCount(actor) {
+        const where = await this.buildAccessFilter(actor);
+        const count = await this.prisma.announcement.count({
+            where: { AND: [where, { reads: { none: { userId: actor.id } } }] },
+        });
+        return { count };
+    }
+    async buildAccessFilter(actor) {
+        if (actor.role === client_1.Role.ADMIN || actor.role === client_1.Role.SUPER_ADMIN) {
+            return {};
+        }
+        if (actor.role === client_1.Role.STUDENT) {
+            const student = await this.prisma.student.findUnique({
+                where: { userId: actor.id },
+                select: { groupId: true },
+            });
+            const groupId = student?.groupId;
+            return {
+                OR: [{ groupId: null }, ...(groupId ? [{ groupId }] : [])],
+            };
+        }
+        if (actor.role === client_1.Role.PARENT) {
+            const parent = await this.prisma.parent.findUnique({
+                where: { userId: actor.id },
+                include: { student: { select: { groupId: true } } },
+            });
+            const groupId = parent?.student?.groupId;
+            return {
+                OR: [{ groupId: null }, ...(groupId ? [{ groupId }] : [])],
+            };
+        }
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { userId: actor.id },
+            include: { groups: { select: { id: true } } },
+        });
+        const groupIds = teacher?.groups.map((g) => g.id) ?? [];
+        return {
+            OR: [
+                { groupId: null },
+                ...(groupIds.length ? [{ groupId: { in: groupIds } }] : []),
+            ],
+        };
+    }
+    shapeAnnouncement(raw, isRead, readAt) {
+        return {
+            id: raw.id,
+            title: raw.title,
+            message: raw.message,
+            isPinned: raw.isPinned,
+            createdAt: raw.createdAt,
+            updatedAt: raw.updatedAt,
+            authorId: raw.authorId,
+            authorName: this.getAuthorName(raw.author),
+            group: raw.group,
+            isRead,
+            readAt,
+        };
+    }
+    getAuthorName(author) {
+        if (author.teacher?.fullName)
+            return author.teacher.fullName;
+        if (author.role === client_1.Role.SUPER_ADMIN)
+            return 'Супер-администрация';
+        return 'Администрация';
+    }
+    async sendNotifications(announcementId, groupId, title) {
+        const userIds = new Set();
+        if (groupId) {
+            const students = await this.prisma.student.findMany({
+                where: { groupId, isActive: true },
+                select: { userId: true, parent: { select: { userId: true } } },
+            });
+            for (const s of students) {
+                userIds.add(s.userId);
+                if (s.parent?.userId)
+                    userIds.add(s.parent.userId);
+            }
+            const teacher = await this.prisma.group.findUnique({
+                where: { id: groupId },
+                select: { teacher: { select: { userId: true } } },
+            });
+            if (teacher?.teacher?.userId)
+                userIds.add(teacher.teacher.userId);
+        }
+        else {
+            const students = await this.prisma.student.findMany({
+                where: { isActive: true },
+                select: { userId: true, parent: { select: { userId: true } } },
+            });
+            for (const s of students) {
+                userIds.add(s.userId);
+                if (s.parent?.userId)
+                    userIds.add(s.parent.userId);
+            }
+            const teachers = await this.prisma.teacher.findMany({
+                where: { isActive: true },
+                select: { userId: true },
+            });
+            for (const t of teachers)
+                userIds.add(t.userId);
+        }
+        if (userIds.size === 0)
+            return;
+        await this.notifications.sendToMany(Array.from(userIds), {
+            type: client_1.NotificationType.ANNOUNCEMENT,
+            message: `Новое объявление: ${title}`,
+        });
+        void announcementId;
     }
 };
 exports.AnnouncementsService = AnnouncementsService;
 exports.AnnouncementsService = AnnouncementsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notifications_service_1.NotificationsService])
 ], AnnouncementsService);
 //# sourceMappingURL=announcements.service.js.map

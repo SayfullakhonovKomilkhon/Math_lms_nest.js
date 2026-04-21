@@ -71,10 +71,11 @@ model User {
   student        Student?
   teacher        Teacher?
   parent         Parent?
-  notifications  Notification[]
-  auditLogs      AuditLog[]
-  refreshTokens  RefreshToken[]
-  announcements  Announcement[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
+  announcements     Announcement[]     @relation("AnnouncementAuthor")
+  announcementReads AnnouncementRead[]
 }
 
 model RefreshToken {
@@ -272,12 +273,30 @@ model AuditLog {
 model Announcement {
   id        String   @id @default(cuid())
   title     String
-  message   String
+  message   String   @db.Text
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
   groupId   String?
   group     Group?   @relation(fields: [groupId], references: [id])
+  isPinned  Boolean  @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reads     AnnouncementRead[]
+
+  @@index([groupId, createdAt])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+  @@index([userId])
 }
 
 model Setting {

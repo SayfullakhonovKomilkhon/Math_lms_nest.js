@@ -1,61 +1,96 @@
 import { Role } from '@prisma/client';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
+import { QueryAnnouncementDto } from './dto/query-announcement.dto';
+type Actor = {
+    id: string;
+    role: Role;
+};
 export declare class AnnouncementsController {
     private service;
     constructor(service: AnnouncementsService);
-    create(dto: CreateAnnouncementDto, user: {
+    create(dto: CreateAnnouncementDto, user: Actor): Promise<{
         id: string;
-        role: Role;
-    }): Promise<{
+        title: string;
+        message: string;
+        isPinned: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        authorId: string;
+        authorName: string;
         group: {
             id: string;
             name: string;
         } | null;
-        author: {
-            email: string;
-        };
-    } & {
-        title: string;
-        id: string;
-        createdAt: Date;
-        groupId: string | null;
-        message: string;
-        authorId: string;
+        isRead: boolean;
+        readAt: Date | null;
     }>;
-    findMy(user: {
-        id: string;
-        role: Role;
-    }): Promise<({
-        group: {
+    getMy(query: QueryAnnouncementDto, user: Actor): Promise<{
+        data: {
             id: string;
-            name: string;
-        } | null;
-        author: {
-            email: string;
+            title: string;
+            message: string;
+            isPinned: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            authorId: string;
+            authorName: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            isRead: boolean;
+            readAt: Date | null;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+            unreadCount: number;
         };
-    } & {
-        title: string;
-        id: string;
-        createdAt: Date;
-        groupId: string | null;
-        message: string;
-        authorId: string;
-    })[]>;
-    findAll(): Promise<({
-        group: {
+    }>;
+    getAll(query: QueryAnnouncementDto): Promise<{
+        data: {
+            readCount: number;
             id: string;
-            name: string;
-        } | null;
-        author: {
-            email: string;
+            title: string;
+            message: string;
+            isPinned: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            authorId: string;
+            authorName: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            isRead: boolean;
+            readAt: Date | null;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
         };
-    } & {
-        title: string;
+    }>;
+    getUnreadCount(user: Actor): Promise<{
+        count: number;
+    }>;
+    markAllAsRead(user: Actor): Promise<{
+        success: boolean;
+        count: number;
+    }>;
+    markAsRead(id: string, user: Actor): Promise<{
+        success: boolean;
+    }>;
+    togglePin(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        groupId: string | null;
-        message: string;
-        authorId: string;
-    })[]>;
+        isPinned: boolean;
+    }>;
+    delete(id: string, user: Actor): Promise<{
+        success: boolean;
+    }>;
 }
+export {};

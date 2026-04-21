@@ -16,19 +16,29 @@ class CreateAnnouncementDto {
 }
 exports.CreateAnnouncementDto = CreateAnnouncementDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Выходной 1 мая' }),
+    (0, swagger_1.ApiProperty)({ example: 'Перенос урока' }),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(3),
+    (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], CreateAnnouncementDto.prototype, "title", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Уважаемые ученики, 1 мая занятий не будет' }),
+    (0, swagger_1.ApiProperty)({ example: 'Урок в пятницу переносится на субботу в 10:00' }),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(5),
+    (0, class_validator_1.MaxLength)(5000),
     __metadata("design:type", String)
 ], CreateAnnouncementDto.prototype, "message", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: 'group-id' }),
+    (0, swagger_1.ApiProperty)({ required: false, example: 'clx123abc' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateAnnouncementDto.prototype, "groupId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, default: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateAnnouncementDto.prototype, "isPinned", void 0);
 //# sourceMappingURL=create-announcement.dto.js.map

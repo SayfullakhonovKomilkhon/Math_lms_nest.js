@@ -1,17 +1,32 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateAnnouncementDto {
-  @ApiProperty({ example: 'Выходной 1 мая' })
+  @ApiProperty({ example: 'Перенос урока' })
   @IsString()
+  @MinLength(3)
+  @MaxLength(100)
   title: string;
 
-  @ApiProperty({ example: 'Уважаемые ученики, 1 мая занятий не будет' })
+  @ApiProperty({ example: 'Урок в пятницу переносится на субботу в 10:00' })
   @IsString()
+  @MinLength(5)
+  @MaxLength(5000)
   message: string;
 
-  @ApiProperty({ required: false, example: 'group-id' })
+  @ApiProperty({ required: false, example: 'clx123abc' })
   @IsOptional()
   @IsString()
   groupId?: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPinned?: boolean;
 }
