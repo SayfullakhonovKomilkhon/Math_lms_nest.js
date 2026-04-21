@@ -69,4 +69,11 @@ export declare class LessonTopicsService {
         topic: string;
         materials: Prisma.JsonValue | null;
     }) | null>;
+    findSuggestions(query: {
+        q?: string;
+        limit?: number;
+    }): Promise<{
+        topic: string;
+        lastUsedAt: Date;
+    }[]>;
 }

@@ -71,6 +71,17 @@ export declare class UsersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    updateCredentials(id: string, dto: {
+        email?: string;
+        password?: string;
+    }, actorId: string): Promise<{
+        email: string;
+        id: string;
+        role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     deactivate(id: string, actorId: string): Promise<{
         email: string;
         id: string;

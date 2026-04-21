@@ -48,6 +48,19 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "phone", void 0);
+class UpdateUserDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], UpdateUserDto.prototype, "email", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(8),
+    __metadata("design:type", String)
+], UpdateUserDto.prototype, "password", void 0);
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
@@ -86,6 +99,9 @@ let UsersController = class UsersController {
     }
     deactivate(id, actorId) {
         return this.usersService.deactivate(id, actorId);
+    }
+    updateUser(id, dto, actorId) {
+        return this.usersService.updateCredentials(id, dto, actorId);
     }
     findOne(id) {
         return this.usersService.findOne(id);
@@ -172,6 +188,17 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user credentials (email / password)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateUserDto, String]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "updateUser", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),

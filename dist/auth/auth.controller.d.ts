@@ -1,6 +1,7 @@
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 export declare class AuthController {
     private authService;
     constructor(authService: AuthService);
@@ -18,5 +19,22 @@ export declare class AuthController {
         refreshToken: string;
     }>;
     logout(userId: string, body: Partial<RefreshDto>): Promise<void>;
+    getMe(userId: string): Promise<{
+        email: string;
+        id: string;
+        role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+        createdAt: Date;
+    }>;
+    updateMe(userId: string, dto: UpdateMeDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        user: {
+            email: string;
+            id: string;
+            role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
+        };
+    }>;
     private decodeRefreshToken;
 }

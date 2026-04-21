@@ -48,6 +48,9 @@ let PaymentsController = class PaymentsController {
     uploadReceipt(file, studentId, actorId) {
         return this.service.uploadReceipt(file, studentId, actorId);
     }
+    getReceiptUrl(id) {
+        return this.service.getReceiptUrl(id);
+    }
     confirm(id, actorId) {
         return this.service.confirm(id, actorId);
     }
@@ -127,6 +130,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "uploadReceipt", null);
+__decorate([
+    (0, common_1.Get)(':id/receipt'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN, client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Get presigned URL for payment receipt' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "getReceiptUrl", null);
 __decorate([
     (0, common_1.Patch)(':id/confirm'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),

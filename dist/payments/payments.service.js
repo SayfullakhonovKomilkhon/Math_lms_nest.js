@@ -212,6 +212,15 @@ let PaymentsService = class PaymentsService {
         });
         return updated;
     }
+    async getReceiptUrl(id) {
+        const payment = await this.prisma.payment.findUnique({ where: { id }, select: { receiptUrl: true } });
+        if (!payment)
+            throw new common_1.NotFoundException('Payment not found');
+        if (!payment.receiptUrl)
+            throw new common_1.NotFoundException('Receipt not found');
+        const url = await this.s3.getPresignedUrl(payment.receiptUrl);
+        return { url };
+    }
     async getDebtors() {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

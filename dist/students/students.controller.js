@@ -19,6 +19,7 @@ const client_1 = require("@prisma/client");
 const students_service_1 = require("./students.service");
 const create_student_dto_1 = require("./dto/create-student.dto");
 const update_student_dto_1 = require("./dto/update-student.dto");
+const update_my_profile_dto_1 = require("./dto/update-my-profile.dto");
 const assign_group_dto_1 = require("./dto/assign-group.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
@@ -37,6 +38,9 @@ let StudentsController = class StudentsController {
     getMyProfile(userId) {
         return this.studentsService.findMyProfile(userId);
     }
+    updateMyProfile(userId, dto) {
+        return this.studentsService.updateMyProfile(userId, dto);
+    }
     findOne(id, user) {
         return this.studentsService.findOne(id, user);
     }
@@ -45,6 +49,9 @@ let StudentsController = class StudentsController {
     }
     assignGroup(id, dto, actorId) {
         return this.studentsService.assignGroup(id, dto.groupId, actorId);
+    }
+    removeFromGroup(id, actorId) {
+        return this.studentsService.removeFromGroup(id, actorId);
     }
     deactivate(id, actorId) {
         return this.studentsService.deactivate(id, actorId);
@@ -79,6 +86,18 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], StudentsController.prototype, "getMyProfile", null);
 __decorate([
+    (0, common_1.Patch)('me'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update own account data (name, phone, email, password)',
+    }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_my_profile_dto_1.UpdateMyProfileDto]),
+    __metadata("design:returntype", void 0)
+], StudentsController.prototype, "updateMyProfile", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN, client_1.Role.TEACHER),
     (0, swagger_1.ApiOperation)({ summary: 'Get student by ID' }),
@@ -110,6 +129,16 @@ __decorate([
     __metadata("design:paramtypes", [String, assign_group_dto_1.AssignGroupDto, String]),
     __metadata("design:returntype", void 0)
 ], StudentsController.prototype, "assignGroup", null);
+__decorate([
+    (0, common_1.Patch)(':id/remove-group'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Remove student from group' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], StudentsController.prototype, "removeFromGroup", null);
 __decorate([
     (0, common_1.Patch)(':id/deactivate'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),

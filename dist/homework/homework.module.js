@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const bullmq_1 = require("@nestjs/bullmq");
 const homework_service_1 = require("./homework.service");
 const homework_controller_1 = require("./homework.controller");
+const s3_service_1 = require("../common/services/s3.service");
 let HomeworkModule = class HomeworkModule {
 };
 exports.HomeworkModule = HomeworkModule;
@@ -18,7 +19,7 @@ exports.HomeworkModule = HomeworkModule = __decorate([
     (0, common_1.Module)({
         imports: [bullmq_1.BullModule.registerQueue({ name: 'notifications' })],
         controllers: [homework_controller_1.HomeworkController],
-        providers: [homework_service_1.HomeworkService],
+        providers: [homework_service_1.HomeworkService, s3_service_1.S3Service],
         exports: [homework_service_1.HomeworkService],
     })
 ], HomeworkModule);

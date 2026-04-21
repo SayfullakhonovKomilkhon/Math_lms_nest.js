@@ -147,6 +147,44 @@ let UsersService = class UsersService {
         const { passwordHash: _, ...result } = user;
         return result;
     }
+    async updateCredentials(id, dto, actorId) {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        const data = {};
+        if (dto.email && dto.email !== user.email) {
+            const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+            if (exists && exists.id !== id) {
+                throw new common_1.ConflictException('Email already in use');
+            }
+            data.email = dto.email;
+        }
+        if (dto.password) {
+            data.passwordHash = await bcrypt.hash(dto.password, 10);
+        }
+        if (Object.keys(data).length === 0) {
+            const { passwordHash: _, ...rest } = user;
+            return rest;
+        }
+        const updated = await this.prisma.user.update({
+            where: { id },
+            data,
+            select: { id: true, email: true, role: true, isActive: true, createdAt: true, updatedAt: true },
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'UPDATE_USER',
+                entity: 'User',
+                entityId: id,
+                details: {
+                    emailChanged: Boolean(data.email),
+                    passwordChanged: Boolean(data.passwordHash),
+                },
+            },
+        });
+        return updated;
+    }
     async deactivate(id, actorId) {
         const user = await this.prisma.user.findUnique({ where: { id } });
         if (!user)

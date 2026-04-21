@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HomeworkController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
 const homework_service_1 = require("./homework.service");
@@ -23,9 +24,15 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const s3_service_1 = require("../common/services/s3.service");
 let HomeworkController = class HomeworkController {
-    constructor(service) {
+    constructor(service, s3) {
         this.service = service;
+        this.s3 = s3;
+    }
+    async uploadImage(file) {
+        const url = await this.s3.uploadFile(file, 'homework');
+        return { url };
     }
     create(dto, user) {
         return this.service.create(dto, user);
@@ -50,6 +57,18 @@ let HomeworkController = class HomeworkController {
     }
 };
 exports.HomeworkController = HomeworkController;
+__decorate([
+    (0, common_1.Post)('upload-image'),
+    (0, roles_decorator_1.Roles)(client_1.Role.TEACHER),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiBody)({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } }),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload homework image to S3' }),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], HomeworkController.prototype, "uploadImage", null);
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER),
@@ -125,6 +144,7 @@ exports.HomeworkController = HomeworkController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, common_1.Controller)('homework'),
-    __metadata("design:paramtypes", [homework_service_1.HomeworkService])
+    __metadata("design:paramtypes", [homework_service_1.HomeworkService,
+        s3_service_1.S3Service])
 ], HomeworkController);
 //# sourceMappingURL=homework.controller.js.map

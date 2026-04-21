@@ -119,11 +119,11 @@ export declare class ParentsController {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.PaymentStatus;
             amount: import("@prisma/client/runtime/library").Decimal;
-            nextPaymentDate: Date | null;
-            rejectReason: string | null;
             receiptUrl: string | null;
+            nextPaymentDate: Date | null;
             confirmedAt: Date | null;
             rejectedAt: Date | null;
+            rejectReason: string | null;
         }[];
     }>;
     uploadChildReceipt(file: Express.Multer.File, userId: string): Promise<{
@@ -141,11 +141,11 @@ export declare class ParentsController {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: import("@prisma/client/runtime/library").Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }>;
     findOne(id: string): Promise<{
         user: {

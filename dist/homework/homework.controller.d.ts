@@ -2,9 +2,14 @@ import { Role } from '@prisma/client';
 import { HomeworkService } from './homework.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
+import { S3Service } from '../common/services/s3.service';
 export declare class HomeworkController {
     private service;
-    constructor(service: HomeworkService);
+    private s3;
+    constructor(service: HomeworkService, s3: S3Service);
+    uploadImage(file: Express.Multer.File): Promise<{
+        url: string;
+    }>;
     create(dto: CreateHomeworkDto, user: {
         id: string;
         role: Role;

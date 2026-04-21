@@ -7,6 +7,10 @@ declare class CreateStaffDto {
     fullName?: string;
     phone?: string;
 }
+declare class UpdateUserDto {
+    email?: string;
+    password?: string;
+}
 export declare class UsersController {
     private usersService;
     constructor(usersService: UsersService);
@@ -108,6 +112,14 @@ export declare class UsersController {
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
+    }>;
+    updateUser(id: string, dto: UpdateUserDto, actorId: string): Promise<{
+        email: string;
+        id: string;
+        role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findOne(id: string): Promise<{
         email: string;

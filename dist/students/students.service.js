@@ -187,6 +187,81 @@ let StudentsService = class StudentsService {
             attendanceStats,
         };
     }
+    async updateMyProfile(userId, dto) {
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+            include: { user: true },
+        });
+        if (!student || !student.user) {
+            throw new common_1.NotFoundException('Student profile not found');
+        }
+        const wantsEmailChange = !!dto.email && dto.email !== student.user.email;
+        const wantsPasswordChange = !!dto.newPassword;
+        if (wantsEmailChange || wantsPasswordChange) {
+            if (!dto.currentPassword) {
+                throw new common_1.BadRequestException('Current password is required to change email or password');
+            }
+            const ok = await bcrypt.compare(dto.currentPassword, student.user.passwordHash);
+            if (!ok) {
+                throw new common_1.UnauthorizedException('Current password is incorrect');
+            }
+        }
+        if (wantsEmailChange) {
+            const clash = await this.prisma.user.findUnique({
+                where: { email: dto.email },
+            });
+            if (clash && clash.id !== student.user.id) {
+                throw new common_1.ConflictException('Email is already in use');
+            }
+        }
+        const userData = {};
+        if (wantsEmailChange)
+            userData.email = dto.email;
+        if (wantsPasswordChange) {
+            userData.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+        }
+        const studentData = {};
+        if (typeof dto.fullName === 'string' && dto.fullName.trim()) {
+            studentData.fullName = dto.fullName.trim();
+        }
+        if (typeof dto.phone === 'string') {
+            studentData.phone = dto.phone.trim() || null;
+        }
+        await this.prisma.$transaction(async (tx) => {
+            if (Object.keys(userData).length > 0) {
+                await tx.user.update({
+                    where: { id: student.user.id },
+                    data: userData,
+                });
+                if (userData.passwordHash) {
+                    await tx.refreshToken.deleteMany({
+                        where: { userId: student.user.id },
+                    });
+                }
+            }
+            if (Object.keys(studentData).length > 0) {
+                await tx.student.update({
+                    where: { id: student.id },
+                    data: studentData,
+                });
+            }
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId,
+                action: 'UPDATE_OWN_PROFILE',
+                entity: 'Student',
+                entityId: student.id,
+                details: {
+                    fullNameChanged: !!studentData.fullName,
+                    phoneChanged: 'phone' in studentData,
+                    emailChanged: wantsEmailChange,
+                    passwordChanged: wantsPasswordChange,
+                },
+            },
+        });
+        return this.findMyProfile(userId);
+    }
     async update(id, dto, actorId) {
         const existing = await this.prisma.student.findUnique({ where: { id } });
         if (!existing) {
@@ -207,6 +282,26 @@ let StudentsService = class StudentsService {
                 entity: 'Student',
                 entityId: id,
                 details: dto,
+            },
+        });
+        return updated;
+    }
+    async removeFromGroup(id, actorId) {
+        const existing = await this.prisma.student.findUnique({ where: { id } });
+        if (!existing)
+            throw new common_1.NotFoundException('Student not found');
+        const updated = await this.prisma.student.update({
+            where: { id },
+            data: { groupId: null },
+            select: studentSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'REMOVE_FROM_GROUP',
+                entity: 'Student',
+                entityId: id,
+                details: { previousGroupId: existing.groupId },
             },
         });
         return updated;

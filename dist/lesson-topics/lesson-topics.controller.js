@@ -35,6 +35,12 @@ let LessonTopicsController = class LessonTopicsController {
     findNext(groupId) {
         return this.service.findNext(groupId);
     }
+    findSuggestions(query) {
+        return this.service.findSuggestions({
+            q: query.q,
+            limit: query.limit ? Number(query.limit) : undefined,
+        });
+    }
 };
 exports.LessonTopicsController = LessonTopicsController;
 __decorate([
@@ -66,6 +72,17 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], LessonTopicsController.prototype, "findNext", null);
+__decorate([
+    (0, common_1.Get)('suggestions'),
+    (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get distinct topic name suggestions across all groups',
+    }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], LessonTopicsController.prototype, "findSuggestions", null);
 exports.LessonTopicsController = LessonTopicsController = __decorate([
     (0, swagger_1.ApiTags)('lesson-topics'),
     (0, swagger_1.ApiBearerAuth)(),

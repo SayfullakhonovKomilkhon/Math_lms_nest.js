@@ -22,11 +22,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }>;
     findAll(query: QueryPaymentsDto): Promise<{
         student: {
@@ -43,11 +43,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }[]>;
     findByStudent(studentId: string, user: {
         id: string;
@@ -67,11 +67,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }[]>;
     findMy(userId: string): Promise<{
         currentMonth: {
@@ -95,11 +95,11 @@ export declare class PaymentsService {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.PaymentStatus;
             amount: Prisma.Decimal;
-            nextPaymentDate: Date | null;
-            rejectReason: string | null;
             receiptUrl: string | null;
+            nextPaymentDate: Date | null;
             confirmedAt: Date | null;
             rejectedAt: Date | null;
+            rejectReason: string | null;
         }[];
     }>;
     uploadReceipt(file: Express.Multer.File, studentId: string, actorId: string): Promise<{
@@ -117,11 +117,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }>;
     confirm(id: string, actorId: string): Promise<{
         student: {
@@ -138,11 +138,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }>;
     reject(id: string, dto: RejectPaymentDto, actorId: string): Promise<{
         student: {
@@ -159,11 +159,14 @@ export declare class PaymentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: Prisma.Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
+    }>;
+    getReceiptUrl(id: string): Promise<{
+        url: string;
     }>;
     getDebtors(): Promise<{
         studentId: string;

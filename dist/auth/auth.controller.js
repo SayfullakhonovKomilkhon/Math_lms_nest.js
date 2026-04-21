@@ -19,6 +19,7 @@ const throttler_1 = require("@nestjs/throttler");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const refresh_dto_1 = require("./dto/refresh.dto");
+const update_me_dto_1 = require("./dto/update-me.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 let AuthController = class AuthController {
@@ -34,6 +35,12 @@ let AuthController = class AuthController {
     }
     async logout(userId, body) {
         await this.authService.logout(userId, body.refreshToken);
+    }
+    getMe(userId) {
+        return this.authService.getMe(userId);
+    }
+    updateMe(userId, dto) {
+        return this.authService.updateMe(userId, dto);
     }
     decodeRefreshToken(token) {
         try {
@@ -82,6 +89,32 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Get)('me'),
+    (0, throttler_1.Throttle)({ default: { limit: 60, ttl: 60000 } }),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get current authenticated user' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "getMe", null);
+__decorate([
+    (0, common_1.Patch)('me'),
+    (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60000 } }),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update own login email and/or password',
+        description: 'Current password is required. Returns the updated user plus a fresh token pair.',
+    }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_me_dto_1.UpdateMeDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "updateMe", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60000 } }),

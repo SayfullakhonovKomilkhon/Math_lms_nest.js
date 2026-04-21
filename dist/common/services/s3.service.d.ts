@@ -6,4 +6,5 @@ export declare class S3Service {
     private endpoint;
     constructor(config: ConfigService);
     uploadFile(file: Express.Multer.File, folder: 'receipts' | 'homework' | 'avatars'): Promise<string>;
+    getPresignedUrl(fileUrl: string, expiresIn?: number): Promise<string>;
 }

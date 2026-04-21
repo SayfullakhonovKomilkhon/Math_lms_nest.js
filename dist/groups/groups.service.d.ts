@@ -69,6 +69,7 @@ export declare class GroupsService {
         id: string;
         role: Role;
     }): Promise<{
+        hasPaidThisMonth: boolean;
         user: {
             email: string;
         };

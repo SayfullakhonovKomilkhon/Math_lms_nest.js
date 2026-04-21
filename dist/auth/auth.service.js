@@ -86,6 +86,70 @@ let AuthService = class AuthService {
         await this.saveRefreshToken(user.id, tokens.refreshToken);
         return tokens;
     }
+    async getMe(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                isActive: true,
+                createdAt: true,
+            },
+        });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        return user;
+    }
+    async updateMe(userId, dto) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user || !user.isActive) {
+            throw new common_1.NotFoundException('User not found or inactive');
+        }
+        const wantsEmailChange = !!dto.email && dto.email !== user.email;
+        const wantsPasswordChange = !!dto.newPassword;
+        if (!wantsEmailChange && !wantsPasswordChange) {
+            throw new common_1.BadRequestException('Nothing to update');
+        }
+        if (!dto.currentPassword) {
+            throw new common_1.BadRequestException('Current password is required');
+        }
+        const passwordOk = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+        if (!passwordOk) {
+            throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        if (wantsEmailChange) {
+            const clash = await this.prisma.user.findUnique({
+                where: { email: dto.email },
+            });
+            if (clash && clash.id !== user.id) {
+                throw new common_1.ConflictException('Email is already in use');
+            }
+        }
+        const data = {};
+        if (wantsEmailChange)
+            data.email = dto.email;
+        if (wantsPasswordChange) {
+            data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+        }
+        const updated = await this.prisma.user.update({
+            where: { id: userId },
+            data,
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                isActive: true,
+            },
+        });
+        await this.prisma.refreshToken.deleteMany({ where: { userId } });
+        const tokens = await this.generateTokens(updated.id, updated.email, updated.role);
+        await this.saveRefreshToken(updated.id, tokens.refreshToken);
+        return {
+            user: updated,
+            ...tokens,
+        };
+    }
     async logout(userId, refreshToken) {
         if (refreshToken) {
             await this.prisma.refreshToken.deleteMany({

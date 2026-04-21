@@ -140,11 +140,11 @@ export declare class ParentsService {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.PaymentStatus;
             amount: import("@prisma/client/runtime/library").Decimal;
-            nextPaymentDate: Date | null;
-            rejectReason: string | null;
             receiptUrl: string | null;
+            nextPaymentDate: Date | null;
             confirmedAt: Date | null;
             rejectedAt: Date | null;
+            rejectReason: string | null;
         }[];
     }>;
     uploadChildReceipt(userId: string, file: Express.Multer.File): Promise<{
@@ -162,11 +162,11 @@ export declare class ParentsService {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
         amount: import("@prisma/client/runtime/library").Decimal;
-        nextPaymentDate: Date | null;
-        rejectReason: string | null;
         receiptUrl: string | null;
+        nextPaymentDate: Date | null;
         confirmedAt: Date | null;
         rejectedAt: Date | null;
+        rejectReason: string | null;
     }>;
     update(id: string, dto: UpdateParentDto, actorId: string): Promise<{
         user: {

@@ -91,7 +91,7 @@ let GroupsService = class GroupsService {
     }
     async findStudents(groupId, user) {
         await this.findOne(groupId, user);
-        return this.prisma.student.findMany({
+        const students = await this.prisma.student.findMany({
             where: { groupId },
             select: {
                 id: true,
@@ -103,6 +103,21 @@ let GroupsService = class GroupsService {
                 user: { select: { email: true } },
             },
         });
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const paidThisMonth = await this.prisma.payment.findMany({
+            where: {
+                studentId: { in: students.map((s) => s.id) },
+                status: client_1.PaymentStatus.CONFIRMED,
+                confirmedAt: { gte: startOfMonth },
+            },
+            select: { studentId: true },
+        });
+        const paidSet = new Set(paidThisMonth.map((p) => p.studentId));
+        return students.map((s) => ({
+            ...s,
+            hasPaidThisMonth: paidSet.has(s.id),
+        }));
     }
     async update(id, dto, actorId) {
         const existing = await this.prisma.group.findUnique({ where: { id } });

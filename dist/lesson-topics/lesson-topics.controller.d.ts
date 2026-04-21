@@ -68,4 +68,11 @@ export declare class LessonTopicsController {
         topic: string;
         materials: import("@prisma/client/runtime/library").JsonValue | null;
     }) | null>;
+    findSuggestions(query: {
+        q?: string;
+        limit?: string;
+    }): Promise<{
+        topic: string;
+        lastUsedAt: Date;
+    }[]>;
 }
