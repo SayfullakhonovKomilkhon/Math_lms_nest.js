@@ -56,6 +56,13 @@ export class AnnouncementsController {
     return this.service.getUnreadCount(user);
   }
 
+  @Get(':id/reads')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Список пользователей, прочитавших объявление' })
+  getReaders(@Param('id') id: string) {
+    return this.service.getReaders(id);
+  }
+
   @Patch('read-all')
   @Roles(Role.STUDENT, Role.PARENT, Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Отметить все объявления прочитанными' })

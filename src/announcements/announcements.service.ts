@@ -234,6 +234,69 @@ export class AnnouncementsService {
     return { count };
   }
 
+  async getReaders(announcementId: string) {
+    const announcement = await this.prisma.announcement.findUnique({
+      where: { id: announcementId },
+      select: {
+        id: true,
+        title: true,
+        groupId: true,
+        group: { select: { id: true, name: true } },
+      },
+    });
+    if (!announcement) throw new NotFoundException('Объявление не найдено');
+
+    // Прочитавшие
+    const reads = await this.prisma.announcementRead.findMany({
+      where: { announcementId },
+      orderBy: { readAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            student: {
+              select: {
+                fullName: true,
+                group: { select: { id: true, name: true } },
+              },
+            },
+            teacher: { select: { fullName: true } },
+            parent: {
+              select: {
+                fullName: true,
+                student: {
+                  select: {
+                    fullName: true,
+                    group: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const readers = reads.map((r) => this.shapeReader(r.user, r.readAt));
+
+    // Кол-во получателей (всего у кого объявление должно быть видно).
+    // Совпадает с логикой sendNotifications.
+    const recipientIds = await this.collectRecipientIds(announcement.groupId);
+
+    return {
+      announcement: {
+        id: announcement.id,
+        title: announcement.title,
+        group: announcement.group,
+      },
+      readCount: readers.length,
+      recipientCount: recipientIds.size,
+      readers,
+    };
+  }
+
   // --- helpers -----------------------------------------------------------
 
   private async buildAccessFilter(actor: Actor) {
@@ -327,6 +390,21 @@ export class AnnouncementsService {
     groupId: string | null,
     title: string,
   ) {
+    const userIds = await this.collectRecipientIds(groupId);
+    if (userIds.size === 0) return;
+
+    await this.notifications.sendToMany(Array.from(userIds), {
+      type: NotificationType.ANNOUNCEMENT,
+      message: `Новое объявление: ${title}`,
+    });
+
+    // suppress unused var lint (announcementId is kept for future deep-linking)
+    void announcementId;
+  }
+
+  private async collectRecipientIds(
+    groupId: string | null,
+  ): Promise<Set<string>> {
     const userIds = new Set<string>();
 
     if (groupId) {
@@ -338,11 +416,11 @@ export class AnnouncementsService {
         userIds.add(s.userId);
         if (s.parent?.userId) userIds.add(s.parent.userId);
       }
-      const teacher = await this.prisma.group.findUnique({
+      const group = await this.prisma.group.findUnique({
         where: { id: groupId },
         select: { teacher: { select: { userId: true } } },
       });
-      if (teacher?.teacher?.userId) userIds.add(teacher.teacher.userId);
+      if (group?.teacher?.userId) userIds.add(group.teacher.userId);
     } else {
       const students = await this.prisma.student.findMany({
         where: { isActive: true },
@@ -359,14 +437,56 @@ export class AnnouncementsService {
       for (const t of teachers) userIds.add(t.userId);
     }
 
-    if (userIds.size === 0) return;
+    return userIds;
+  }
 
-    await this.notifications.sendToMany(Array.from(userIds), {
-      type: NotificationType.ANNOUNCEMENT,
-      message: `Новое объявление: ${title}`,
-    });
+  private shapeReader(
+    user: {
+      id: string;
+      email: string;
+      role: Role;
+      student: {
+        fullName: string;
+        group: { id: string; name: string } | null;
+      } | null;
+      teacher: { fullName: string } | null;
+      parent: {
+        fullName: string;
+        student: {
+          fullName: string;
+          group: { id: string; name: string } | null;
+        } | null;
+      } | null;
+    },
+    readAt: Date,
+  ) {
+    let fullName: string;
+    let group: { id: string; name: string } | null = null;
+    let extra: string | null = null;
 
-    // suppress unused var lint (announcementId is kept for future deep-linking)
-    void announcementId;
+    if (user.student) {
+      fullName = user.student.fullName;
+      group = user.student.group;
+    } else if (user.teacher) {
+      fullName = user.teacher.fullName;
+    } else if (user.parent) {
+      fullName = user.parent.fullName;
+      group = user.parent.student?.group ?? null;
+      extra = user.parent.student?.fullName
+        ? `Родитель: ${user.parent.student.fullName}`
+        : 'Родитель';
+    } else {
+      fullName = user.email;
+    }
+
+    return {
+      userId: user.id,
+      fullName,
+      role: user.role,
+      email: user.email,
+      group,
+      extra,
+      readAt,
+    };
   }
 }
