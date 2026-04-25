@@ -40,12 +40,24 @@ const FONT_BOLD = path.join(FONT_DIR, 'Roboto-Bold.ttf');
  * Registers our bundled Cyrillic-capable fonts as `body` and `bold` aliases
  * inside the document, then sets `body` as the active font. PDFKit ships only
  * the 14 base PDF fonts which lack Cyrillic — without this every Russian glyph
- * is rendered as garbage.
+ * is rendered as garbage. If the asset files are missing (e.g. the deploy
+ * skipped them), the aliases fall back to the built-in Helvetica family so
+ * that PDF generation still succeeds and Latin output is correct.
  */
 function setupCyrillicFonts(doc: PDFKit.PDFDocument): void {
-  if (fs.existsSync(FONT_REGULAR)) doc.registerFont('body', FONT_REGULAR);
-  if (fs.existsSync(FONT_BOLD)) doc.registerFont('bold', FONT_BOLD);
-  if (fs.existsSync(FONT_REGULAR)) doc.font('body');
+  const hasRegular = fs.existsSync(FONT_REGULAR);
+  const hasBold = fs.existsSync(FONT_BOLD);
+
+  doc.registerFont('body', hasRegular ? FONT_REGULAR : 'Helvetica');
+  doc.registerFont('bold', hasBold ? FONT_BOLD : 'Helvetica-Bold');
+  doc.font('body');
+
+  if (!hasRegular || !hasBold) {
+    // Fallback path — log once so deploy issues are visible in Railway logs.
+    console.warn(
+      `[reports] Cyrillic fonts not found in ${FONT_DIR}; falling back to Helvetica`,
+    );
+  }
 }
 
 function headerStyle(ws: ExcelJS.Worksheet, row: number, colCount: number) {
