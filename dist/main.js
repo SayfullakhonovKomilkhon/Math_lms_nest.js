@@ -9,8 +9,12 @@ const response_interceptor_1 = require("./common/interceptors/response.intercept
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.useLogger(['error', 'warn', 'log']);
+    const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     app.enableCors({
-        origin: true,
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });

@@ -9,8 +9,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useLogger(['error', 'warn', 'log']);
 
+  // CORS: read allowed origins from FRONTEND_URL env (comma-separated for
+  // multiple). When unset, fall back to reflecting the request origin so
+  // local dev and preview deploys keep working without extra config.
+  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
