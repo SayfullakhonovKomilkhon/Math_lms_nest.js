@@ -52,6 +52,9 @@ let ParentsController = class ParentsController {
     getChildPayments(query, userId) {
         return this.parentsService.getChildPayments(userId, query);
     }
+    getChildRating(query, userId) {
+        return this.parentsService.getChildRating(userId, query);
+    }
     uploadChildReceipt(file, studentId, userId) {
         return this.parentsService.uploadChildReceipt(userId, file, studentId);
     }
@@ -143,6 +146,18 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "getChildPayments", null);
+__decorate([
+    (0, common_1.Get)('me/child/rating'),
+    (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
+    (0, swagger_1.ApiOperation)({
+        summary: "Get child's place in the group rating (mirrors /grades/my/rating)",
+    }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "getChildRating", null);
 __decorate([
     (0, common_1.Post)('me/child/payments/receipt'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT),

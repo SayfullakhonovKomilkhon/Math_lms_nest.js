@@ -59,6 +59,36 @@ let GamificationController = class GamificationController {
         }
         return this.gamificationService.getStudentAchievements(id);
     }
+    async getMyProgress(req) {
+        const student = await this.prisma.student.findUnique({
+            where: { userId: req.user.id },
+        });
+        if (!student)
+            return null;
+        return this.gamificationService.computeStudentProgress(student.id);
+    }
+    async getStudentProgress(id, req) {
+        if (req.user.role === client_1.Role.PARENT) {
+            const link = await this.prisma.parentStudent.findFirst({
+                where: { studentId: id, parent: { userId: req.user.id } },
+                select: { parentId: true },
+            });
+            if (!link)
+                return null;
+        }
+        if (req.user.role === client_1.Role.TEACHER) {
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { userId: req.user.id },
+            });
+            const student = await this.prisma.student.findUnique({
+                where: { id },
+                select: { group: { select: { teacherId: true } } },
+            });
+            if (!teacher || student?.group?.teacherId !== teacher.id)
+                return null;
+        }
+        return this.gamificationService.computeStudentProgress(id);
+    }
     async getGroupAchievements(groupId, req) {
         if (req.user.role === client_1.Role.TEACHER) {
             const teacher = await this.prisma.teacher.findUnique({
@@ -98,6 +128,23 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], GamificationController.prototype, "getStudentAchievements", null);
+__decorate([
+    (0, common_1.Get)('my/progress'),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], GamificationController.prototype, "getMyProgress", null);
+__decorate([
+    (0, common_1.Get)('student/:id/progress'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN, client_1.Role.TEACHER, client_1.Role.PARENT),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], GamificationController.prototype, "getStudentProgress", null);
 __decorate([
     (0, common_1.Get)('group/:groupId'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN, client_1.Role.TEACHER),

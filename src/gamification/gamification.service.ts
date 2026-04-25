@@ -424,6 +424,7 @@ export class GamificationService {
       student: {
         id: student.id,
         fullName: student.fullName,
+        gender: student.gender,
         groupName: student.group?.name ?? null,
       },
       monthGrid,
@@ -453,6 +454,172 @@ export class GamificationService {
     );
 
     return results.filter(Boolean);
+  }
+
+  // ---------------------------------------------------------------------
+  // PROGRESSION (XP / Level) — single source of truth used by the student
+  // panel header (XPBar) and the parent panel. The numbers are derived from
+  // attendance, grades and unlocked achievements that already exist in the
+  // database, so no extra fields/migrations are required.
+  // ---------------------------------------------------------------------
+
+  /**
+   * XP earned per event:
+   *   - Урок посещён           +25 XP
+   *   - Опоздание              +10 XP
+   *   - Оценка за обычный урок (REGULAR/PRACTICE/CONTROL) — `score/maxScore × 50` XP
+   *   - Оценка за экзамен (TEST) — `score/maxScore × 200` XP
+   *   - 🥇 Месячная медаль 1 место  +500 XP
+   *   - 🥈 Месячная медаль 2 место  +300 XP
+   *   - 🥉 Месячная медаль 3 место  +150 XP
+   *   - ⭐ Каждое особое достижение +400 XP
+   *   - 🔥 Каждые 5 посещений подряд +50 XP
+   *
+   * Level scale:
+   *   xpForLevel(N) = 500 × N    (XP нужно, чтобы перейти с N на N+1)
+   *   xpToReach(N)  = 500 × N(N-1)/2  (суммарный XP до начала уровня N)
+   */
+  async computeStudentProgress(studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, fullName: true, gender: true },
+    });
+    if (!student) return null;
+
+    const [attendances, grades, achievements] = await Promise.all([
+      this.prisma.attendance.findMany({
+        where: { studentId },
+        select: { status: true, date: true },
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.grade.findMany({
+        where: { studentId },
+        select: { score: true, maxScore: true, lessonType: true },
+      }),
+      this.prisma.achievement.findMany({
+        where: { studentId },
+        select: { type: true, place: true },
+      }),
+    ]);
+
+    let attendanceXp = 0;
+    let latenessXp = 0;
+    let lessonGradesXp = 0;
+    let examGradesXp = 0;
+    let monthlyMedalsXp = 0;
+    let specialAchievementsXp = 0;
+    let streakBonusXp = 0;
+
+    let totalLessons = 0;
+    let presentCount = 0;
+    let lateCount = 0;
+    let absentCount = 0;
+
+    for (const a of attendances) {
+      totalLessons++;
+      if (a.status === 'PRESENT') {
+        attendanceXp += 25;
+        presentCount++;
+      } else if (a.status === 'LATE') {
+        latenessXp += 10;
+        lateCount++;
+      } else if (a.status === 'ABSENT') {
+        absentCount++;
+      }
+    }
+
+    for (const g of grades) {
+      const maxScore = Number(g.maxScore);
+      const score = Number(g.score);
+      if (maxScore <= 0) continue;
+      const ratio = Math.max(0, Math.min(1, score / maxScore));
+      // TEST is the lesson type used for exams in this project (see
+      // teacher AttendanceTab — `EXAM_LESSON_TYPE = 'TEST'`).
+      if (g.lessonType === 'TEST') {
+        examGradesXp += Math.round(ratio * 200);
+      } else {
+        lessonGradesXp += Math.round(ratio * 50);
+      }
+    }
+
+    for (const a of achievements) {
+      if (a.type === AchievementType.MONTHLY) {
+        if (a.place === 1) monthlyMedalsXp += 500;
+        else if (a.place === 2) monthlyMedalsXp += 300;
+        else if (a.place === 3) monthlyMedalsXp += 150;
+      } else if (a.type === AchievementType.SPECIAL) {
+        specialAchievementsXp += 400;
+      }
+    }
+
+    // Streak: подряд посещённых (PRESENT or LATE) уроков.
+    let runningStreak = 0;
+    let bestStreak = 0;
+    for (const a of attendances) {
+      if (a.status === 'PRESENT' || a.status === 'LATE') {
+        runningStreak++;
+        if (runningStreak > bestStreak) bestStreak = runningStreak;
+        if (runningStreak % 5 === 0) streakBonusXp += 50;
+      } else {
+        runningStreak = 0;
+      }
+    }
+    const currentStreak = runningStreak;
+
+    const totalXp =
+      attendanceXp +
+      latenessXp +
+      lessonGradesXp +
+      examGradesXp +
+      monthlyMedalsXp +
+      specialAchievementsXp +
+      streakBonusXp;
+
+    // Solve N for xpToReach(N) ≤ totalXp < xpToReach(N+1)
+    // xpToReach(N) = 500 × N(N-1)/2 → 500N² - 500N - 2*totalXp = 0
+    // N = (1 + sqrt(1 + 8*totalXp/500)) / 2
+    let level = Math.floor((1 + Math.sqrt(1 + (8 * totalXp) / 500)) / 2);
+    if (level < 1) level = 1;
+    const xpToReachThis = (500 * level * (level - 1)) / 2;
+    const xpForNextLevel = 500 * level;
+    const xpInLevel = Math.max(0, totalXp - xpToReachThis);
+
+    const titleData = computeProgressionTitle(level);
+
+    return {
+      student: {
+        id: student.id,
+        fullName: student.fullName,
+        gender: student.gender,
+      },
+      totalXp,
+      level,
+      xpInLevel,
+      xpForNextLevel,
+      title: titleData.title,
+      titleEmoji: titleData.emoji,
+      streak: currentStreak,
+      bestStreak,
+      stats: {
+        totalLessons,
+        present: presentCount,
+        late: lateCount,
+        absent: absentCount,
+        attendancePercent:
+          totalLessons > 0
+            ? Math.round(((presentCount + lateCount) / totalLessons) * 100)
+            : 0,
+      },
+      breakdown: {
+        attendance: attendanceXp,
+        lateness: latenessXp,
+        lessonGrades: lessonGradesXp,
+        examGrades: examGradesXp,
+        monthlyMedals: monthlyMedalsXp,
+        specialAchievements: specialAchievementsXp,
+        streakBonus: streakBonusXp,
+      },
+    };
   }
 
   async getCenterTopStudents(limit = 10) {
@@ -492,4 +659,15 @@ export class GamificationService {
       };
     });
   }
+}
+
+// Title bands match the design: 5 tiers, with the same emojis the student
+// panel header uses today. Kept as a free function so the service stays
+// testable without touching prisma.
+function computeProgressionTitle(level: number): { title: string; emoji: string } {
+  if (level >= 20) return { title: 'Гений MathCenter', emoji: '👑' };
+  if (level >= 15) return { title: 'Легенда', emoji: '🏆' };
+  if (level >= 10) return { title: 'Стратег', emoji: '🎯' };
+  if (level >= 5) return { title: 'Умный боец', emoji: '⚡' };
+  return { title: 'Юный исследователь', emoji: '🌱' };
 }

@@ -31,8 +31,8 @@ export declare class GradesService {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: Prisma.Decimal;
-        maxScore: Prisma.Decimal;
         comment: string | null;
+        maxScore: Prisma.Decimal;
         gradedAt: Date;
     })[]>;
     update(id: string, dto: EditGradeDto, user: {
@@ -47,8 +47,8 @@ export declare class GradesService {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: Prisma.Decimal;
-        maxScore: Prisma.Decimal;
         comment: string | null;
+        maxScore: Prisma.Decimal;
         gradedAt: Date;
     }>;
     getRating(groupId: string, query: RatingQueryDto, user: {
@@ -93,8 +93,8 @@ export declare class GradesService {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: Prisma.Decimal;
-        maxScore: Prisma.Decimal;
         comment: string | null;
+        maxScore: Prisma.Decimal;
         gradedAt: Date;
     }[]>;
     findMyStats(userId: string): Promise<{

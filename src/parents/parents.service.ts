@@ -8,6 +8,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
+import { GradesService } from '../grades/grades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { UpdateParentDto } from './dto/update-parent.dto';
@@ -27,6 +28,7 @@ export class ParentsService {
   constructor(
     private prisma: PrismaService,
     private paymentsService: PaymentsService,
+    private gradesService: GradesService,
   ) {}
 
   // ---------- Helpers --------------------------------------------------
@@ -487,5 +489,62 @@ export class ParentsService {
   ) {
     const childId = await this.resolveChildId(userId, studentId);
     return this.paymentsService.uploadReceipt(file, childId, userId);
+  }
+
+  // Mirror of the student's `/grades/my/rating` for the parent's selected
+  // child, so the parent achievements page can show the same group podium
+  // the student sees in their own panel.
+  async getChildRating(
+    userId: string,
+    query: { period?: 'month' | 'quarter' | 'all'; studentId?: string },
+  ) {
+    const studentId = await this.resolveChildId(userId, query.studentId);
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, groupId: true },
+    });
+
+    if (!student || !student.groupId) {
+      return {
+        myPlace: 0,
+        totalStudents: 0,
+        myAverageScore: 0,
+        myTotalPoints: 0,
+        isVisible: false,
+        rating: [],
+      };
+    }
+
+    const group = await this.prisma.group.findUnique({
+      where: { id: student.groupId },
+      select: { isRatingVisible: true },
+    });
+    if (!group) {
+      return {
+        myPlace: 0,
+        totalStudents: 0,
+        myAverageScore: 0,
+        myTotalPoints: 0,
+        isVisible: false,
+        rating: [],
+      };
+    }
+
+    const ratingList = await this.gradesService.getRating(
+      student.groupId,
+      { period: query.period as any },
+      { id: userId, role: Role.PARENT },
+    );
+
+    const myEntry = ratingList.find((r) => r.studentId === student.id);
+
+    return {
+      myPlace: myEntry ? myEntry.place : 0,
+      totalStudents: ratingList.length,
+      myAverageScore: myEntry ? myEntry.averageScore : 0,
+      myTotalPoints: myEntry ? myEntry.totalPoints : 0,
+      isVisible: group.isRatingVisible,
+      rating: group.isRatingVisible ? ratingList : [],
+    };
   }
 }

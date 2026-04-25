@@ -1,4 +1,5 @@
 import { PaymentsService } from '../payments/payments.service';
+import { GradesService } from '../grades/grades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { UpdateParentDto } from './dto/update-parent.dto';
@@ -6,7 +7,8 @@ import { UpdateParentCredentialsDto } from './dto/update-credentials.dto';
 export declare class ParentsService {
     private prisma;
     private paymentsService;
-    constructor(prisma: PrismaService, paymentsService: PaymentsService);
+    private gradesService;
+    constructor(prisma: PrismaService, paymentsService: PaymentsService, gradesService: GradesService);
     private getOwnChildIds;
     private resolveChildId;
     private childSelect;
@@ -229,8 +231,8 @@ export declare class ParentsService {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        maxScore: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
         gradedAt: Date;
     }[]>;
     getChildHomework(userId: string, query?: {
@@ -301,5 +303,24 @@ export declare class ParentsService {
         confirmedAt: Date | null;
         rejectedAt: Date | null;
         rejectReason: string | null;
+    }>;
+    getChildRating(userId: string, query: {
+        period?: 'month' | 'quarter' | 'all';
+        studentId?: string;
+    }): Promise<{
+        myPlace: number;
+        totalStudents: number;
+        myAverageScore: number;
+        myTotalPoints: number;
+        isVisible: boolean;
+        rating: {
+            studentId: string;
+            fullName: string;
+            totalPoints: number;
+            averageScore: number;
+            totalWorks: number;
+            attendancePercent: number;
+            place: number;
+        }[];
     }>;
 }

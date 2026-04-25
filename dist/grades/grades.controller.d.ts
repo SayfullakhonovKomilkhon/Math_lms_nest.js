@@ -29,8 +29,8 @@ export declare class GradesController {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        maxScore: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
         gradedAt: Date;
     })[]>;
     findMy(query: {
@@ -51,8 +51,8 @@ export declare class GradesController {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        maxScore: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
         gradedAt: Date;
     }[]>;
     findMyStats(userId: string): Promise<{
@@ -128,8 +128,8 @@ export declare class GradesController {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        maxScore: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
         gradedAt: Date;
     }>;
 }

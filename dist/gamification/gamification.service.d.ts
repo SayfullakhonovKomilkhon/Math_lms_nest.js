@@ -24,6 +24,7 @@ export declare class GamificationService {
         student: {
             id: string;
             fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
             groupName: string | null;
         };
         monthGrid: ({
@@ -67,6 +68,7 @@ export declare class GamificationService {
         student: {
             id: string;
             fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
             groupName: string | null;
         };
         monthGrid: ({
@@ -106,6 +108,37 @@ export declare class GamificationService {
             totalAchievements: number;
         };
     } | null)[]>;
+    computeStudentProgress(studentId: string): Promise<{
+        student: {
+            id: string;
+            fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
+        };
+        totalXp: number;
+        level: number;
+        xpInLevel: number;
+        xpForNextLevel: number;
+        title: string;
+        titleEmoji: string;
+        streak: number;
+        bestStreak: number;
+        stats: {
+            totalLessons: number;
+            present: number;
+            late: number;
+            absent: number;
+            attendancePercent: number;
+        };
+        breakdown: {
+            attendance: number;
+            lateness: number;
+            lessonGrades: number;
+            examGrades: number;
+            monthlyMedals: number;
+            specialAchievements: number;
+            streakBonus: number;
+        };
+    } | null>;
     getCenterTopStudents(limit?: number): Promise<{
         studentId: string;
         fullName: string;

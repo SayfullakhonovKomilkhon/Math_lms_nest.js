@@ -53,6 +53,39 @@ export class GamificationController {
     return this.gamificationService.getStudentAchievements(id);
   }
 
+  @Get('my/progress')
+  @Roles(Role.STUDENT)
+  async getMyProgress(@Request() req) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId: req.user.id },
+    });
+    if (!student) return null;
+    return this.gamificationService.computeStudentProgress(student.id);
+  }
+
+  @Get('student/:id/progress')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER, Role.PARENT)
+  async getStudentProgress(@Param('id') id: string, @Request() req) {
+    if (req.user.role === Role.PARENT) {
+      const link = await this.prisma.parentStudent.findFirst({
+        where: { studentId: id, parent: { userId: req.user.id } },
+        select: { parentId: true },
+      });
+      if (!link) return null;
+    }
+    if (req.user.role === Role.TEACHER) {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { userId: req.user.id },
+      });
+      const student = await this.prisma.student.findUnique({
+        where: { id },
+        select: { group: { select: { teacherId: true } } },
+      });
+      if (!teacher || student?.group?.teacherId !== teacher.id) return null;
+    }
+    return this.gamificationService.computeStudentProgress(id);
+  }
+
   @Get('group/:groupId')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER)
   async getGroupAchievements(

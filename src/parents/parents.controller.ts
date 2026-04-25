@@ -113,6 +113,22 @@ export class ParentsController {
     return this.parentsService.getChildPayments(userId, query);
   }
 
+  @Get('me/child/rating')
+  @Roles(Role.PARENT)
+  @ApiOperation({
+    summary: "Get child's place in the group rating (mirrors /grades/my/rating)",
+  })
+  getChildRating(
+    @Query()
+    query: {
+      period?: 'month' | 'quarter' | 'all';
+      studentId?: string;
+    },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.parentsService.getChildRating(userId, query);
+  }
+
   @Post('me/child/payments/receipt')
   @Roles(Role.PARENT)
   @UseGuards(UploadThrottleGuard)

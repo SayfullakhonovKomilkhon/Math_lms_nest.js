@@ -12,6 +12,7 @@ export declare class GamificationController {
         student: {
             id: string;
             fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
             groupName: string | null;
         };
         monthGrid: ({
@@ -55,6 +56,7 @@ export declare class GamificationController {
         student: {
             id: string;
             fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
             groupName: string | null;
         };
         monthGrid: ({
@@ -94,10 +96,73 @@ export declare class GamificationController {
             totalAchievements: number;
         };
     } | null>;
+    getMyProgress(req: any): Promise<{
+        student: {
+            id: string;
+            fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
+        };
+        totalXp: number;
+        level: number;
+        xpInLevel: number;
+        xpForNextLevel: number;
+        title: string;
+        titleEmoji: string;
+        streak: number;
+        bestStreak: number;
+        stats: {
+            totalLessons: number;
+            present: number;
+            late: number;
+            absent: number;
+            attendancePercent: number;
+        };
+        breakdown: {
+            attendance: number;
+            lateness: number;
+            lessonGrades: number;
+            examGrades: number;
+            monthlyMedals: number;
+            specialAchievements: number;
+            streakBonus: number;
+        };
+    } | null>;
+    getStudentProgress(id: string, req: any): Promise<{
+        student: {
+            id: string;
+            fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
+        };
+        totalXp: number;
+        level: number;
+        xpInLevel: number;
+        xpForNextLevel: number;
+        title: string;
+        titleEmoji: string;
+        streak: number;
+        bestStreak: number;
+        stats: {
+            totalLessons: number;
+            present: number;
+            late: number;
+            absent: number;
+            attendancePercent: number;
+        };
+        breakdown: {
+            attendance: number;
+            lateness: number;
+            lessonGrades: number;
+            examGrades: number;
+            monthlyMedals: number;
+            specialAchievements: number;
+            streakBonus: number;
+        };
+    } | null>;
     getGroupAchievements(groupId: string, req: any): Promise<({
         student: {
             id: string;
             fullName: string;
+            gender: import(".prisma/client").$Enums.Gender;
             groupName: string | null;
         };
         monthGrid: ({

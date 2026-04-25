@@ -115,8 +115,8 @@ export declare class ParentsController {
         studentId: string;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
-        maxScore: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
+        maxScore: import("@prisma/client/runtime/library").Decimal;
         gradedAt: Date;
     }[]>;
     getChildHomework(query: {
@@ -165,6 +165,25 @@ export declare class ParentsController {
             confirmedAt: Date | null;
             rejectedAt: Date | null;
             rejectReason: string | null;
+        }[];
+    }>;
+    getChildRating(query: {
+        period?: 'month' | 'quarter' | 'all';
+        studentId?: string;
+    }, userId: string): Promise<{
+        myPlace: number;
+        totalStudents: number;
+        myAverageScore: number;
+        myTotalPoints: number;
+        isVisible: boolean;
+        rating: {
+            studentId: string;
+            fullName: string;
+            totalPoints: number;
+            averageScore: number;
+            totalWorks: number;
+            attendancePercent: number;
+            place: number;
         }[];
     }>;
     uploadChildReceipt(file: Express.Multer.File, studentId: string | undefined, userId: string): Promise<{

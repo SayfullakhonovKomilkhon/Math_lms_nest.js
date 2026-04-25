@@ -11,12 +11,13 @@ const common_1 = require("@nestjs/common");
 const parents_service_1 = require("./parents.service");
 const parents_controller_1 = require("./parents.controller");
 const payments_module_1 = require("../payments/payments.module");
+const grades_module_1 = require("../grades/grades.module");
 let ParentsModule = class ParentsModule {
 };
 exports.ParentsModule = ParentsModule;
 exports.ParentsModule = ParentsModule = __decorate([
     (0, common_1.Module)({
-        imports: [payments_module_1.PaymentsModule],
+        imports: [payments_module_1.PaymentsModule, grades_module_1.GradesModule],
         controllers: [parents_controller_1.ParentsController],
         providers: [parents_service_1.ParentsService],
         exports: [parents_service_1.ParentsService],
