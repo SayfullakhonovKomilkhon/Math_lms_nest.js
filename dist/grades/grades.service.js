@@ -40,25 +40,39 @@ let GradesService = class GradesService {
         }
         await this.assertTeacherOwnsGroup(user.id, dto.groupId);
         const date = new Date(dto.date);
-        const created = [];
-        for (const r of dto.records) {
-            if (r.score == null)
-                continue;
-            const grade = await this.prisma.grade.create({
-                data: {
-                    studentId: r.studentId,
-                    groupId: dto.groupId,
-                    date,
-                    lessonType: dto.lessonType,
-                    score: r.score,
-                    maxScore: dto.maxScore,
-                    comment: r.comment,
-                    gradedAt: new Date(),
-                },
-            });
-            created.push(grade);
-        }
-        return { created: created.length };
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        let written = 0;
+        await this.prisma.$transaction(async (tx) => {
+            for (const r of dto.records) {
+                await tx.grade.deleteMany({
+                    where: {
+                        studentId: r.studentId,
+                        groupId: dto.groupId,
+                        lessonType: dto.lessonType,
+                        date: { gte: dayStart, lt: dayEnd },
+                    },
+                });
+                if (r.score == null)
+                    continue;
+                await tx.grade.create({
+                    data: {
+                        studentId: r.studentId,
+                        groupId: dto.groupId,
+                        date,
+                        lessonType: dto.lessonType,
+                        score: r.score,
+                        maxScore: dto.maxScore,
+                        comment: r.comment,
+                        gradedAt: new Date(),
+                    },
+                });
+                written += 1;
+            }
+        });
+        return { created: written };
     }
     async findAll(query, user) {
         const where = {};
@@ -175,13 +189,20 @@ let GradesService = class GradesService {
             .map((s) => ({
             studentId: s.studentId,
             fullName: s.fullName,
+            totalPoints: Math.round(s.totalScore * 100) / 100,
             averageScore: s.count > 0
                 ? Math.round((s.totalScore / s.totalMax) * 100 * 100) / 100
                 : 0,
             totalWorks: s.count,
             attendancePercent: s.totalDays > 0 ? Math.round((s.presentDays / s.totalDays) * 100) : 0,
         }))
-            .sort((a, b) => b.averageScore - a.averageScore)
+            .sort((a, b) => {
+            if (b.totalPoints !== a.totalPoints)
+                return b.totalPoints - a.totalPoints;
+            if (b.averageScore !== a.averageScore)
+                return b.averageScore - a.averageScore;
+            return a.fullName.localeCompare(b.fullName);
+        })
             .map((s, i) => ({ place: i + 1, ...s }));
         return sorted;
     }
@@ -340,6 +361,7 @@ let GradesService = class GradesService {
             myPlace: myEntry ? myEntry.place : 0,
             totalStudents: ratingList.length,
             myAverageScore: myEntry ? myEntry.averageScore : 0,
+            myTotalPoints: myEntry ? myEntry.totalPoints : 0,
             isVisible: group.isRatingVisible,
             rating: group.isRatingVisible ? ratingList : [],
         };

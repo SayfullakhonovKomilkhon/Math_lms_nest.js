@@ -49,12 +49,36 @@ exports.ReportsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const ExcelJS = __importStar(require("exceljs"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const prisma_service_1 = require("../prisma/prisma.service");
 function fmtDate(d) {
     if (!d)
         return '—';
     return new Date(d).toLocaleDateString('ru-RU');
+}
+function resolveAssetsDir() {
+    const candidates = [
+        path.resolve(process.cwd(), 'assets/fonts'),
+        path.resolve(process.cwd(), '../assets/fonts'),
+        path.resolve(__dirname, '../../assets/fonts'),
+        path.resolve(__dirname, '../../../assets/fonts'),
+    ];
+    return candidates.find((p) => fs.existsSync(p)) ?? candidates[0];
+}
+const FONT_DIR = resolveAssetsDir();
+const FONT_REGULAR = path.join(FONT_DIR, 'Roboto-Regular.ttf');
+const FONT_BOLD = path.join(FONT_DIR, 'Roboto-Bold.ttf');
+function setupCyrillicFonts(doc) {
+    const hasRegular = fs.existsSync(FONT_REGULAR);
+    const hasBold = fs.existsSync(FONT_BOLD);
+    doc.registerFont('body', hasRegular ? FONT_REGULAR : 'Helvetica');
+    doc.registerFont('bold', hasBold ? FONT_BOLD : 'Helvetica-Bold');
+    doc.font('body');
+    if (!hasRegular || !hasBold) {
+        console.warn(`[reports] Cyrillic fonts not found in ${FONT_DIR}; falling back to Helvetica`);
+    }
 }
 function headerStyle(ws, row, colCount) {
     const r = ws.getRow(row);
@@ -389,18 +413,19 @@ let ReportsService = class ReportsService {
                 size: 'A4',
                 layout: 'landscape',
             });
+            setupCyrillicFonts(doc);
             const chunks = [];
             doc.on('data', (c) => chunks.push(c));
             doc.on('end', () => resolve(Buffer.concat(chunks)));
             doc.on('error', reject);
             doc
                 .fontSize(16)
-                .font('Helvetica-Bold')
+                .font('bold')
                 .text('MathCenter — Финансовый отчёт', { align: 'center' });
             if (query.from || query.to) {
                 doc
                     .fontSize(10)
-                    .font('Helvetica')
+                    .font('body')
                     .text(`Период: ${query.from ? fmtDate(query.from) : '—'} — ${query.to ? fmtDate(query.to) : '—'}`, { align: 'center' });
             }
             doc
@@ -423,13 +448,13 @@ let ReportsService = class ReportsService {
             doc
                 .rect(startX, y, colW.reduce((a, b) => a + b, 0), 20)
                 .fill('#4F46E5');
-            doc.fillColor('white').fontSize(9).font('Helvetica-Bold');
+            doc.fillColor('white').fontSize(9).font('bold');
             let x = startX;
             cols.forEach((c, i) => {
                 doc.text(c, x + 3, y + 5, { width: colW[i] - 6, align: 'center' });
                 x += colW[i];
             });
-            doc.fillColor('black').font('Helvetica').fontSize(8);
+            doc.fillColor('black').font('body').fontSize(8);
             y += 20;
             const statusLabels = {
                 PENDING: 'Ожидает',
@@ -471,7 +496,7 @@ let ReportsService = class ReportsService {
                 .reduce((s, p) => s + Number(p.amount), 0);
             doc
                 .moveDown(1)
-                .font('Helvetica-Bold')
+                .font('bold')
                 .fontSize(10)
                 .text(`Итого подтверждённых: ${confirmed.toLocaleString('ru-RU')} сум`, { align: 'right' });
             doc.end();

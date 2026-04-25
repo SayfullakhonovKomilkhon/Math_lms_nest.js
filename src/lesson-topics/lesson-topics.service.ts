@@ -26,18 +26,56 @@ export class LessonTopicsService {
   async create(dto: CreateLessonTopicDto, user: { id: string; role: Role }) {
     const teacher = await this.assertTeacherOwnsGroup(user.id, dto.groupId);
 
-    return this.prisma.lessonTopic.create({
-      data: {
-        groupId: dto.groupId,
-        teacherId: teacher.id,
-        date: new Date(dto.date),
-        topic: dto.topic,
-        materials: (dto.materials as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-      },
-      include: {
-        group: { select: { id: true, name: true } },
-        teacher: { select: { id: true, fullName: true } },
-      },
+    // Upsert by (groupId, day) — there must be at most one topic per day per
+    // group. We don't have a DB-level unique constraint, so emulate it via a
+    // transaction: find the existing row for that day, update it if present,
+    // otherwise create a fresh one.
+    const day = new Date(dto.date);
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const materials =
+      (dto.materials as Prisma.InputJsonValue) ?? Prisma.JsonNull;
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.lessonTopic.findFirst({
+        where: {
+          groupId: dto.groupId,
+          date: { gte: dayStart, lt: dayEnd },
+        },
+      });
+
+      if (existing) {
+        return tx.lessonTopic.update({
+          where: { id: existing.id },
+          data: {
+            teacherId: teacher.id,
+            topic: dto.topic,
+            materials,
+            date: day,
+          },
+          include: {
+            group: { select: { id: true, name: true } },
+            teacher: { select: { id: true, fullName: true } },
+          },
+        });
+      }
+
+      return tx.lessonTopic.create({
+        data: {
+          groupId: dto.groupId,
+          teacherId: teacher.id,
+          date: day,
+          topic: dto.topic,
+          materials,
+        },
+        include: {
+          group: { select: { id: true, name: true } },
+          teacher: { select: { id: true, fullName: true } },
+        },
+      });
     });
   }
 

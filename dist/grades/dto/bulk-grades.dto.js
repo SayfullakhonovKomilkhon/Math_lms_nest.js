@@ -22,8 +22,9 @@ __decorate([
     __metadata("design:type", String)
 ], GradeRecordDto.prototype, "studentId", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'null if student was absent' }),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'null if student was absent / clear grade' }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== null),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Object)

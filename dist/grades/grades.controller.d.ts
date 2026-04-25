@@ -75,9 +75,18 @@ export declare class GradesController {
         totalStudents: number;
         myAverageScore: number;
         isVisible: boolean;
+        rating: never[];
+        myTotalPoints?: undefined;
+    } | {
+        myPlace: number;
+        totalStudents: number;
+        myAverageScore: number;
+        myTotalPoints: number;
+        isVisible: boolean;
         rating: {
             studentId: string;
             fullName: string;
+            totalPoints: number;
             averageScore: number;
             totalWorks: number;
             attendancePercent: number;
@@ -90,6 +99,7 @@ export declare class GradesController {
     }): Promise<{
         studentId: string;
         fullName: string;
+        totalPoints: number;
         averageScore: number;
         totalWorks: number;
         attendancePercent: number;
