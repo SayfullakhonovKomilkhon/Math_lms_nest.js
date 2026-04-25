@@ -29,6 +29,9 @@ let SettingsController = class SettingsController {
     findAll() {
         return this.service.findAll();
     }
+    getPublicBranding() {
+        return this.service.getPublicBranding();
+    }
     updateMany(dto, actorId) {
         return this.service.updateMany(dto, actorId);
     }
@@ -42,6 +45,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SettingsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('public'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get public branding info (any authenticated user)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SettingsController.prototype, "getPublicBranding", null);
 __decorate([
     (0, common_1.Patch)(),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),

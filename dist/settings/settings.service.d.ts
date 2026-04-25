@@ -6,16 +6,22 @@ export declare class SettingsService {
     findAll(): Promise<{
         id: string;
         updatedAt: Date;
-        value: string;
         key: string;
+        value: string;
         label: string | null;
         updatedBy: string | null;
     }[]>;
+    getPublicBranding(): Promise<{
+        centerName: string;
+        centerPhone: string;
+        centerAddress: string;
+    }>;
+    getValue(key: string): Promise<string | null>;
     updateMany(dto: UpdateSettingsDto, actorId: string): Promise<{
         id: string;
         updatedAt: Date;
-        value: string;
         key: string;
+        value: string;
         label: string | null;
         updatedBy: string | null;
     }[]>;

@@ -1,9 +1,11 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { SettingsService } from '../settings/settings.service';
 export declare class TeachersService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private settings;
+    constructor(prisma: PrismaService, settings: SettingsService);
     create(dto: CreateTeacherDto, actorId: string): Promise<{
         user: {
             email: string;

@@ -60,6 +60,32 @@ export class SettingsService {
     return this.prisma.setting.findMany({ orderBy: { key: 'asc' } });
   }
 
+  // Subset of settings that are safe to expose to any authenticated user.
+  // Used by frontend layouts (sidebar, login screen) to render the actual
+  // center branding instead of a hardcoded "MathCenter".
+  async getPublicBranding() {
+    const PUBLIC_KEYS = ['center_name', 'centerName', 'centerPhone', 'centerAddress'];
+    const rows = await this.prisma.setting.findMany({
+      where: { key: { in: PUBLIC_KEYS } },
+      select: { key: true, value: true },
+    });
+
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    return {
+      centerName: map['center_name'] || map['centerName'] || 'MathCenter',
+      centerPhone: map['centerPhone'] ?? '',
+      centerAddress: map['centerAddress'] ?? '',
+    };
+  }
+
+  async getValue(key: string): Promise<string | null> {
+    const row = await this.prisma.setting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    return row?.value ?? null;
+  }
+
   async updateMany(dto: UpdateSettingsDto, actorId: string) {
     const results = await this.prisma.$transaction(
       dto.settings.map((s) =>

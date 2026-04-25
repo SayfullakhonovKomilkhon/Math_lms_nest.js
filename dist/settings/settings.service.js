@@ -65,6 +65,26 @@ let SettingsService = class SettingsService {
         }
         return this.prisma.setting.findMany({ orderBy: { key: 'asc' } });
     }
+    async getPublicBranding() {
+        const PUBLIC_KEYS = ['center_name', 'centerName', 'centerPhone', 'centerAddress'];
+        const rows = await this.prisma.setting.findMany({
+            where: { key: { in: PUBLIC_KEYS } },
+            select: { key: true, value: true },
+        });
+        const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+        return {
+            centerName: map['center_name'] || map['centerName'] || 'MathCenter',
+            centerPhone: map['centerPhone'] ?? '',
+            centerAddress: map['centerAddress'] ?? '',
+        };
+    }
+    async getValue(key) {
+        const row = await this.prisma.setting.findUnique({
+            where: { key },
+            select: { value: true },
+        });
+        return row?.value ?? null;
+    }
     async updateMany(dto, actorId) {
         const results = await this.prisma.$transaction(dto.settings.map((s) => this.prisma.setting.upsert({
             where: { key: s.key },

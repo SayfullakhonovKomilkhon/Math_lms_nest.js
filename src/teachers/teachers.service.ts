@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { SettingsService } from '../settings/settings.service';
 
 const teacherSelect = {
   id: true,
@@ -18,10 +19,22 @@ const teacherSelect = {
 
 @Injectable()
 export class TeachersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private settings: SettingsService,
+  ) {}
 
   async create(dto: CreateTeacherDto, actorId: string) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // If the operator did not pass an explicit rate, fall back to the
+    // center-wide default configured in /superadmin/settings.
+    let ratePerStudent = dto.ratePerStudent;
+    if (ratePerStudent === undefined || ratePerStudent === null) {
+      const def = await this.settings.getValue('default_rate_per_student');
+      const parsed = def ? Number(def) : NaN;
+      ratePerStudent = Number.isFinite(parsed) ? parsed : 0;
+    }
 
     const teacher = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -37,7 +50,7 @@ export class TeachersService {
           userId: user.id,
           fullName: dto.fullName,
           phone: dto.phone,
-          ratePerStudent: dto.ratePerStudent ?? 0,
+          ratePerStudent,
         },
         select: teacherSelect,
       });

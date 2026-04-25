@@ -47,6 +47,7 @@ const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const settings_service_1 = require("../settings/settings.service");
 const teacherSelect = {
     id: true,
     fullName: true,
@@ -58,11 +59,18 @@ const teacherSelect = {
     user: { select: { id: true, email: true, role: true, isActive: true } },
 };
 let TeachersService = class TeachersService {
-    constructor(prisma) {
+    constructor(prisma, settings) {
         this.prisma = prisma;
+        this.settings = settings;
     }
     async create(dto, actorId) {
         const passwordHash = await bcrypt.hash(dto.password, 10);
+        let ratePerStudent = dto.ratePerStudent;
+        if (ratePerStudent === undefined || ratePerStudent === null) {
+            const def = await this.settings.getValue('default_rate_per_student');
+            const parsed = def ? Number(def) : NaN;
+            ratePerStudent = Number.isFinite(parsed) ? parsed : 0;
+        }
         const teacher = await this.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
@@ -76,7 +84,7 @@ let TeachersService = class TeachersService {
                     userId: user.id,
                     fullName: dto.fullName,
                     phone: dto.phone,
-                    ratePerStudent: dto.ratePerStudent ?? 0,
+                    ratePerStudent,
                 },
                 select: teacherSelect,
             });
@@ -150,6 +158,7 @@ let TeachersService = class TeachersService {
 exports.TeachersService = TeachersService;
 exports.TeachersService = TeachersService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        settings_service_1.SettingsService])
 ], TeachersService);
 //# sourceMappingURL=teachers.service.js.map

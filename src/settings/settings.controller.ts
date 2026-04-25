@@ -22,6 +22,13 @@ export class SettingsController {
     return this.service.findAll();
   }
 
+  // Public-ish branding for any authenticated user (sidebar, login footer, etc.)
+  @Get('public')
+  @ApiOperation({ summary: 'Get public branding info (any authenticated user)' })
+  getPublicBranding() {
+    return this.service.getPublicBranding();
+  }
+
   @Patch()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update center settings (batch)' })
