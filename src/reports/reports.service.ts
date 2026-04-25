@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
+import * as fs from 'fs';
+import * as path from 'path';
 import PDFDocument from 'pdfkit';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -15,6 +17,35 @@ import {
 function fmtDate(d: Date | string | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('ru-RU');
+}
+
+// Locate bundled TTF fonts that ship Cyrillic glyphs.
+// Works both in dev (project root) and in production (where the compiled `dist`
+// runs from a sub-directory). We walk up from cwd until we find `assets/fonts`.
+function resolveAssetsDir(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'assets/fonts'),
+    path.resolve(process.cwd(), '../assets/fonts'),
+    path.resolve(__dirname, '../../assets/fonts'),
+    path.resolve(__dirname, '../../../assets/fonts'),
+  ];
+  return candidates.find((p) => fs.existsSync(p)) ?? candidates[0];
+}
+
+const FONT_DIR = resolveAssetsDir();
+const FONT_REGULAR = path.join(FONT_DIR, 'Roboto-Regular.ttf');
+const FONT_BOLD = path.join(FONT_DIR, 'Roboto-Bold.ttf');
+
+/**
+ * Registers our bundled Cyrillic-capable fonts as `body` and `bold` aliases
+ * inside the document, then sets `body` as the active font. PDFKit ships only
+ * the 14 base PDF fonts which lack Cyrillic — without this every Russian glyph
+ * is rendered as garbage.
+ */
+function setupCyrillicFonts(doc: PDFKit.PDFDocument): void {
+  if (fs.existsSync(FONT_REGULAR)) doc.registerFont('body', FONT_REGULAR);
+  if (fs.existsSync(FONT_BOLD)) doc.registerFont('bold', FONT_BOLD);
+  if (fs.existsSync(FONT_REGULAR)) doc.font('body');
 }
 
 function headerStyle(ws: ExcelJS.Worksheet, row: number, colCount: number) {
@@ -376,6 +407,7 @@ export class ReportsService {
         size: 'A4',
         layout: 'landscape',
       });
+      setupCyrillicFonts(doc);
       const chunks: Buffer[] = [];
       doc.on('data', (c) => chunks.push(c));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -383,12 +415,12 @@ export class ReportsService {
 
       doc
         .fontSize(16)
-        .font('Helvetica-Bold')
+        .font('bold')
         .text('MathCenter — Финансовый отчёт', { align: 'center' });
       if (query.from || query.to) {
         doc
           .fontSize(10)
-          .font('Helvetica')
+          .font('body')
           .text(
             `Период: ${query.from ? fmtDate(query.from) : '—'} — ${query.to ? fmtDate(query.to) : '—'}`,
             { align: 'center' },
@@ -421,13 +453,13 @@ export class ReportsService {
           20,
         )
         .fill('#4F46E5');
-      doc.fillColor('white').fontSize(9).font('Helvetica-Bold');
+      doc.fillColor('white').fontSize(9).font('bold');
       let x = startX;
       cols.forEach((c, i) => {
         doc.text(c, x + 3, y + 5, { width: colW[i] - 6, align: 'center' });
         x += colW[i];
       });
-      doc.fillColor('black').font('Helvetica').fontSize(8);
+      doc.fillColor('black').font('body').fontSize(8);
       y += 20;
 
       const statusLabels: Record<string, string> = {
@@ -478,7 +510,7 @@ export class ReportsService {
         .reduce((s, p) => s + Number(p.amount), 0);
       doc
         .moveDown(1)
-        .font('Helvetica-Bold')
+        .font('bold')
         .fontSize(10)
         .text(
           `Итого подтверждённых: ${confirmed.toLocaleString('ru-RU')} сум`,
