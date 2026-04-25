@@ -59,18 +59,18 @@ enum AchievementType {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
+  id             String   @id @default(cuid())
+  email          String   @unique
   passwordHash   String
   role           Role
-  isActive       Boolean   @default(true)
+  isActive       Boolean  @default(true)
   telegramChatId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  student        Student?
-  teacher        Teacher?
-  parent         Parent?
+  student           Student?
+  teacher           Teacher?
+  parent            Parent?
   notifications     Notification[]
   auditLogs         AuditLog[]
   refreshTokens     RefreshToken[]
@@ -88,20 +88,20 @@ model RefreshToken {
 }
 
 model Student {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName     String
-  phone        String?
-  birthDate    DateTime?
-  gender       Gender
-  enrolledAt   DateTime  @default(now())
-  groupId      String?
-  group        Group?    @relation(fields: [groupId], references: [id])
-  monthlyFee   Decimal   @default(0) @db.Decimal(10, 2)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  phone      String?
+  birthDate  DateTime?
+  gender     Gender
+  enrolledAt DateTime  @default(now())
+  groupId    String?
+  group      Group?    @relation(fields: [groupId], references: [id])
+  monthlyFee Decimal   @default(0) @db.Decimal(10, 2)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   parent       Parent?
   attendances  Attendance[]
@@ -123,33 +123,33 @@ model Parent {
 }
 
 model Teacher {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName        String
-  phone           String?
-  ratePerStudent  Decimal   @default(0) @db.Decimal(10, 2)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName       String
+  phone          String?
+  ratePerStudent Decimal  @default(0) @db.Decimal(10, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  groups          Group[]
-  homeworks       Homework[]
-  lessonTopics    LessonTopic[]
+  groups       Group[]
+  homeworks    Homework[]
+  lessonTopics LessonTopic[]
 }
 
 model Group {
-  id               String    @id @default(cuid())
-  name             String
-  teacherId        String
-  teacher          Teacher   @relation(fields: [teacherId], references: [id])
-  maxStudents      Int       @default(20)
-  schedule         Json
-  isActive         Boolean   @default(true)
-  isRatingVisible  Boolean   @default(false)
-  archivedAt       DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  teacherId       String
+  teacher         Teacher   @relation(fields: [teacherId], references: [id])
+  maxStudents     Int       @default(20)
+  schedule        Json
+  isActive        Boolean   @default(true)
+  isRatingVisible Boolean   @default(false)
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   students      Student[]
   attendances   Attendance[]
@@ -160,17 +160,17 @@ model Group {
 }
 
 model Attendance {
-  id           String           @id @default(cuid())
-  date         DateTime
-  studentId    String
-  student      Student          @relation(fields: [studentId], references: [id])
-  groupId      String
-  group        Group            @relation(fields: [groupId], references: [id])
-  lessonType   LessonType       @default(REGULAR)
-  status       AttendanceStatus @default(PRESENT)
-  editedAt     DateTime?
-  editReason   String?
-  createdAt    DateTime         @default(now())
+  id         String           @id @default(cuid())
+  date       DateTime
+  studentId  String
+  student    Student          @relation(fields: [studentId], references: [id])
+  groupId    String
+  group      Group            @relation(fields: [groupId], references: [id])
+  lessonType LessonType       @default(REGULAR)
+  status     AttendanceStatus @default(PRESENT)
+  editedAt   DateTime?
+  editReason String?
+  createdAt  DateTime         @default(now())
 
   @@unique([studentId, groupId, date])
 }
@@ -207,17 +207,17 @@ model Payment {
 }
 
 model Homework {
-  id          String    @id @default(cuid())
-  groupId     String
-  group       Group     @relation(fields: [groupId], references: [id])
-  teacherId   String
-  teacher     Teacher   @relation(fields: [teacherId], references: [id])
-  text        String
-  imageUrls   String[]  @default([])
-  youtubeUrl  String?
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  groupId    String
+  group      Group     @relation(fields: [groupId], references: [id])
+  teacherId  String
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  text       String
+  imageUrls  String[]  @default([])
+  youtubeUrl String?
+  dueDate    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model LessonTopic {
@@ -282,7 +282,7 @@ model Announcement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reads     AnnouncementRead[]
+  reads AnnouncementRead[]
 
   @@index([groupId, createdAt])
 }
