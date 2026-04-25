@@ -32,13 +32,30 @@ __decorate([
     __metadata("design:type", String)
 ], CreateParentDto.prototype, "fullName", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: '+998901234567' }),
+    (0, swagger_1.ApiPropertyOptional)({ example: '+998901234567' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateParentDto.prototype, "phone", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'student-id' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'IDs of students to link to this parent',
+        example: ['student-id-1', 'student-id-2'],
+        type: [String],
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayUnique)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], CreateParentDto.prototype, "studentIds", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        deprecated: true,
+        description: 'Deprecated: use studentIds. Kept for backwards compatibility.',
+        example: 'student-id',
+    }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateParentDto.prototype, "studentId", void 0);

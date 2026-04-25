@@ -189,7 +189,9 @@ export class ReportsService {
           group: {
             select: { name: true, teacher: { select: { fullName: true } } },
           },
-          parent: { select: { fullName: true, phone: true } },
+          parents: {
+            select: { parent: { select: { fullName: true, phone: true } } },
+          },
         },
         orderBy: { fullName: 'asc' },
       }),
@@ -290,8 +292,8 @@ export class ReportsService {
           group: s.group?.name ?? '—',
           teacher: s.group?.teacher?.fullName ?? '—',
           fee: Number(s.monthlyFee),
-          parent: s.parent?.fullName ?? '—',
-          parentPhone: s.parent?.phone ?? '—',
+          parent: s.parents?.[0]?.parent?.fullName ?? '—',
+          parentPhone: s.parents?.[0]?.parent?.phone ?? '—',
         })
         .getCell(6).numFmt = '#,##0.00 "сум"';
     });
@@ -507,7 +509,9 @@ export class ReportsService {
         group: {
           select: { name: true, teacher: { select: { fullName: true } } },
         },
-        parent: { select: { fullName: true, phone: true } },
+        parents: {
+          select: { parent: { select: { fullName: true, phone: true } } },
+        },
       },
       orderBy: { fullName: 'asc' },
     });
@@ -539,8 +543,8 @@ export class ReportsService {
         group: s.group?.name ?? '—',
         teacher: s.group?.teacher?.fullName ?? '—',
         monthlyFee: Number(s.monthlyFee),
-        parent: s.parent?.fullName ?? '—',
-        parentPhone: s.parent?.phone ?? '—',
+        parent: s.parents?.[0]?.parent?.fullName ?? '—',
+        parentPhone: s.parents?.[0]?.parent?.phone ?? '—',
         enrolledAt: fmtDate(s.enrolledAt),
         status: s.isActive ? 'Активен' : 'Неактивен',
       });

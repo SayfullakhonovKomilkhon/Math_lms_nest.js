@@ -14,6 +14,7 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { AssignGroupDto } from './dto/assign-group.dto';
+import { UpdateCredentialsDto } from './dto/update-credentials.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -103,5 +104,18 @@ export class StudentsController {
   @ApiOperation({ summary: 'Deactivate student' })
   deactivate(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.studentsService.deactivate(id, actorId);
+  }
+
+  @Patch(':id/credentials')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Reset student email and/or password (no old password required)',
+  })
+  updateCredentials(
+    @Param('id') id: string,
+    @Body() dto: UpdateCredentialsDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.studentsService.updateCredentials(id, dto, actorId);
   }
 }

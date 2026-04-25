@@ -79,11 +79,14 @@ let HomeworkService = class HomeworkService {
                 throw new common_1.ForbiddenException('You can only view your own group homework');
         }
         if (user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({
-                where: { userId: user.id },
-                include: { student: true },
+            const link = await this.prisma.parentStudent.findFirst({
+                where: {
+                    parent: { userId: user.id },
+                    student: { groupId },
+                },
+                select: { parentId: true },
             });
-            if (!parent || parent.student.groupId !== groupId)
+            if (!link)
                 throw new common_1.ForbiddenException("You can only view your child's group homework");
         }
         return this.prisma.homework.findMany({
@@ -102,11 +105,14 @@ let HomeworkService = class HomeworkService {
             }
         }
         if (user?.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({
-                where: { userId: user.id },
-                include: { student: true },
+            const link = await this.prisma.parentStudent.findFirst({
+                where: {
+                    parent: { userId: user.id },
+                    student: { groupId },
+                },
+                select: { parentId: true },
             });
-            if (!parent || parent.student.groupId !== groupId) {
+            if (!link) {
                 throw new common_1.ForbiddenException("You can only view your child's group homework");
             }
         }

@@ -231,10 +231,11 @@ export class GradesService {
     }
 
     if (user.role === Role.PARENT) {
-      const parent = await this.prisma.parent.findUnique({
-        where: { userId: user.id },
+      const link = await this.prisma.parentStudent.findFirst({
+        where: { studentId, parent: { userId: user.id } },
+        select: { parentId: true },
       });
-      if (!parent || parent.studentId !== studentId)
+      if (!link)
         throw new ForbiddenException("You can only view your child's grades");
     }
 

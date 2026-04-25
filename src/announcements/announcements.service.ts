@@ -266,10 +266,14 @@ export class AnnouncementsService {
             parent: {
               select: {
                 fullName: true,
-                student: {
+                students: {
                   select: {
-                    fullName: true,
-                    group: { select: { id: true, name: true } },
+                    student: {
+                      select: {
+                        fullName: true,
+                        group: { select: { id: true, name: true } },
+                      },
+                    },
                   },
                 },
               },
@@ -318,11 +322,20 @@ export class AnnouncementsService {
     if (actor.role === Role.PARENT) {
       const parent = await this.prisma.parent.findUnique({
         where: { userId: actor.id },
-        include: { student: { select: { groupId: true } } },
+        select: {
+          students: {
+            select: { student: { select: { groupId: true } } },
+          },
+        },
       });
-      const groupId = parent?.student?.groupId;
+      const groupIds = (parent?.students ?? [])
+        .map((l) => l.student.groupId)
+        .filter((g): g is string => Boolean(g));
       return {
-        OR: [{ groupId: null }, ...(groupId ? [{ groupId }] : [])],
+        OR: [
+          { groupId: null },
+          ...(groupIds.length ? [{ groupId: { in: groupIds } }] : []),
+        ],
       };
     }
 
@@ -410,11 +423,14 @@ export class AnnouncementsService {
     if (groupId) {
       const students = await this.prisma.student.findMany({
         where: { groupId, isActive: true },
-        select: { userId: true, parent: { select: { userId: true } } },
+        select: {
+          userId: true,
+          parents: { select: { parent: { select: { userId: true } } } },
+        },
       });
       for (const s of students) {
         userIds.add(s.userId);
-        if (s.parent?.userId) userIds.add(s.parent.userId);
+        for (const link of s.parents) userIds.add(link.parent.userId);
       }
       const group = await this.prisma.group.findUnique({
         where: { id: groupId },
@@ -424,11 +440,14 @@ export class AnnouncementsService {
     } else {
       const students = await this.prisma.student.findMany({
         where: { isActive: true },
-        select: { userId: true, parent: { select: { userId: true } } },
+        select: {
+          userId: true,
+          parents: { select: { parent: { select: { userId: true } } } },
+        },
       });
       for (const s of students) {
         userIds.add(s.userId);
-        if (s.parent?.userId) userIds.add(s.parent.userId);
+        for (const link of s.parents) userIds.add(link.parent.userId);
       }
       const teachers = await this.prisma.teacher.findMany({
         where: { isActive: true },
@@ -452,10 +471,12 @@ export class AnnouncementsService {
       teacher: { fullName: string } | null;
       parent: {
         fullName: string;
-        student: {
-          fullName: string;
-          group: { id: string; name: string } | null;
-        } | null;
+        students: {
+          student: {
+            fullName: string;
+            group: { id: string; name: string } | null;
+          };
+        }[];
       } | null;
     },
     readAt: Date,
@@ -471,9 +492,12 @@ export class AnnouncementsService {
       fullName = user.teacher.fullName;
     } else if (user.parent) {
       fullName = user.parent.fullName;
-      group = user.parent.student?.group ?? null;
-      extra = user.parent.student?.fullName
-        ? `Родитель: ${user.parent.student.fullName}`
+      const childNames = user.parent.students.map((l) => l.student.fullName);
+      // Use the first child's group as a representative; cross-group parents
+      // simply omit the group label.
+      group = user.parent.students[0]?.student.group ?? null;
+      extra = childNames.length
+        ? `Родитель: ${childNames.join(', ')}`
         : 'Родитель';
     } else {
       fullName = user.email;

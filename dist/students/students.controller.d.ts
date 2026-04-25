@@ -4,6 +4,7 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { AssignGroupDto } from './dto/assign-group.dto';
+import { UpdateCredentialsDto } from './dto/update-credentials.dto';
 export declare class StudentsController {
     private studentsService;
     constructor(studentsService: StudentsService);
@@ -221,5 +222,12 @@ export declare class StudentsController {
         groupId: string | null;
         monthlyFee: import("@prisma/client/runtime/library").Decimal;
         enrolledAt: Date;
+    }>;
+    updateCredentials(id: string, dto: UpdateCredentialsDto, actorId: string): Promise<{
+        ok: boolean;
+        emailChanged?: undefined;
+    } | {
+        ok: boolean;
+        emailChanged: boolean;
     }>;
 }

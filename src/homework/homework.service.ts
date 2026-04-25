@@ -81,11 +81,14 @@ export class HomeworkService {
     }
 
     if (user.role === Role.PARENT) {
-      const parent = await this.prisma.parent.findUnique({
-        where: { userId: user.id },
-        include: { student: true },
+      const link = await this.prisma.parentStudent.findFirst({
+        where: {
+          parent: { userId: user.id },
+          student: { groupId },
+        },
+        select: { parentId: true },
       });
-      if (!parent || parent.student.groupId !== groupId)
+      if (!link)
         throw new ForbiddenException(
           "You can only view your child's group homework",
         );
@@ -111,11 +114,14 @@ export class HomeworkService {
     }
 
     if (user?.role === Role.PARENT) {
-      const parent = await this.prisma.parent.findUnique({
-        where: { userId: user.id },
-        include: { student: true },
+      const link = await this.prisma.parentStudent.findFirst({
+        where: {
+          parent: { userId: user.id },
+          student: { groupId },
+        },
+        select: { parentId: true },
       });
-      if (!parent || parent.student.groupId !== groupId) {
+      if (!link) {
         throw new ForbiddenException(
           "You can only view your child's group homework",
         );

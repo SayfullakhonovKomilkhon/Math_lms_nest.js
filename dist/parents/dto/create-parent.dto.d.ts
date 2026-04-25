@@ -3,5 +3,6 @@ export declare class CreateParentDto {
     password: string;
     fullName: string;
     phone?: string;
-    studentId: string;
+    studentIds?: string[];
+    studentId?: string;
 }

@@ -42,10 +42,11 @@ export class GamificationController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER, Role.PARENT)
   async getStudentAchievements(@Param('id') id: string, @Request() req) {
     if (req.user.role === Role.PARENT) {
-      const parent = await this.prisma.parent.findUnique({
-        where: { userId: req.user.id },
+      const link = await this.prisma.parentStudent.findFirst({
+        where: { studentId: id, parent: { userId: req.user.id } },
+        select: { parentId: true },
       });
-      if (!parent || parent.studentId !== id) {
+      if (!link) {
         return null;
       }
     }

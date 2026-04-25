@@ -21,6 +21,7 @@ const create_student_dto_1 = require("./dto/create-student.dto");
 const update_student_dto_1 = require("./dto/update-student.dto");
 const update_my_profile_dto_1 = require("./dto/update-my-profile.dto");
 const assign_group_dto_1 = require("./dto/assign-group.dto");
+const update_credentials_dto_1 = require("./dto/update-credentials.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
@@ -55,6 +56,9 @@ let StudentsController = class StudentsController {
     }
     deactivate(id, actorId) {
         return this.studentsService.deactivate(id, actorId);
+    }
+    updateCredentials(id, dto, actorId) {
+        return this.studentsService.updateCredentials(id, dto, actorId);
     }
 };
 exports.StudentsController = StudentsController;
@@ -149,6 +153,19 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], StudentsController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Patch)(':id/credentials'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Reset student email and/or password (no old password required)',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_credentials_dto_1.UpdateCredentialsDto, String]),
+    __metadata("design:returntype", void 0)
+], StudentsController.prototype, "updateCredentials", null);
 exports.StudentsController = StudentsController = __decorate([
     (0, swagger_1.ApiTags)('students'),
     (0, swagger_1.ApiBearerAuth)(),

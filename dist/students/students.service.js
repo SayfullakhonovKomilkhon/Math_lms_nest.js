@@ -359,6 +359,55 @@ let StudentsService = class StudentsService {
         });
         return updated;
     }
+    async updateCredentials(studentId, payload, actorId) {
+        const student = await this.prisma.student.findUnique({
+            where: { id: studentId },
+            select: { id: true, userId: true, user: { select: { email: true } } },
+        });
+        if (!student)
+            throw new common_1.NotFoundException('Student not found');
+        const data = {};
+        if (payload.email && payload.email !== student.user.email) {
+            const existing = await this.prisma.user.findUnique({
+                where: { email: payload.email },
+            });
+            if (existing && existing.id !== student.userId) {
+                throw new common_1.ConflictException('Email already in use');
+            }
+            data.email = payload.email;
+        }
+        if (payload.password) {
+            if (payload.password.length < 8) {
+                throw new common_1.BadRequestException('Password must be at least 8 characters long');
+            }
+            data.passwordHash = await bcrypt.hash(payload.password, 10);
+        }
+        if (Object.keys(data).length === 0) {
+            return { ok: true };
+        }
+        await this.prisma.user.update({
+            where: { id: student.userId },
+            data,
+        });
+        if (data.passwordHash) {
+            await this.prisma.refreshToken.deleteMany({
+                where: { userId: student.userId },
+            });
+        }
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'UPDATE_CREDENTIALS',
+                entity: 'Student',
+                entityId: studentId,
+                details: {
+                    emailChanged: Boolean(data.email),
+                    passwordChanged: Boolean(data.passwordHash),
+                },
+            },
+        });
+        return { ok: true, emailChanged: Boolean(data.email) };
+    }
 };
 exports.StudentsService = StudentsService;
 exports.StudentsService = StudentsService = __decorate([

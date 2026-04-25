@@ -101,10 +101,11 @@ let PaymentsService = class PaymentsService {
                 throw new common_1.ForbiddenException('You can only view your own payments');
         }
         if (user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({
-                where: { userId: user.id },
+            const link = await this.prisma.parentStudent.findFirst({
+                where: { studentId, parent: { userId: user.id } },
+                select: { parentId: true },
             });
-            if (!parent || parent.studentId !== studentId)
+            if (!link)
                 throw new common_1.ForbiddenException("You can only view your child's payments");
         }
         return this.prisma.payment.findMany({

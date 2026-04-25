@@ -9,22 +9,23 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateParentDto = void 0;
+exports.UpdateParentCredentialsDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
-class UpdateParentDto {
+class UpdateParentCredentialsDto {
 }
-exports.UpdateParentDto = UpdateParentDto;
+exports.UpdateParentCredentialsDto = UpdateParentCredentialsDto;
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'Sherzod Valiyev' }),
+    (0, swagger_1.ApiPropertyOptional)({ example: 'parent@mathcenter.uz' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], UpdateParentCredentialsDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'new-strong-password', minLength: 8 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(8),
     __metadata("design:type", String)
-], UpdateParentDto.prototype, "fullName", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '+998901234567' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateParentDto.prototype, "phone", void 0);
-//# sourceMappingURL=update-parent.dto.js.map
+], UpdateParentCredentialsDto.prototype, "password", void 0);
+//# sourceMappingURL=update-credentials.dto.js.map

@@ -222,4 +222,14 @@ export declare class StudentsService {
         monthlyFee: import("@prisma/client/runtime/library").Decimal;
         enrolledAt: Date;
     }>;
+    updateCredentials(studentId: string, payload: {
+        email?: string;
+        password?: string;
+    }, actorId: string): Promise<{
+        ok: boolean;
+        emailChanged?: undefined;
+    } | {
+        ok: boolean;
+        emailChanged: boolean;
+    }>;
 }

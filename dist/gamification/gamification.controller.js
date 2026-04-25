@@ -49,10 +49,11 @@ let GamificationController = class GamificationController {
     }
     async getStudentAchievements(id, req) {
         if (req.user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({
-                where: { userId: req.user.id },
+            const link = await this.prisma.parentStudent.findFirst({
+                where: { studentId: id, parent: { userId: req.user.id } },
+                select: { parentId: true },
             });
-            if (!parent || parent.studentId !== id) {
+            if (!link) {
                 return null;
             }
         }

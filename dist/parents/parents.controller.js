@@ -21,6 +21,7 @@ const client_1 = require("@prisma/client");
 const parents_service_1 = require("./parents.service");
 const create_parent_dto_1 = require("./dto/create-parent.dto");
 const update_parent_dto_1 = require("./dto/update-parent.dto");
+const update_credentials_dto_1 = require("./dto/update-credentials.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const upload_throttle_guard_1 = require("../common/guards/upload-throttle.guard");
@@ -29,6 +30,9 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 let ParentsController = class ParentsController {
     constructor(parentsService) {
         this.parentsService = parentsService;
+    }
+    findAll(search) {
+        return this.parentsService.findAll({ search });
     }
     create(dto, actorId) {
         return this.parentsService.create(dto, actorId);
@@ -42,14 +46,14 @@ let ParentsController = class ParentsController {
     getChildGrades(query, userId) {
         return this.parentsService.getChildGrades(userId, query);
     }
-    getChildHomework(userId) {
-        return this.parentsService.getChildHomework(userId);
+    getChildHomework(query, userId) {
+        return this.parentsService.getChildHomework(userId, query);
     }
-    getChildPayments(userId) {
-        return this.parentsService.getChildPayments(userId);
+    getChildPayments(query, userId) {
+        return this.parentsService.getChildPayments(userId, query);
     }
-    uploadChildReceipt(file, userId) {
-        return this.parentsService.uploadChildReceipt(userId, file);
+    uploadChildReceipt(file, studentId, userId) {
+        return this.parentsService.uploadChildReceipt(userId, file, studentId);
     }
     findOne(id) {
         return this.parentsService.findOne(id);
@@ -57,8 +61,27 @@ let ParentsController = class ParentsController {
     update(id, dto, actorId) {
         return this.parentsService.update(id, dto, actorId);
     }
+    updateCredentials(id, dto, actorId) {
+        return this.parentsService.updateCredentials(id, dto, actorId);
+    }
+    linkStudent(id, studentId, actorId) {
+        return this.parentsService.linkStudent(id, studentId, actorId);
+    }
+    unlinkStudent(id, studentId, actorId) {
+        return this.parentsService.unlinkStudent(id, studentId, actorId);
+    }
 };
 exports.ParentsController = ParentsController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'List all parents' }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
+    __param(0, (0, common_1.Query)('search')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
@@ -72,7 +95,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)('me'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
-    (0, swagger_1.ApiOperation)({ summary: 'Get own parent profile' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get own parent profile + linked children' }),
     __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -81,7 +104,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('me/child/attendance'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
-    (0, swagger_1.ApiOperation)({ summary: 'Get child attendance' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get child attendance (?studentId= picks which child)',
+    }),
     __param(0, (0, common_1.Query)()),
     __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
@@ -102,18 +127,20 @@ __decorate([
     (0, common_1.Get)('me/child/homework'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
     (0, swagger_1.ApiOperation)({ summary: 'Get child homework' }),
-    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "getChildHomework", null);
 __decorate([
     (0, common_1.Get)('me/child/payments'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT),
     (0, swagger_1.ApiOperation)({ summary: 'Get child payment history' }),
-    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "getChildPayments", null);
 __decorate([
@@ -128,15 +155,17 @@ __decorate([
             type: 'object',
             properties: {
                 file: { type: 'string', format: 'binary' },
+                studentId: { type: 'string' },
             },
             required: ['file'],
         },
     }),
     (0, swagger_1.ApiOperation)({ summary: 'Upload payment receipt for child' }),
     __param(0, (0, common_1.UploadedFile)()),
-    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Body)('studentId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "uploadChildReceipt", null);
 __decorate([
@@ -151,7 +180,7 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Update parent' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update parent profile' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
@@ -159,6 +188,41 @@ __decorate([
     __metadata("design:paramtypes", [String, update_parent_dto_1.UpdateParentDto, String]),
     __metadata("design:returntype", void 0)
 ], ParentsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/credentials'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Reset parent email and/or password (no old password required)',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_credentials_dto_1.UpdateParentCredentialsDto, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "updateCredentials", null);
+__decorate([
+    (0, common_1.Post)(':id/students/:studentId'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Link a student (child) to this parent' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('studentId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "linkStudent", null);
+__decorate([
+    (0, common_1.Delete)(':id/students/:studentId'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Unlink a student (child) from this parent' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('studentId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], ParentsController.prototype, "unlinkStudent", null);
 exports.ParentsController = ParentsController = __decorate([
     (0, swagger_1.ApiTags)('parents'),
     (0, swagger_1.ApiBearerAuth)(),

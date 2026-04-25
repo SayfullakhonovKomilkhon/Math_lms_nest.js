@@ -55,7 +55,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             where: { id: studentId },
             include: {
                 user: true,
-                parent: { include: { user: true } },
+                parents: { include: { parent: { include: { user: true } } } },
             },
         });
         if (!student)
@@ -68,8 +68,8 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             type: client_1.NotificationType.PAYMENT,
             message,
         });
-        if (student.parent) {
-            await this.sendToUser(student.parent.userId, {
+        for (const link of student.parents) {
+            await this.sendToUser(link.parent.userId, {
                 type: client_1.NotificationType.PAYMENT,
                 message,
             });
@@ -78,20 +78,26 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     async sendAbsenceAlert(studentId, date) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },
-            include: { parent: { include: { user: true } } },
+            include: {
+                parents: { include: { parent: { include: { user: true } } } },
+            },
         });
-        if (!student?.parent)
+        if (!student || student.parents.length === 0)
             return;
         const message = `⚠️ ${student.fullName} не пришёл на урок ${date}`;
-        await this.sendToUser(student.parent.userId, {
-            type: client_1.NotificationType.ATTENDANCE,
-            message,
-        });
+        for (const link of student.parents) {
+            await this.sendToUser(link.parent.userId, {
+                type: client_1.NotificationType.ATTENDANCE,
+                message,
+            });
+        }
     }
     async sendAchievementNotification(studentId, achievement) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },
-            include: { parent: { include: { user: true } } },
+            include: {
+                parents: { include: { parent: { include: { user: true } } } },
+            },
         });
         if (!student)
             return;
@@ -99,8 +105,8 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             type: client_1.NotificationType.ACHIEVEMENT,
             message: `🏆 Новое достижение: ${achievement.title} ${achievement.icon}`,
         });
-        if (student.parent) {
-            await this.sendToUser(student.parent.userId, {
+        for (const link of student.parents) {
+            await this.sendToUser(link.parent.userId, {
                 type: client_1.NotificationType.ACHIEVEMENT,
                 message: `🏆 ${student.fullName} получил новое достижение: ${achievement.title} ${achievement.icon}`,
             });

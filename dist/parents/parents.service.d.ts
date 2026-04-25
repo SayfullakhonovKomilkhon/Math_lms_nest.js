@@ -2,10 +2,14 @@ import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { UpdateParentDto } from './dto/update-parent.dto';
+import { UpdateParentCredentialsDto } from './dto/update-credentials.dto';
 export declare class ParentsService {
     private prisma;
     private paymentsService;
     constructor(prisma: PrismaService, paymentsService: PaymentsService);
+    private getOwnChildIds;
+    private resolveChildId;
+    private childSelect;
     create(dto: CreateParentDto, actorId: string): Promise<{
         user: {
             email: string;
@@ -13,17 +17,50 @@ export declare class ParentsService {
             role: import(".prisma/client").$Enums.Role;
             isActive: boolean;
         };
-        student: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        fullName: string;
+        phone: string | null;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+            createdAt: Date;
+        }[];
+    }>;
+    findAll(query?: {
+        search?: string;
+    }): Promise<{
+        user: {
+            email: string;
             id: string;
-            fullName: string;
-            groupId: string | null;
+            role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
         };
         id: string;
         createdAt: Date;
         updatedAt: Date;
         fullName: string;
         phone: string | null;
-    }>;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+        }[];
+    }[]>;
     findOne(id: string): Promise<{
         user: {
             email: string;
@@ -31,19 +68,112 @@ export declare class ParentsService {
             role: import(".prisma/client").$Enums.Role;
             isActive: boolean;
         };
-        student: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        fullName: string;
+        phone: string | null;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+            createdAt: Date;
+        }[];
+    }>;
+    update(id: string, dto: UpdateParentDto, actorId: string): Promise<{
+        user: {
+            email: string;
             id: string;
-            fullName: string;
-            groupId: string | null;
+            role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
         };
         id: string;
         createdAt: Date;
         updatedAt: Date;
         fullName: string;
         phone: string | null;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+            createdAt: Date;
+        }[];
+    }>;
+    updateCredentials(parentId: string, payload: UpdateParentCredentialsDto, actorId: string): Promise<{
+        ok: boolean;
+        emailChanged?: undefined;
+    } | {
+        ok: boolean;
+        emailChanged: boolean;
+    }>;
+    linkStudent(parentId: string, studentId: string, actorId: string): Promise<{
+        user: {
+            email: string;
+            id: string;
+            role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
+        };
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        fullName: string;
+        phone: string | null;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+            createdAt: Date;
+        }[];
+    }>;
+    unlinkStudent(parentId: string, studentId: string, actorId: string): Promise<{
+        user: {
+            email: string;
+            id: string;
+            role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
+        };
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        fullName: string;
+        phone: string | null;
+        students: {
+            student: {
+                group: {
+                    id: string;
+                    name: string;
+                } | null;
+                id: string;
+                isActive: boolean;
+                fullName: string;
+            };
+            createdAt: Date;
+        }[];
     }>;
     findMyProfile(userId: string): Promise<{
-        student: {
+        id: string;
+        fullName: string;
+        phone: string | null;
+        email: string;
+        children: {
             group: {
                 teacher: {
                     fullName: string;
@@ -54,18 +184,17 @@ export declare class ParentsService {
                 schedule: import("@prisma/client/runtime/library").JsonValue;
             } | null;
             id: string;
+            isActive: boolean;
             fullName: string;
             gender: import(".prisma/client").$Enums.Gender;
+            monthlyFee: import("@prisma/client/runtime/library").Decimal;
             enrolledAt: Date;
-        };
-        id: string;
-        fullName: string;
-        phone: string | null;
+        }[];
     }>;
-    getChildByIdGuard(userId: string): Promise<string>;
     getChildAttendance(userId: string, query: {
         from?: string;
         to?: string;
+        studentId?: string;
     }): Promise<({
         group: {
             name: string;
@@ -85,6 +214,7 @@ export declare class ParentsService {
         from?: string;
         to?: string;
         lessonType?: string;
+        studentId?: string;
     }): Promise<{
         scorePercent: number;
         groupName: string;
@@ -103,7 +233,9 @@ export declare class ParentsService {
         comment: string | null;
         gradedAt: Date;
     }[]>;
-    getChildHomework(userId: string): Promise<({
+    getChildHomework(userId: string, query?: {
+        studentId?: string;
+    }): Promise<({
         teacher: {
             fullName: string;
         };
@@ -118,7 +250,9 @@ export declare class ParentsService {
         youtubeUrl: string | null;
         dueDate: Date | null;
     })[]>;
-    getChildPayments(userId: string): Promise<{
+    getChildPayments(userId: string, query?: {
+        studentId?: string;
+    }): Promise<{
         currentMonth: {
             status: string;
             amount: number;
@@ -147,7 +281,7 @@ export declare class ParentsService {
             rejectReason: string | null;
         }[];
     }>;
-    uploadChildReceipt(userId: string, file: Express.Multer.File): Promise<{
+    uploadChildReceipt(userId: string, file: Express.Multer.File, studentId?: string): Promise<{
         student: {
             group: {
                 id: string;
@@ -167,23 +301,5 @@ export declare class ParentsService {
         confirmedAt: Date | null;
         rejectedAt: Date | null;
         rejectReason: string | null;
-    }>;
-    update(id: string, dto: UpdateParentDto, actorId: string): Promise<{
-        user: {
-            email: string;
-            id: string;
-            role: import(".prisma/client").$Enums.Role;
-            isActive: boolean;
-        };
-        student: {
-            id: string;
-            fullName: string;
-            groupId: string | null;
-        };
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        fullName: string;
-        phone: string | null;
     }>;
 }

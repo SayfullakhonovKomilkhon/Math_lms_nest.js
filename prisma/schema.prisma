@@ -103,7 +103,7 @@ model Student {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  parent       Parent?
+  parents      ParentStudent[]
   attendances  Attendance[]
   grades       Grade[]
   payments     Payment[]
@@ -116,10 +116,25 @@ model Parent {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName  String
   phone     String?
-  studentId String   @unique
-  student   Student  @relation(fields: [studentId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  students ParentStudent[]
+}
+
+// Many-to-many link between parents and students.
+// One parent may have multiple children; one student may have multiple
+// parents (e.g. mother + father with separate logins).
+model ParentStudent {
+  parentId  String
+  studentId String
+  createdAt DateTime @default(now())
+
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([parentId, studentId])
+  @@index([studentId])
 }
 
 model Teacher {

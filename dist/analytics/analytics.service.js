@@ -394,7 +394,11 @@ let AnalyticsService = class AnalyticsService {
                             teacher: { select: { fullName: true } },
                         },
                     },
-                    parent: { select: { phone: true } },
+                    parents: {
+                        take: 1,
+                        orderBy: { createdAt: 'asc' },
+                        select: { parent: { select: { phone: true } } },
+                    },
                     payments: {
                         where: { status: client_1.PaymentStatus.CONFIRMED },
                         orderBy: { confirmedAt: 'desc' },
@@ -420,7 +424,7 @@ let AnalyticsService = class AnalyticsService {
                 monthlyFee: Number(s.monthlyFee),
                 lastPaymentDate: lastDate ? lastDate.toISOString() : null,
                 daysSinceLastPayment: daysSince,
-                parentPhone: s.parent?.phone ?? null,
+                parentPhone: s.parents?.[0]?.parent?.phone ?? null,
             };
         })
             .sort((a, b) => {

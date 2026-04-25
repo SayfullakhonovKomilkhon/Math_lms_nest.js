@@ -59,7 +59,7 @@ export class NotificationsService {
       where: { id: studentId },
       include: {
         user: true,
-        parent: { include: { user: true } },
+        parents: { include: { parent: { include: { user: true } } } },
       },
     });
     if (!student) return;
@@ -74,8 +74,8 @@ export class NotificationsService {
       type: NotificationType.PAYMENT,
       message,
     });
-    if (student.parent) {
-      await this.sendToUser(student.parent.userId, {
+    for (const link of student.parents) {
+      await this.sendToUser(link.parent.userId, {
         type: NotificationType.PAYMENT,
         message,
       });
@@ -85,15 +85,19 @@ export class NotificationsService {
   async sendAbsenceAlert(studentId: string, date: string): Promise<void> {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      include: { parent: { include: { user: true } } },
+      include: {
+        parents: { include: { parent: { include: { user: true } } } },
+      },
     });
-    if (!student?.parent) return;
+    if (!student || student.parents.length === 0) return;
 
     const message = `⚠️ ${student.fullName} не пришёл на урок ${date}`;
-    await this.sendToUser(student.parent.userId, {
-      type: NotificationType.ATTENDANCE,
-      message,
-    });
+    for (const link of student.parents) {
+      await this.sendToUser(link.parent.userId, {
+        type: NotificationType.ATTENDANCE,
+        message,
+      });
+    }
   }
 
   async sendAchievementNotification(
@@ -102,7 +106,9 @@ export class NotificationsService {
   ): Promise<void> {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      include: { parent: { include: { user: true } } },
+      include: {
+        parents: { include: { parent: { include: { user: true } } } },
+      },
     });
     if (!student) return;
 
@@ -111,8 +117,8 @@ export class NotificationsService {
       message: `🏆 Новое достижение: ${achievement.title} ${achievement.icon}`,
     });
 
-    if (student.parent) {
-      await this.sendToUser(student.parent.userId, {
+    for (const link of student.parents) {
+      await this.sendToUser(link.parent.userId, {
         type: NotificationType.ACHIEVEMENT,
         message: `🏆 ${student.fullName} получил новое достижение: ${achievement.title} ${achievement.icon}`,
       });

@@ -106,14 +106,14 @@ let GamificationService = GamificationService_1 = class GamificationService {
                             isRead: false,
                         },
                     });
-                    const parent = await tx.parent.findUnique({
+                    const parentLinks = await tx.parentStudent.findMany({
                         where: { studentId: student.id },
-                        select: { userId: true },
+                        select: { parent: { select: { userId: true } } },
                     });
-                    if (parent) {
+                    for (const link of parentLinks) {
                         await tx.notification.create({
                             data: {
-                                userId: parent.userId,
+                                userId: link.parent.userId,
                                 type: client_1.NotificationType.ACHIEVEMENT,
                                 message: `🏆 ${student.fullName} получил новое достижение: ${titleData.title} ${titleData.icon}`,
                                 isRead: false,
@@ -276,14 +276,14 @@ let GamificationService = GamificationService_1 = class GamificationService {
                     isRead: false,
                 },
             });
-            const parent = await tx.parent.findUnique({
+            const parentLinks = await tx.parentStudent.findMany({
                 where: { studentId },
-                select: { userId: true },
+                select: { parent: { select: { userId: true } } },
             });
-            if (parent) {
+            for (const link of parentLinks) {
                 await tx.notification.create({
                     data: {
-                        userId: parent.userId,
+                        userId: link.parent.userId,
                         type: client_1.NotificationType.ACHIEVEMENT,
                         message: `🏆 ${student.fullName} получил особое достижение: ${config.title} ${config.icon}`,
                         isRead: false,
