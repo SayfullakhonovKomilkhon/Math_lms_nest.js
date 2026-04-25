@@ -222,6 +222,9 @@ export class GradesService {
       .map((s) => ({
         studentId: s.studentId,
         fullName: s.fullName,
+        // totalPoints — primary metric (raw points earned).
+        totalPoints: Math.round(s.totalScore * 100) / 100,
+        // averageScore — kept for backwards compatibility / charts (percentage).
         averageScore:
           s.count > 0
             ? Math.round((s.totalScore / s.totalMax) * 100 * 100) / 100
@@ -230,7 +233,12 @@ export class GradesService {
         attendancePercent:
           s.totalDays > 0 ? Math.round((s.presentDays / s.totalDays) * 100) : 0,
       }))
-      .sort((a, b) => b.averageScore - a.averageScore)
+      // Sort by total points (raw), tiebreak by averageScore then by name.
+      .sort((a, b) => {
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore;
+        return a.fullName.localeCompare(b.fullName);
+      })
       .map((s, i) => ({ place: i + 1, ...s }));
 
     return sorted;
@@ -437,6 +445,7 @@ export class GradesService {
       myPlace: myEntry ? myEntry.place : 0,
       totalStudents: ratingList.length,
       myAverageScore: myEntry ? myEntry.averageScore : 0,
+      myTotalPoints: myEntry ? myEntry.totalPoints : 0,
       isVisible: group.isRatingVisible,
       rating: group.isRatingVisible ? ratingList : [],
     };
