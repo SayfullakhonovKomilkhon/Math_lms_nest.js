@@ -32,7 +32,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and get tokens' })
-  @ApiResponse({ status: 200, description: 'Returns accessToken, refreshToken and user info' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns accessToken, refreshToken and user info',
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);

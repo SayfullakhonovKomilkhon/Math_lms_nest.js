@@ -41,7 +41,9 @@ let GamificationService = GamificationService_1 = class GamificationService {
             const totalLessons = s.attendances.length;
             const present = s.attendances.filter((a) => a.status !== 'ABSENT').length;
             const attendanceRate = totalLessons > 0 ? present / totalLessons : 0;
-            const gradeValues = s.grades.map((g) => Number(g.maxScore) > 0 ? (Number(g.score) / Number(g.maxScore)) * 100 : 0);
+            const gradeValues = s.grades.map((g) => Number(g.maxScore) > 0
+                ? (Number(g.score) / Number(g.maxScore)) * 100
+                : 0);
             const avgScore = gradeValues.length > 0
                 ? gradeValues.reduce((a, b) => a + b, 0) / gradeValues.length
                 : 0;
@@ -184,7 +186,10 @@ let GamificationService = GamificationService_1 = class GamificationService {
             });
             if (grades.length === 0)
                 break;
-            const avg = grades.reduce((s, g) => s + (Number(g.maxScore) > 0 ? (Number(g.score) / Number(g.maxScore)) * 100 : 0), 0) / grades.length;
+            const avg = grades.reduce((s, g) => s +
+                (Number(g.maxScore) > 0
+                    ? (Number(g.score) / Number(g.maxScore)) * 100
+                    : 0), 0) / grades.length;
             if (avg < 95)
                 break;
             streak++;
@@ -290,7 +295,12 @@ let GamificationService = GamificationService_1 = class GamificationService {
     async getStudentAchievements(studentId) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },
-            select: { id: true, fullName: true, gender: true, group: { select: { name: true } } },
+            select: {
+                id: true,
+                fullName: true,
+                gender: true,
+                group: { select: { name: true } },
+            },
         });
         if (!student)
             return null;
@@ -343,7 +353,8 @@ let GamificationService = GamificationService_1 = class GamificationService {
                 goldCount,
                 silverCount,
                 bronzeCount,
-                totalAchievements: monthly.length + specials.filter((_, i) => specialAchievements[i]?.unlocked).length,
+                totalAchievements: monthly.length +
+                    specials.filter((_, i) => specialAchievements[i]?.unlocked).length,
             },
         };
     }

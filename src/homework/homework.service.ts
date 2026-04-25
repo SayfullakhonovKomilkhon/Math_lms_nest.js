@@ -37,7 +37,9 @@ export class HomeworkService {
 
   private async assertTeacherOwnsGroup(userId: string, groupId: string) {
     const teacher = await this.getTeacher(userId);
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
     if (!group) throw new NotFoundException('Group not found');
     if (group.teacherId !== teacher.id)
       throw new ForbiddenException('You can only manage your own groups');
@@ -69,9 +71,13 @@ export class HomeworkService {
 
   async findAll(groupId: string, user: { id: string; role: Role }) {
     if (user.role === Role.STUDENT) {
-      const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+      const student = await this.prisma.student.findUnique({
+        where: { userId: user.id },
+      });
       if (!student || student.groupId !== groupId)
-        throw new ForbiddenException('You can only view your own group homework');
+        throw new ForbiddenException(
+          'You can only view your own group homework',
+        );
     }
 
     if (user.role === Role.PARENT) {
@@ -80,7 +86,9 @@ export class HomeworkService {
         include: { student: true },
       });
       if (!parent || parent.student.groupId !== groupId)
-        throw new ForbiddenException('You can only view your child\'s group homework');
+        throw new ForbiddenException(
+          "You can only view your child's group homework",
+        );
     }
 
     return this.prisma.homework.findMany({
@@ -92,9 +100,13 @@ export class HomeworkService {
 
   async findLatest(groupId: string, user?: { id: string; role: Role }) {
     if (user?.role === Role.STUDENT) {
-      const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+      const student = await this.prisma.student.findUnique({
+        where: { userId: user.id },
+      });
       if (!student || student.groupId !== groupId) {
-        throw new ForbiddenException('You can only view your own group homework');
+        throw new ForbiddenException(
+          'You can only view your own group homework',
+        );
       }
     }
 
@@ -104,7 +116,9 @@ export class HomeworkService {
         include: { student: true },
       });
       if (!parent || parent.student.groupId !== groupId) {
-        throw new ForbiddenException("You can only view your child's group homework");
+        throw new ForbiddenException(
+          "You can only view your child's group homework",
+        );
       }
     }
 
@@ -134,7 +148,11 @@ export class HomeworkService {
     return this.findLatest(student.groupId);
   }
 
-  async update(id: string, dto: UpdateHomeworkDto, user: { id: string; role: Role }) {
+  async update(
+    id: string,
+    dto: UpdateHomeworkDto,
+    user: { id: string; role: Role },
+  ) {
     const hw = await this.prisma.homework.findUnique({ where: { id } });
     if (!hw) throw new NotFoundException('Homework not found');
 

@@ -54,12 +54,17 @@ export class GamificationController {
 
   @Get('group/:groupId')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER)
-  async getGroupAchievements(@Param('groupId') groupId: string, @Request() req) {
+  async getGroupAchievements(
+    @Param('groupId') groupId: string,
+    @Request() req,
+  ) {
     if (req.user.role === Role.TEACHER) {
       const teacher = await this.prisma.teacher.findUnique({
         where: { userId: req.user.id },
       });
-      const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+      const group = await this.prisma.group.findUnique({
+        where: { id: groupId },
+      });
       if (!teacher || group?.teacherId !== teacher.id) {
         return [];
       }
@@ -76,6 +81,9 @@ export class GamificationController {
   @Post('calculate')
   @Roles(Role.SUPER_ADMIN)
   async calculate(@Body() dto: CalculateDto) {
-    return this.gamificationService.calculateMonthlyAchievements(dto.month, dto.year);
+    return this.gamificationService.calculateMonthlyAchievements(
+      dto.month,
+      dto.year,
+    );
   }
 }

@@ -21,7 +21,9 @@ let LessonTopicsService = class LessonTopicsService {
         const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
         if (!teacher)
             throw new common_1.ForbiddenException('Teacher profile not found');
-        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: groupId },
+        });
         if (!group)
             throw new common_1.NotFoundException('Group not found');
         if (group.teacherId !== teacher.id)
@@ -46,7 +48,9 @@ let LessonTopicsService = class LessonTopicsService {
     }
     async findAll(query, user) {
         if (user.role === client_1.Role.STUDENT && query.groupId) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+            const student = await this.prisma.student.findUnique({
+                where: { userId: user.id },
+            });
             if (!student || student.groupId !== query.groupId)
                 throw new common_1.ForbiddenException('You can only view your own group topics');
         }

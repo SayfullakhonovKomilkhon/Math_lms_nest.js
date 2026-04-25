@@ -106,7 +106,10 @@ let StudentsService = class StudentsService {
     async findOne(id, requestingUser) {
         const student = await this.prisma.student.findUnique({
             where: { id },
-            select: { ...studentSelect, group: { select: { id: true, name: true, teacherId: true } } },
+            select: {
+                ...studentSelect,
+                group: { select: { id: true, name: true, teacherId: true } },
+            },
         });
         if (!student) {
             throw new common_1.NotFoundException('Student not found');
@@ -160,10 +163,12 @@ let StudentsService = class StudentsService {
         let totalLessons = 0;
         const attendanceStats = { present: 0, absent: 0, late: 0, percentage: 0 };
         if (student.group) {
-            totalLessons = await this.prisma.attendance.groupBy({
+            totalLessons = await this.prisma.attendance
+                .groupBy({
                 by: ['date'],
                 where: { groupId: student.group.id },
-            }).then(res => res.length);
+            })
+                .then((res) => res.length);
             const attendance = await this.prisma.attendance.findMany({
                 where: { studentId: student.id },
             });
@@ -177,9 +182,10 @@ let StudentsService = class StudentsService {
             });
             const totalAttended = attendanceStats.present + attendanceStats.late;
             const totalRecorded = totalAttended + attendanceStats.absent;
-            attendanceStats.percentage = totalRecorded > 0
-                ? Math.round((totalAttended / totalRecorded) * 100)
-                : 0;
+            attendanceStats.percentage =
+                totalRecorded > 0
+                    ? Math.round((totalAttended / totalRecorded) * 100)
+                    : 0;
         }
         return {
             ...student,
@@ -311,7 +317,9 @@ let StudentsService = class StudentsService {
         if (!existing) {
             throw new common_1.NotFoundException('Student not found');
         }
-        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: groupId },
+        });
         if (!group) {
             throw new common_1.NotFoundException('Group not found');
         }

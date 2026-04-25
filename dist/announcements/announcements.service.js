@@ -205,6 +205,62 @@ let AnnouncementsService = class AnnouncementsService {
         });
         return { count };
     }
+    async getReaders(announcementId) {
+        const announcement = await this.prisma.announcement.findUnique({
+            where: { id: announcementId },
+            select: {
+                id: true,
+                title: true,
+                groupId: true,
+                group: { select: { id: true, name: true } },
+            },
+        });
+        if (!announcement)
+            throw new common_1.NotFoundException('Объявление не найдено');
+        const reads = await this.prisma.announcementRead.findMany({
+            where: { announcementId },
+            orderBy: { readAt: 'desc' },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        role: true,
+                        student: {
+                            select: {
+                                fullName: true,
+                                group: { select: { id: true, name: true } },
+                            },
+                        },
+                        teacher: { select: { fullName: true } },
+                        parent: {
+                            select: {
+                                fullName: true,
+                                student: {
+                                    select: {
+                                        fullName: true,
+                                        group: { select: { id: true, name: true } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        const readers = reads.map((r) => this.shapeReader(r.user, r.readAt));
+        const recipientIds = await this.collectRecipientIds(announcement.groupId);
+        return {
+            announcement: {
+                id: announcement.id,
+                title: announcement.title,
+                group: announcement.group,
+            },
+            readCount: readers.length,
+            recipientCount: recipientIds.size,
+            readers,
+        };
+    }
     async buildAccessFilter(actor) {
         if (actor.role === client_1.Role.ADMIN || actor.role === client_1.Role.SUPER_ADMIN) {
             return {};
@@ -264,6 +320,16 @@ let AnnouncementsService = class AnnouncementsService {
         return 'Администрация';
     }
     async sendNotifications(announcementId, groupId, title) {
+        const userIds = await this.collectRecipientIds(groupId);
+        if (userIds.size === 0)
+            return;
+        await this.notifications.sendToMany(Array.from(userIds), {
+            type: client_1.NotificationType.ANNOUNCEMENT,
+            message: `Новое объявление: ${title}`,
+        });
+        void announcementId;
+    }
+    async collectRecipientIds(groupId) {
         const userIds = new Set();
         if (groupId) {
             const students = await this.prisma.student.findMany({
@@ -275,12 +341,12 @@ let AnnouncementsService = class AnnouncementsService {
                 if (s.parent?.userId)
                     userIds.add(s.parent.userId);
             }
-            const teacher = await this.prisma.group.findUnique({
+            const group = await this.prisma.group.findUnique({
                 where: { id: groupId },
                 select: { teacher: { select: { userId: true } } },
             });
-            if (teacher?.teacher?.userId)
-                userIds.add(teacher.teacher.userId);
+            if (group?.teacher?.userId)
+                userIds.add(group.teacher.userId);
         }
         else {
             const students = await this.prisma.student.findMany({
@@ -299,13 +365,38 @@ let AnnouncementsService = class AnnouncementsService {
             for (const t of teachers)
                 userIds.add(t.userId);
         }
-        if (userIds.size === 0)
-            return;
-        await this.notifications.sendToMany(Array.from(userIds), {
-            type: client_1.NotificationType.ANNOUNCEMENT,
-            message: `Новое объявление: ${title}`,
-        });
-        void announcementId;
+        return userIds;
+    }
+    shapeReader(user, readAt) {
+        let fullName;
+        let group = null;
+        let extra = null;
+        if (user.student) {
+            fullName = user.student.fullName;
+            group = user.student.group;
+        }
+        else if (user.teacher) {
+            fullName = user.teacher.fullName;
+        }
+        else if (user.parent) {
+            fullName = user.parent.fullName;
+            group = user.parent.student?.group ?? null;
+            extra = user.parent.student?.fullName
+                ? `Родитель: ${user.parent.student.fullName}`
+                : 'Родитель';
+        }
+        else {
+            fullName = user.email;
+        }
+        return {
+            userId: user.id,
+            fullName,
+            role: user.role,
+            email: user.email,
+            group,
+            extra,
+            readAt,
+        };
     }
 };
 exports.AnnouncementsService = AnnouncementsService;

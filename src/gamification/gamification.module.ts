@@ -6,10 +6,7 @@ import { GamificationController } from './gamification.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    BullModule.registerQueue({ name: 'gamification' }),
-  ],
+  imports: [PrismaModule, BullModule.registerQueue({ name: 'gamification' })],
   providers: [GamificationService, GamificationProcessor],
   controllers: [GamificationController],
   exports: [GamificationService],

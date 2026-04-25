@@ -27,10 +27,7 @@ export class GroupsController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Create a new group' })
-  create(
-    @Body() dto: CreateGroupDto,
-    @CurrentUser('id') actorId: string,
-  ) {
+  create(@Body() dto: CreateGroupDto, @CurrentUser('id') actorId: string) {
     return this.groupsService.create(dto, actorId);
   }
 
@@ -75,10 +72,7 @@ export class GroupsController {
   @Patch(':id/archive')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Archive group' })
-  archive(
-    @Param('id') id: string,
-    @CurrentUser('id') actorId: string,
-  ) {
+  archive(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.groupsService.archive(id, actorId);
   }
 

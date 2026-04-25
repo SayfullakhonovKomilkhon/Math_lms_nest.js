@@ -32,7 +32,9 @@ export class NotificationsService {
       });
       if (user?.telegramChatId) {
         // TelegramService will be injected lazily to avoid circular deps
-        this.logger.log(`[Telegram] Would send to ${user.telegramChatId}: ${payload.message}`);
+        this.logger.log(
+          `[Telegram] Would send to ${user.telegramChatId}: ${payload.message}`,
+        );
       }
     }
   }
@@ -49,7 +51,10 @@ export class NotificationsService {
     });
   }
 
-  async sendPaymentReminder(studentId: string, daysLeft: number): Promise<void> {
+  async sendPaymentReminder(
+    studentId: string,
+    daysLeft: number,
+  ): Promise<void> {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
@@ -65,9 +70,15 @@ export class NotificationsService {
         ? `💳 До оплаты осталось ${daysLeft} дней. Сумма: ${amount.toLocaleString('ru-RU')} сум`
         : `⚠️ Срок оплаты прошёл. Сумма: ${amount.toLocaleString('ru-RU')} сум`;
 
-    await this.sendToUser(student.userId, { type: NotificationType.PAYMENT, message });
+    await this.sendToUser(student.userId, {
+      type: NotificationType.PAYMENT,
+      message,
+    });
     if (student.parent) {
-      await this.sendToUser(student.parent.userId, { type: NotificationType.PAYMENT, message });
+      await this.sendToUser(student.parent.userId, {
+        type: NotificationType.PAYMENT,
+        message,
+      });
     }
   }
 
@@ -119,7 +130,8 @@ export class NotificationsService {
     });
     if (!payment) return;
 
-    const statusText = status === 'CONFIRMED' ? '✅ подтверждён' : '❌ отклонён';
+    const statusText =
+      status === 'CONFIRMED' ? '✅ подтверждён' : '❌ отклонён';
     let message = `💳 Ваш чек об оплате ${statusText}`;
     if (status === 'REJECTED' && reason) {
       message += `. Причина: ${reason}`;
@@ -131,7 +143,10 @@ export class NotificationsService {
     });
   }
 
-  async sendHomeworkNotification(groupId: string, homeworkId: string): Promise<void> {
+  async sendHomeworkNotification(
+    groupId: string,
+    homeworkId: string,
+  ): Promise<void> {
     const homework = await this.prisma.homework.findUnique({
       where: { id: homeworkId },
       include: { teacher: true },
@@ -146,7 +161,10 @@ export class NotificationsService {
     const message = `📚 Новое домашнее задание от ${homework.teacher.fullName}`;
     const userIds = students.map((s) => s.userId);
     if (userIds.length > 0) {
-      await this.sendToMany(userIds, { type: NotificationType.HOMEWORK, message });
+      await this.sendToMany(userIds, {
+        type: NotificationType.HOMEWORK,
+        message,
+      });
     }
   }
 

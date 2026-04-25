@@ -27,7 +27,9 @@ let AttendanceService = class AttendanceService {
         const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
         if (!teacher)
             throw new common_1.ForbiddenException('Teacher profile not found');
-        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: groupId },
+        });
         if (!group)
             throw new common_1.NotFoundException('Group not found');
         if (group.teacherId !== teacher.id)
@@ -71,7 +73,9 @@ let AttendanceService = class AttendanceService {
     async findAll(query, user) {
         const where = {};
         if (user.role === client_1.Role.TEACHER) {
-            const teacher = await this.prisma.teacher.findUnique({ where: { userId: user.id } });
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { userId: user.id },
+            });
             if (!teacher)
                 throw new common_1.ForbiddenException('Teacher profile not found');
             const myGroups = await this.prisma.group.findMany({

@@ -62,7 +62,13 @@ __decorate([
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    (0, swagger_1.ApiBody)({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: { file: { type: 'string', format: 'binary' } },
+            required: ['file'],
+        },
+    }),
     (0, swagger_1.ApiOperation)({ summary: 'Upload homework image to S3' }),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),

@@ -76,10 +76,16 @@ export class StudentsService {
     return this.prisma.student.findMany({ select: studentSelect });
   }
 
-  async findOne(id: string, requestingUser?: { id: string; role: Role; studentId?: string }) {
+  async findOne(
+    id: string,
+    requestingUser?: { id: string; role: Role; studentId?: string },
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { id },
-      select: { ...studentSelect, group: { select: { id: true, name: true, teacherId: true } } },
+      select: {
+        ...studentSelect,
+        group: { select: { id: true, name: true, teacherId: true } },
+      },
     });
 
     if (!student) {
@@ -98,7 +104,9 @@ export class StudentsService {
         });
         const groupIds = teacherGroups.map((g) => g.id);
         if (!student.groupId || !groupIds.includes(student.groupId)) {
-          throw new ForbiddenException('You can only view students in your groups');
+          throw new ForbiddenException(
+            'You can only view students in your groups',
+          );
         }
       }
     }
@@ -142,10 +150,12 @@ export class StudentsService {
 
     if (student.group) {
       // Calculate total lessons held in the group
-      totalLessons = await this.prisma.attendance.groupBy({
-        by: ['date'],
-        where: { groupId: student.group.id },
-      }).then(res => res.length);
+      totalLessons = await this.prisma.attendance
+        .groupBy({
+          by: ['date'],
+          where: { groupId: student.group.id },
+        })
+        .then((res) => res.length);
 
       // Get attendance stats for this student
       const attendance = await this.prisma.attendance.findMany({
@@ -160,10 +170,11 @@ export class StudentsService {
 
       const totalAttended = attendanceStats.present + attendanceStats.late;
       const totalRecorded = totalAttended + attendanceStats.absent;
-      
-      attendanceStats.percentage = totalRecorded > 0 
-        ? Math.round((totalAttended / totalRecorded) * 100) 
-        : 0;
+
+      attendanceStats.percentage =
+        totalRecorded > 0
+          ? Math.round((totalAttended / totalRecorded) * 100)
+          : 0;
     }
 
     return {
@@ -324,7 +335,9 @@ export class StudentsService {
       throw new NotFoundException('Student not found');
     }
 
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
     if (!group) {
       throw new NotFoundException('Group not found');
     }

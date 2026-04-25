@@ -94,9 +94,35 @@ export declare class AnnouncementsService {
     getUnreadCount(actor: Actor): Promise<{
         count: number;
     }>;
+    getReaders(announcementId: string): Promise<{
+        announcement: {
+            id: string;
+            title: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+        };
+        readCount: number;
+        recipientCount: number;
+        readers: {
+            userId: string;
+            fullName: string;
+            role: import(".prisma/client").$Enums.Role;
+            email: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            extra: string | null;
+            readAt: Date;
+        }[];
+    }>;
     private buildAccessFilter;
     private shapeAnnouncement;
     private getAuthorName;
     private sendNotifications;
+    private collectRecipientIds;
+    private shapeReader;
 }
 export {};

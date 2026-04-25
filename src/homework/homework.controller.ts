@@ -12,7 +12,13 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { HomeworkService } from './homework.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
@@ -37,7 +43,13 @@ export class HomeworkController {
   @Roles(Role.TEACHER)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
   @ApiOperation({ summary: 'Upload homework image to S3' })
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     const url = await this.s3.uploadFile(file, 'homework');
@@ -67,10 +79,7 @@ export class HomeworkController {
   @Get('my')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Get own homework' })
-  findMy(
-    @Query('limit') limit: string,
-    @CurrentUser('id') userId: string,
-  ) {
+  findMy(@Query('limit') limit: string, @CurrentUser('id') userId: string) {
     return this.service.findMy(limit ? parseInt(limit, 10) : 10, userId);
   }
 

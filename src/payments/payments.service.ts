@@ -39,7 +39,9 @@ export class PaymentsService {
   ) {}
 
   async create(dto: CreatePaymentDto, actorId: string) {
-    const student = await this.prisma.student.findUnique({ where: { id: dto.studentId } });
+    const student = await this.prisma.student.findUnique({
+      where: { id: dto.studentId },
+    });
     if (!student) throw new NotFoundException('Student not found');
 
     const payment = await this.prisma.payment.create({
@@ -47,7 +49,9 @@ export class PaymentsService {
         studentId: dto.studentId,
         amount: dto.amount,
         status: PaymentStatus.PENDING,
-        nextPaymentDate: dto.nextPaymentDate ? new Date(dto.nextPaymentDate) : null,
+        nextPaymentDate: dto.nextPaymentDate
+          ? new Date(dto.nextPaymentDate)
+          : null,
       },
       select: paymentSelect,
     });
@@ -58,7 +62,10 @@ export class PaymentsService {
         action: 'CREATE_PAYMENT',
         entity: 'Payment',
         entityId: payment.id,
-        details: { amount: dto.amount, studentId: dto.studentId } as Prisma.InputJsonValue,
+        details: {
+          amount: dto.amount,
+          studentId: dto.studentId,
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -87,15 +94,19 @@ export class PaymentsService {
 
   async findByStudent(studentId: string, user: { id: string; role: Role }) {
     if (user.role === Role.STUDENT) {
-      const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+      const student = await this.prisma.student.findUnique({
+        where: { userId: user.id },
+      });
       if (!student || student.id !== studentId)
         throw new ForbiddenException('You can only view your own payments');
     }
 
     if (user.role === Role.PARENT) {
-      const parent = await this.prisma.parent.findUnique({ where: { userId: user.id } });
+      const parent = await this.prisma.parent.findUnique({
+        where: { userId: user.id },
+      });
       if (!parent || parent.studentId !== studentId)
-        throw new ForbiddenException('You can only view your child\'s payments');
+        throw new ForbiddenException("You can only view your child's payments");
     }
 
     return this.prisma.payment.findMany({
@@ -118,15 +129,23 @@ export class PaymentsService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const thisMonthPayments = history.filter((p) => new Date(p.createdAt) >= startOfMonth);
-    const isPaid = thisMonthPayments.some((p) => p.status === PaymentStatus.CONFIRMED);
-    const isPending = thisMonthPayments.some((p) => p.status === PaymentStatus.PENDING);
-    
+    const thisMonthPayments = history.filter(
+      (p) => new Date(p.createdAt) >= startOfMonth,
+    );
+    const isPaid = thisMonthPayments.some(
+      (p) => p.status === PaymentStatus.CONFIRMED,
+    );
+    const isPending = thisMonthPayments.some(
+      (p) => p.status === PaymentStatus.PENDING,
+    );
+
     let currentStatus = 'UNPAID';
     if (isPaid) currentStatus = 'PAID';
     else if (isPending) currentStatus = 'PENDING';
 
-    const lastConfirmed = history.find((p) => p.status === PaymentStatus.CONFIRMED);
+    const lastConfirmed = history.find(
+      (p) => p.status === PaymentStatus.CONFIRMED,
+    );
     let nextPaymentDate: Date | null = null;
     let daysUntilPayment: number | null = null;
 
@@ -147,10 +166,16 @@ export class PaymentsService {
     };
   }
 
-  async uploadReceipt(file: Express.Multer.File, studentId: string, actorId: string) {
+  async uploadReceipt(
+    file: Express.Multer.File,
+    studentId: string,
+    actorId: string,
+  ) {
     if (!file) throw new BadRequestException('File is required');
 
-    const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
     if (!student) throw new NotFoundException('Student not found');
 
     const receiptUrl = await this.s3.uploadFile(file, 'receipts');
@@ -231,7 +256,10 @@ export class PaymentsService {
   }
 
   async getReceiptUrl(id: string) {
-    const payment = await this.prisma.payment.findUnique({ where: { id }, select: { receiptUrl: true } });
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      select: { receiptUrl: true },
+    });
     if (!payment) throw new NotFoundException('Payment not found');
     if (!payment.receiptUrl) throw new NotFoundException('Receipt not found');
     const url = await this.s3.getPresignedUrl(payment.receiptUrl);

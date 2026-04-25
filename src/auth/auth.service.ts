@@ -21,7 +21,9 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -158,8 +160,10 @@ export class AuthService {
 
     const accessSecret = this.configService.get<string>('jwt.accessSecret');
     const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
-    const accessExpiresIn = this.configService.get<string>('jwt.accessExpiresIn') ?? '15m';
-    const refreshExpiresIn = this.configService.get<string>('jwt.refreshExpiresIn') ?? '30d';
+    const accessExpiresIn =
+      this.configService.get<string>('jwt.accessExpiresIn') ?? '15m';
+    const refreshExpiresIn =
+      this.configService.get<string>('jwt.refreshExpiresIn') ?? '30d';
 
     const accessToken = this.jwtService.sign(payload, {
       secret: accessSecret,

@@ -39,6 +39,9 @@ let AnnouncementsController = class AnnouncementsController {
     getUnreadCount(user) {
         return this.service.getUnreadCount(user);
     }
+    getReaders(id) {
+        return this.service.getReaders(id);
+    }
     markAllAsRead(user) {
         return this.service.markAllAsRead(user);
     }
@@ -91,6 +94,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AnnouncementsController.prototype, "getUnreadCount", null);
+__decorate([
+    (0, common_1.Get)(':id/reads'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Список пользователей, прочитавших объявление' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AnnouncementsController.prototype, "getReaders", null);
 __decorate([
     (0, common_1.Patch)('read-all'),
     (0, roles_decorator_1.Roles)(client_1.Role.STUDENT, client_1.Role.PARENT, client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),

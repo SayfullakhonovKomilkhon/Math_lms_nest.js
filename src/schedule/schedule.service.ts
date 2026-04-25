@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -37,7 +41,11 @@ export class ScheduleService {
         phone: student.group.teacher.phone,
       },
       nextTopic: nextTopic
-        ? { date: nextTopic.date, topic: nextTopic.topic, materials: nextTopic.materials }
+        ? {
+            date: nextTopic.date,
+            topic: nextTopic.topic,
+            materials: nextTopic.materials,
+          }
         : null,
     };
   }
@@ -46,7 +54,9 @@ export class ScheduleService {
     const group = await this.prisma.group.findUnique({
       where: { id: groupId },
       include: {
-        teacher: { select: { id: true, fullName: true, phone: true, userId: true } },
+        teacher: {
+          select: { id: true, fullName: true, phone: true, userId: true },
+        },
       },
     });
     if (!group) throw new NotFoundException('Group not found');

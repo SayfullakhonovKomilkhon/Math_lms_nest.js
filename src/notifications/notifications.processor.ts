@@ -44,7 +44,10 @@ export class NotificationsProcessor extends WorkerHost {
           );
       }
     } catch (err) {
-      console.error(`[NotificationsProcessor] Error processing job ${job.name} (${job.id}):`, err);
+      console.error(
+        `[NotificationsProcessor] Error processing job ${job.name} (${job.id}):`,
+        err,
+      );
       // Don't rethrow — log and continue so queue doesn't stall
     }
   }
@@ -52,11 +55,19 @@ export class NotificationsProcessor extends WorkerHost {
   private async processPaymentReminders() {
     const settings = await this.prisma.setting.findMany({
       where: {
-        key: { in: ['payment_reminder_days_1', 'payment_reminder_days_2', 'payment_reminder_days_3'] },
+        key: {
+          in: [
+            'payment_reminder_days_1',
+            'payment_reminder_days_2',
+            'payment_reminder_days_3',
+          ],
+        },
       },
     });
 
-    const reminderDays = settings.map((s) => parseInt(s.value, 10)).filter((d) => !isNaN(d));
+    const reminderDays = settings
+      .map((s) => parseInt(s.value, 10))
+      .filter((d) => !isNaN(d));
 
     const now = new Date();
     const activeStudents = await this.prisma.student.findMany({
@@ -80,9 +91,15 @@ export class NotificationsProcessor extends WorkerHost {
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
       if (daysLeft < 0) {
-        await this.notificationsService.sendPaymentReminder(student.id, daysLeft);
+        await this.notificationsService.sendPaymentReminder(
+          student.id,
+          daysLeft,
+        );
       } else if (reminderDays.includes(daysLeft)) {
-        await this.notificationsService.sendPaymentReminder(student.id, daysLeft);
+        await this.notificationsService.sendPaymentReminder(
+          student.id,
+          daysLeft,
+        );
       }
     }
   }

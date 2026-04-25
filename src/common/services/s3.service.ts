@@ -1,10 +1,19 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIME_TYPE_TO_EXTENSION: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -20,7 +29,8 @@ export class S3Service {
   private endpoint: string;
 
   constructor(private config: ConfigService) {
-    this.endpoint = this.config.get<string>('s3.endpoint') || 'http://localhost:9000';
+    this.endpoint =
+      this.config.get<string>('s3.endpoint') || 'http://localhost:9000';
     this.bucket = this.config.get<string>('s3.bucket') || 'mathcenter';
 
     this.client = new S3Client({
@@ -28,7 +38,8 @@ export class S3Service {
       region: this.config.get<string>('s3.region') || 'us-east-1',
       credentials: {
         accessKeyId: this.config.get<string>('s3.accessKey') || 'minioadmin',
-        secretAccessKey: this.config.get<string>('s3.secretKey') || 'minioadmin',
+        secretAccessKey:
+          this.config.get<string>('s3.secretKey') || 'minioadmin',
       },
       forcePathStyle: true,
     });
@@ -45,7 +56,9 @@ export class S3Service {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException('Файл слишком большой. Максимальный размер: 10MB');
+      throw new BadRequestException(
+        'Файл слишком большой. Максимальный размер: 10MB',
+      );
     }
 
     const ext = MIME_TYPE_TO_EXTENSION[file.mimetype];
@@ -66,7 +79,9 @@ export class S3Service {
   async getPresignedUrl(fileUrl: string, expiresIn = 300): Promise<string> {
     // Extract key from full URL: http://endpoint/bucket/key
     const prefix = `${this.endpoint}/${this.bucket}/`;
-    const key = fileUrl.startsWith(prefix) ? fileUrl.slice(prefix.length) : fileUrl;
+    const key = fileUrl.startsWith(prefix)
+      ? fileUrl.slice(prefix.length)
+      : fileUrl;
 
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
     return getSignedUrl(this.client, command, { expiresIn });

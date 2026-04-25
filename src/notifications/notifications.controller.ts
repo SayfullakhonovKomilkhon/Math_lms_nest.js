@@ -14,16 +14,25 @@ import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 class NotificationsQueryDto {
-  @IsOptional() @IsBoolean() @Transform(({ value }) => value === 'true')
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
   isRead?: boolean;
 
-  @IsOptional() @IsEnum(NotificationType)
+  @IsOptional()
+  @IsEnum(NotificationType)
   type?: NotificationType;
 
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   limit?: number;
 
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
   page?: number;
 }
 

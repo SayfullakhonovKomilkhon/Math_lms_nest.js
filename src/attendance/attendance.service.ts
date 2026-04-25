@@ -9,7 +9,10 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkAttendanceDto } from './dto/bulk-attendance.dto';
 import { EditAttendanceDto } from './dto/edit-attendance.dto';
-import { QueryAttendanceDto, SummaryQueryDto } from './dto/query-attendance.dto';
+import {
+  QueryAttendanceDto,
+  SummaryQueryDto,
+} from './dto/query-attendance.dto';
 
 @Injectable()
 export class AttendanceService {
@@ -21,7 +24,9 @@ export class AttendanceService {
   private async assertTeacherOwnsGroup(userId: string, groupId: string) {
     const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
     if (!teacher) throw new ForbiddenException('Teacher profile not found');
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
     if (!group) throw new NotFoundException('Group not found');
     if (group.teacherId !== teacher.id)
       throw new ForbiddenException('You can only manage your own groups');
@@ -61,7 +66,9 @@ export class AttendanceService {
     );
 
     // Enqueue absence alerts for ABSENT students
-    const absentRecords = dto.records.filter((r) => r.status === AttendanceStatus.ABSENT);
+    const absentRecords = dto.records.filter(
+      (r) => r.status === AttendanceStatus.ABSENT,
+    );
     for (const r of absentRecords) {
       await this.notificationsQueue.add('send-absence-alert', {
         studentId: r.studentId,
@@ -76,7 +83,9 @@ export class AttendanceService {
     const where: any = {};
 
     if (user.role === Role.TEACHER) {
-      const teacher = await this.prisma.teacher.findUnique({ where: { userId: user.id } });
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { userId: user.id },
+      });
       if (!teacher) throw new ForbiddenException('Teacher profile not found');
 
       const myGroups = await this.prisma.group.findMany({
@@ -114,7 +123,10 @@ export class AttendanceService {
     });
   }
 
-  async findMy(query: { from?: string; to?: string; groupId?: string }, userId: string) {
+  async findMy(
+    query: { from?: string; to?: string; groupId?: string },
+    userId: string,
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
     });
@@ -137,7 +149,11 @@ export class AttendanceService {
     });
   }
 
-  async update(id: string, dto: EditAttendanceDto, user: { id: string; role: Role }) {
+  async update(
+    id: string,
+    dto: EditAttendanceDto,
+    user: { id: string; role: Role },
+  ) {
     const record = await this.prisma.attendance.findUnique({ where: { id } });
     if (!record) throw new NotFoundException('Attendance record not found');
 
@@ -174,13 +190,16 @@ export class AttendanceService {
       include: { student: { select: { id: true, fullName: true } } },
     });
 
-    const map = new Map<string, {
-      studentId: string;
-      fullName: string;
-      present: number;
-      absent: number;
-      late: number;
-    }>();
+    const map = new Map<
+      string,
+      {
+        studentId: string;
+        fullName: string;
+        present: number;
+        absent: number;
+        late: number;
+      }
+    >();
 
     for (const r of records) {
       const key = r.studentId;
@@ -204,7 +223,8 @@ export class AttendanceService {
       return {
         ...s,
         totalLessons: total,
-        percentage: total > 0 ? Math.round(((s.present + s.late) / total) * 100) : 0,
+        percentage:
+          total > 0 ? Math.round(((s.present + s.late) / total) * 100) : 0,
       };
     });
   }

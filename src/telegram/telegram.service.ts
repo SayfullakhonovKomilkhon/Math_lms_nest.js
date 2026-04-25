@@ -8,7 +8,10 @@ export class TelegramService implements OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
   private bot: Telegraf | null = null;
   // In-memory map for link codes: code → { chatId, expiresAt }
-  private pendingCodes = new Map<string, { chatId: string; expiresAt: number }>();
+  private pendingCodes = new Map<
+    string,
+    { chatId: string; expiresAt: number }
+  >();
 
   constructor(private prisma: PrismaService) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -56,7 +59,9 @@ export class TelegramService implements OnModuleDestroy {
 
       const pending = this.pendingCodes.get(code);
       if (!pending || Date.now() > pending.expiresAt) {
-        await ctx.reply('❌ Неверный или устаревший код. Получите новый код в приложении.');
+        await ctx.reply(
+          '❌ Неверный или устаревший код. Получите новый код в приложении.',
+        );
         this.pendingCodes.delete(code);
         return;
       }
@@ -64,25 +69,35 @@ export class TelegramService implements OnModuleDestroy {
       // Store chatId associated with code for the app to retrieve
       pending.chatId = chatId;
       this.pendingCodes.set(code, pending);
-      await ctx.reply('✅ Код подтверждён! Вернитесь в приложение для завершения привязки.');
+      await ctx.reply(
+        '✅ Код подтверждён! Вернитесь в приложение для завершения привязки.',
+      );
     });
 
     this.bot.command('pay', async (ctx) => {
       const chatId = String(ctx.chat.id);
       const user = await this.prisma.user.findFirst({
         where: { telegramChatId: chatId },
-        include: { student: { include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
+        include: {
+          student: {
+            include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+          },
+        },
       });
 
       if (!user || !user.student) {
-        await ctx.reply('❌ Аккаунт не привязан. Используйте /start для инструкций.');
+        await ctx.reply(
+          '❌ Аккаунт не привязан. Используйте /start для инструкций.',
+        );
         return;
       }
 
       const lastPayment = user.student.payments[0];
       const fee = Number(user.student.monthlyFee);
       if (!lastPayment) {
-        await ctx.reply(`💳 Ежемесячная оплата: ${fee.toLocaleString('ru-RU')} сум\nСтатус: не оплачено`);
+        await ctx.reply(
+          `💳 Ежемесячная оплата: ${fee.toLocaleString('ru-RU')} сум\nСтатус: не оплачено`,
+        );
       } else {
         const statusMap: Record<string, string> = {
           PENDING: '⏳ На проверке',
@@ -116,8 +131,12 @@ export class TelegramService implements OnModuleDestroy {
       if (!hw) {
         await ctx.reply('📚 Нет домашних заданий.');
       } else {
-        const due = hw.dueDate ? `\nСрок: ${hw.dueDate.toLocaleDateString('ru-RU')}` : '';
-        await ctx.reply(`📚 Последнее ДЗ от ${hw.teacher.fullName}:\n\n${hw.text}${due}`);
+        const due = hw.dueDate
+          ? `\nСрок: ${hw.dueDate.toLocaleDateString('ru-RU')}`
+          : '';
+        await ctx.reply(
+          `📚 Последнее ДЗ от ${hw.teacher.fullName}:\n\n${hw.text}${due}`,
+        );
       }
     });
   }
@@ -125,7 +144,10 @@ export class TelegramService implements OnModuleDestroy {
   generateCode(): string {
     const code = crypto.randomInt(100000, 999999).toString();
     // expires in 10 minutes
-    this.pendingCodes.set(code, { chatId: '', expiresAt: Date.now() + 10 * 60 * 1000 });
+    this.pendingCodes.set(code, {
+      chatId: '',
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
     return code;
   }
 
@@ -145,7 +167,9 @@ export class TelegramService implements OnModuleDestroy {
   async sendMessage(chatId: string, message: string): Promise<void> {
     if (!this.bot) return;
     try {
-      await this.bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+      await this.bot.telegram.sendMessage(chatId, message, {
+        parse_mode: 'HTML',
+      });
     } catch (err) {
       this.logger.error(`Failed to send Telegram message to ${chatId}`, err);
     }

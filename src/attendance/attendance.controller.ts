@@ -13,7 +13,10 @@ import { Role } from '@prisma/client';
 import { AttendanceService } from './attendance.service';
 import { BulkAttendanceDto } from './dto/bulk-attendance.dto';
 import { EditAttendanceDto } from './dto/edit-attendance.dto';
-import { QueryAttendanceDto, SummaryQueryDto } from './dto/query-attendance.dto';
+import {
+  QueryAttendanceDto,
+  SummaryQueryDto,
+} from './dto/query-attendance.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';

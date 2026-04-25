@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PaymentStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -178,7 +182,11 @@ export class GroupsService {
 
     return updated;
   }
-  async updateRatingVisibility(id: string, isRatingVisible: boolean, user: { id: string; role: Role }) {
+  async updateRatingVisibility(
+    id: string,
+    isRatingVisible: boolean,
+    user: { id: string; role: Role },
+  ) {
     const group = await this.findOne(id, user);
 
     const updated = await this.prisma.group.update({

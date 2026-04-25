@@ -1,5 +1,10 @@
 import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiProduces,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { Role } from '@prisma/client';
 import { ReportsService } from './reports.service';
@@ -13,7 +18,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
-const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const XLSX_MIME =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function sendFile(res: Response, buf: Buffer, mime: string, filename: string) {
   res.set({
@@ -37,7 +43,10 @@ export class ReportsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Export finance report to Excel (3 sheets)' })
   @ApiProduces(XLSX_MIME)
-  async financeExcel(@Query() query: PaymentsReportQueryDto, @Res() res: Response) {
+  async financeExcel(
+    @Query() query: PaymentsReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.financeExcel(query);
     sendFile(res, buf, XLSX_MIME, `finance-${today()}.xlsx`);
   }
@@ -46,7 +55,10 @@ export class ReportsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Export finance report to PDF' })
   @ApiProduces('application/pdf')
-  async financePdf(@Query() query: PaymentsReportQueryDto, @Res() res: Response) {
+  async financePdf(
+    @Query() query: PaymentsReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.financePdf(query);
     sendFile(res, buf, 'application/pdf', `finance-${today()}.pdf`);
   }
@@ -57,7 +69,10 @@ export class ReportsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Export payments to Excel (.xlsx)' })
   @ApiProduces(XLSX_MIME)
-  async paymentsExcel(@Query() query: PaymentsReportQueryDto, @Res() res: Response) {
+  async paymentsExcel(
+    @Query() query: PaymentsReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.paymentsExcel(query);
     sendFile(res, buf, XLSX_MIME, `payments-${today()}.xlsx`);
   }
@@ -66,7 +81,10 @@ export class ReportsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Export payments to PDF' })
   @ApiProduces('application/pdf')
-  async paymentsPdf(@Query() query: PaymentsReportQueryDto, @Res() res: Response) {
+  async paymentsPdf(
+    @Query() query: PaymentsReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.paymentsPdf(query);
     sendFile(res, buf, 'application/pdf', `payments-${today()}.pdf`);
   }
@@ -77,7 +95,10 @@ export class ReportsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Export students list to Excel (.xlsx)' })
   @ApiProduces(XLSX_MIME)
-  async studentsExcel(@Query() query: StudentsReportQueryDto, @Res() res: Response) {
+  async studentsExcel(
+    @Query() query: StudentsReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.studentsExcel(query);
     sendFile(res, buf, XLSX_MIME, `students-${today()}.xlsx`);
   }
@@ -86,9 +107,14 @@ export class ReportsController {
 
   @Get('attendance/excel')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Export attendance records to Excel (with group summary)' })
+  @ApiOperation({
+    summary: 'Export attendance records to Excel (with group summary)',
+  })
   @ApiProduces(XLSX_MIME)
-  async attendanceExcel(@Query() query: AttendanceReportQueryDto, @Res() res: Response) {
+  async attendanceExcel(
+    @Query() query: AttendanceReportQueryDto,
+    @Res() res: Response,
+  ) {
     const buf = await this.service.attendanceExcel(query);
     sendFile(res, buf, XLSX_MIME, `attendance-${today()}.xlsx`);
   }

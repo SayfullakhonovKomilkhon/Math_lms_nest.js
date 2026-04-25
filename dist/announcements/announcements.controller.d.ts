@@ -78,6 +78,30 @@ export declare class AnnouncementsController {
     getUnreadCount(user: Actor): Promise<{
         count: number;
     }>;
+    getReaders(id: string): Promise<{
+        announcement: {
+            id: string;
+            title: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+        };
+        readCount: number;
+        recipientCount: number;
+        readers: {
+            userId: string;
+            fullName: string;
+            role: import(".prisma/client").$Enums.Role;
+            email: string;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            extra: string | null;
+            readAt: Date;
+        }[];
+    }>;
     markAllAsRead(user: Actor): Promise<{
         success: boolean;
         count: number;

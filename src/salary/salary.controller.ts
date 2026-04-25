@@ -25,7 +25,9 @@ export class SalaryController {
 
   @Get('my')
   @Roles(Role.TEACHER)
-  @ApiOperation({ summary: 'Get current teacher salary based on active students' })
+  @ApiOperation({
+    summary: 'Get current teacher salary based on active students',
+  })
   getMySalary(@CurrentUser('id') userId: string) {
     return this.service.getMySalary(userId);
   }

@@ -11,7 +11,13 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { ParentsService } from './parents.service';
@@ -33,10 +39,7 @@ export class ParentsController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Create a new parent' })
-  create(
-    @Body() dto: CreateParentDto,
-    @CurrentUser('id') actorId: string,
-  ) {
+  create(@Body() dto: CreateParentDto, @CurrentUser('id') actorId: string) {
     return this.parentsService.create(dto, actorId);
   }
 

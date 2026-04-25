@@ -52,12 +52,19 @@ let UsersService = class UsersService {
         this.prisma = prisma;
     }
     async create(dto) {
-        const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        const exists = await this.prisma.user.findUnique({
+            where: { email: dto.email },
+        });
         if (exists)
             throw new common_1.ConflictException('Email already in use');
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.user.create({
-            data: { email: dto.email, passwordHash, role: dto.role, telegramChatId: dto.telegramChatId },
+            data: {
+                email: dto.email,
+                passwordHash,
+                role: dto.role,
+                telegramChatId: dto.telegramChatId,
+            },
         });
         const { passwordHash: _, ...result } = user;
         return result;
@@ -66,16 +73,36 @@ let UsersService = class UsersService {
         return this.prisma.user.findMany({
             where: role ? { role: role } : undefined,
             select: {
-                id: true, email: true, role: true, isActive: true,
-                telegramChatId: true, createdAt: true, updatedAt: true,
-                teacher: { select: { id: true, fullName: true, phone: true, ratePerStudent: true } },
+                id: true,
+                email: true,
+                role: true,
+                isActive: true,
+                telegramChatId: true,
+                createdAt: true,
+                updatedAt: true,
+                teacher: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        phone: true,
+                        ratePerStudent: true,
+                    },
+                },
             },
         });
     }
     async findOne(id) {
         const user = await this.prisma.user.findUnique({
             where: { id },
-            select: { id: true, email: true, role: true, isActive: true, telegramChatId: true, createdAt: true, updatedAt: true },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                isActive: true,
+                telegramChatId: true,
+                createdAt: true,
+                updatedAt: true,
+            },
         });
         if (!user)
             throw new common_1.NotFoundException('User not found');
@@ -85,10 +112,14 @@ let UsersService = class UsersService {
         const [teachers, admins] = await Promise.all([
             this.prisma.teacher.findMany({
                 include: {
-                    user: { select: { id: true, email: true, isActive: true, createdAt: true } },
+                    user: {
+                        select: { id: true, email: true, isActive: true, createdAt: true },
+                    },
                     groups: {
                         where: { isActive: true },
-                        include: { _count: { select: { students: { where: { isActive: true } } } } },
+                        include: {
+                            _count: { select: { students: { where: { isActive: true } } } },
+                        },
                     },
                 },
                 orderBy: { fullName: 'asc' },
@@ -121,7 +152,9 @@ let UsersService = class UsersService {
         };
     }
     async createStaff(dto) {
-        const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        const exists = await this.prisma.user.findUnique({
+            where: { email: dto.email },
+        });
         if (exists)
             throw new common_1.ConflictException('Email already in use');
         const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -153,7 +186,9 @@ let UsersService = class UsersService {
             throw new common_1.NotFoundException('User not found');
         const data = {};
         if (dto.email && dto.email !== user.email) {
-            const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+            const exists = await this.prisma.user.findUnique({
+                where: { email: dto.email },
+            });
             if (exists && exists.id !== id) {
                 throw new common_1.ConflictException('Email already in use');
             }
@@ -169,7 +204,14 @@ let UsersService = class UsersService {
         const updated = await this.prisma.user.update({
             where: { id },
             data,
-            select: { id: true, email: true, role: true, isActive: true, createdAt: true, updatedAt: true },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
         });
         await this.prisma.auditLog.create({
             data: {
@@ -195,7 +237,12 @@ let UsersService = class UsersService {
             select: { id: true, email: true, role: true, isActive: true },
         });
         await this.prisma.auditLog.create({
-            data: { userId: actorId, action: 'DEACTIVATE_USER', entity: 'User', entityId: id },
+            data: {
+                userId: actorId,
+                action: 'DEACTIVATE_USER',
+                entity: 'User',
+                entityId: id,
+            },
         });
         return updated;
     }

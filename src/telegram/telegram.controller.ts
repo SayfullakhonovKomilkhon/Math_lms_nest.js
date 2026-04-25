@@ -15,7 +15,8 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 class LinkDto {
-  @IsString() @Length(6, 6)
+  @IsString()
+  @Length(6, 6)
   linkCode: string;
 }
 

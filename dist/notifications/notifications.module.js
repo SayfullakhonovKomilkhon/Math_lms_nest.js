@@ -18,10 +18,7 @@ let NotificationsModule = class NotificationsModule {
 exports.NotificationsModule = NotificationsModule;
 exports.NotificationsModule = NotificationsModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            prisma_module_1.PrismaModule,
-            bullmq_1.BullModule.registerQueue({ name: 'notifications' }),
-        ],
+        imports: [prisma_module_1.PrismaModule, bullmq_1.BullModule.registerQueue({ name: 'notifications' })],
         providers: [notifications_service_1.NotificationsService, notifications_processor_1.NotificationsProcessor],
         controllers: [notifications_controller_1.NotificationsController],
         exports: [notifications_service_1.NotificationsService],

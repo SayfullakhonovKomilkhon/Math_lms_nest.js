@@ -61,7 +61,11 @@ function headerStyle(ws, row, colCount) {
     r.eachCell({ includeEmpty: true }, (cell, col) => {
         if (col > colCount)
             return;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' },
+        };
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
@@ -110,7 +114,9 @@ let ReportsService = class ReportsService {
         ];
         headerStyle(ws, 1, 7);
         const statusLabels = {
-            PENDING: 'Ожидает', CONFIRMED: 'Подтверждён', REJECTED: 'Отклонён',
+            PENDING: 'Ожидает',
+            CONFIRMED: 'Подтверждён',
+            REJECTED: 'Отклонён',
         };
         payments.forEach((p, i) => {
             const row = ws.addRow({
@@ -123,13 +129,19 @@ let ReportsService = class ReportsService {
                 confirmedAt: fmtDate(p.confirmedAt),
             });
             const statusColors = {
-                'Подтверждён': 'FFD1FAE5', 'Ожидает': 'FFFEF9C3', 'Отклонён': 'FFFEE2E2',
+                Подтверждён: 'FFD1FAE5',
+                Ожидает: 'FFFEF9C3',
+                Отклонён: 'FFFEE2E2',
             };
             const bg = statusColors[statusLabels[p.status]] ?? 'FFFFFFFF';
             row.eachCell({ includeEmpty: true }, (cell, col) => {
                 if (col > 7)
                     return;
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: bg },
+                };
                 if (col === 4) {
                     cell.numFmt = '#,##0.00 "сум"';
                     cell.alignment = { horizontal: 'right' };
@@ -137,11 +149,15 @@ let ReportsService = class ReportsService {
             });
         });
         const totalRow = ws.addRow({
-            num: '', student: 'ИТОГО', group: '',
+            num: '',
+            student: 'ИТОГО',
+            group: '',
             amount: payments
                 .filter((p) => p.status === client_1.PaymentStatus.CONFIRMED)
                 .reduce((s, p) => s + Number(p.amount), 0),
-            status: '', createdAt: '', confirmedAt: '',
+            status: '',
+            createdAt: '',
+            confirmedAt: '',
         });
         totalRow.font = { bold: true };
         totalRow.getCell(4).numFmt = '#,##0.00 "сум"';
@@ -197,17 +213,23 @@ let ReportsService = class ReportsService {
                     },
                 },
                 include: {
-                    group: { select: { name: true, teacher: { select: { fullName: true } } } },
+                    group: {
+                        select: { name: true, teacher: { select: { fullName: true } } },
+                    },
                     parent: { select: { fullName: true, phone: true } },
                 },
                 orderBy: { fullName: 'asc' },
             }),
         ]);
         const statusLabels = {
-            PENDING: 'Ожидает', CONFIRMED: 'Подтверждён', REJECTED: 'Отклонён',
+            PENDING: 'Ожидает',
+            CONFIRMED: 'Подтверждён',
+            REJECTED: 'Отклонён',
         };
         const statusColors = {
-            'Подтверждён': 'FFD1FAE5', 'Ожидает': 'FFFEF9C3', 'Отклонён': 'FFFEE2E2',
+            Подтверждён: 'FFD1FAE5',
+            Ожидает: 'FFFEF9C3',
+            Отклонён: 'FFFEE2E2',
         };
         const wb = new ExcelJS.Workbook();
         wb.creator = 'MathCenter';
@@ -239,7 +261,11 @@ let ReportsService = class ReportsService {
             row.eachCell({ includeEmpty: true }, (cell, col) => {
                 if (col > 8)
                     return;
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: bg },
+                };
                 if (col === 5) {
                     cell.numFmt = '#,##0.00 "сум"';
                     cell.alignment = { horizontal: 'right' };
@@ -249,8 +275,16 @@ let ReportsService = class ReportsService {
         const totalConfirmed = payments
             .filter((p) => p.status === client_1.PaymentStatus.CONFIRMED)
             .reduce((s, p) => s + Number(p.amount), 0);
-        const totalRow = wsAll.addRow({ num: '', student: 'ИТОГО подтверждённых', phone: '', group: '',
-            amount: totalConfirmed, status: '', createdAt: '', confirmedAt: '' });
+        const totalRow = wsAll.addRow({
+            num: '',
+            student: 'ИТОГО подтверждённых',
+            phone: '',
+            group: '',
+            amount: totalConfirmed,
+            status: '',
+            createdAt: '',
+            confirmedAt: '',
+        });
         totalRow.font = { bold: true };
         totalRow.getCell(5).numFmt = '#,##0.00 "сум"';
         wsAll.autoFilter = { from: 'A1', to: 'H1' };
@@ -267,7 +301,8 @@ let ReportsService = class ReportsService {
         ];
         headerStyle(wsDebt, 1, 8);
         debtors.forEach((s, i) => {
-            wsDebt.addRow({
+            wsDebt
+                .addRow({
                 num: i + 1,
                 student: s.fullName,
                 phone: s.phone ?? '—',
@@ -276,7 +311,8 @@ let ReportsService = class ReportsService {
                 fee: Number(s.monthlyFee),
                 parent: s.parent?.fullName ?? '—',
                 parentPhone: s.parent?.phone ?? '—',
-            }).getCell(6).numFmt = '#,##0.00 "сум"';
+            })
+                .getCell(6).numFmt = '#,##0.00 "сум"';
         });
         wsDebt.autoFilter = { from: 'A1', to: 'H1' };
         const wsSummary = wb.addWorksheet('Сводка');
@@ -285,13 +321,29 @@ let ReportsService = class ReportsService {
             { header: 'Значение', key: 'value', width: 20 },
         ];
         headerStyle(wsSummary, 1, 2);
-        const totalPending = payments.filter((p) => p.status === client_1.PaymentStatus.PENDING).reduce((s, p) => s + Number(p.amount), 0);
-        const totalRejected = payments.filter((p) => p.status === client_1.PaymentStatus.REJECTED).reduce((s, p) => s + Number(p.amount), 0);
+        const totalPending = payments
+            .filter((p) => p.status === client_1.PaymentStatus.PENDING)
+            .reduce((s, p) => s + Number(p.amount), 0);
+        const totalRejected = payments
+            .filter((p) => p.status === client_1.PaymentStatus.REJECTED)
+            .reduce((s, p) => s + Number(p.amount), 0);
         [
             { label: 'Всего оплат', value: payments.length },
-            { label: 'Подтверждено (кол-во)', value: payments.filter((p) => p.status === client_1.PaymentStatus.CONFIRMED).length },
-            { label: 'Ожидает (кол-во)', value: payments.filter((p) => p.status === client_1.PaymentStatus.PENDING).length },
-            { label: 'Отклонено (кол-во)', value: payments.filter((p) => p.status === client_1.PaymentStatus.REJECTED).length },
+            {
+                label: 'Подтверждено (кол-во)',
+                value: payments.filter((p) => p.status === client_1.PaymentStatus.CONFIRMED)
+                    .length,
+            },
+            {
+                label: 'Ожидает (кол-во)',
+                value: payments.filter((p) => p.status === client_1.PaymentStatus.PENDING)
+                    .length,
+            },
+            {
+                label: 'Отклонено (кол-во)',
+                value: payments.filter((p) => p.status === client_1.PaymentStatus.REJECTED)
+                    .length,
+            },
             { label: 'Сумма подтверждённых', value: totalConfirmed },
             { label: 'Сумма ожидающих', value: totalPending },
             { label: 'Сумма отклонённых', value: totalRejected },
@@ -323,34 +375,64 @@ let ReportsService = class ReportsService {
         const payments = await this.prisma.payment.findMany({
             where,
             include: {
-                student: { select: { fullName: true, group: { select: { name: true } } } },
+                student: {
+                    select: { fullName: true, group: { select: { name: true } } },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
         return new Promise((resolve, reject) => {
-            const doc = new pdfkit_1.default({ margin: 40, size: 'A4', layout: 'landscape' });
+            const doc = new pdfkit_1.default({
+                margin: 40,
+                size: 'A4',
+                layout: 'landscape',
+            });
             const chunks = [];
             doc.on('data', (c) => chunks.push(c));
             doc.on('end', () => resolve(Buffer.concat(chunks)));
             doc.on('error', reject);
-            doc.fontSize(16).font('Helvetica-Bold').text('MathCenter — Финансовый отчёт', { align: 'center' });
+            doc
+                .fontSize(16)
+                .font('Helvetica-Bold')
+                .text('MathCenter — Финансовый отчёт', { align: 'center' });
             if (query.from || query.to) {
-                doc.fontSize(10).font('Helvetica')
+                doc
+                    .fontSize(10)
+                    .font('Helvetica')
                     .text(`Период: ${query.from ? fmtDate(query.from) : '—'} — ${query.to ? fmtDate(query.to) : '—'}`, { align: 'center' });
             }
-            doc.moveDown(0.5).fontSize(10).text(`Сформирован: ${fmtDate(new Date())}`, { align: 'right' }).moveDown(1);
+            doc
+                .moveDown(0.5)
+                .fontSize(10)
+                .text(`Сформирован: ${fmtDate(new Date())}`, { align: 'right' })
+                .moveDown(1);
             const colW = [30, 180, 120, 90, 90, 110, 130];
-            const cols = ['№', 'Ученик', 'Группа', 'Сумма', 'Статус', 'Создан', 'Подтверждён'];
+            const cols = [
+                '№',
+                'Ученик',
+                'Группа',
+                'Сумма',
+                'Статус',
+                'Создан',
+                'Подтверждён',
+            ];
             const startX = doc.page.margins.left;
             let y = doc.y;
-            doc.rect(startX, y, colW.reduce((a, b) => a + b, 0), 20).fill('#4F46E5');
+            doc
+                .rect(startX, y, colW.reduce((a, b) => a + b, 0), 20)
+                .fill('#4F46E5');
             doc.fillColor('white').fontSize(9).font('Helvetica-Bold');
             let x = startX;
-            cols.forEach((c, i) => { doc.text(c, x + 3, y + 5, { width: colW[i] - 6, align: 'center' }); x += colW[i]; });
+            cols.forEach((c, i) => {
+                doc.text(c, x + 3, y + 5, { width: colW[i] - 6, align: 'center' });
+                x += colW[i];
+            });
             doc.fillColor('black').font('Helvetica').fontSize(8);
             y += 20;
             const statusLabels = {
-                PENDING: 'Ожидает', CONFIRMED: 'Подтверждён', REJECTED: 'Отклонён',
+                PENDING: 'Ожидает',
+                CONFIRMED: 'Подтверждён',
+                REJECTED: 'Отклонён',
             };
             payments.forEach((p, i) => {
                 if (y > doc.page.height - 80) {
@@ -358,17 +440,26 @@ let ReportsService = class ReportsService {
                     y = doc.page.margins.top;
                 }
                 const bg = i % 2 === 0 ? '#F8FAFC' : '#FFFFFF';
-                doc.rect(startX, y, colW.reduce((a, b) => a + b, 0), 18).fill(bg);
+                doc
+                    .rect(startX, y, colW.reduce((a, b) => a + b, 0), 18)
+                    .fill(bg);
                 doc.fillColor('#1E293B');
                 const cells = [
-                    String(i + 1), p.student.fullName, p.student.group?.name ?? '—',
+                    String(i + 1),
+                    p.student.fullName,
+                    p.student.group?.name ?? '—',
                     `${Number(p.amount).toLocaleString('ru-RU')} сум`,
                     statusLabels[p.status] ?? p.status,
-                    fmtDate(p.createdAt), fmtDate(p.confirmedAt),
+                    fmtDate(p.createdAt),
+                    fmtDate(p.confirmedAt),
                 ];
                 x = startX;
                 cells.forEach((c, ci) => {
-                    doc.text(c, x + 3, y + 4, { width: colW[ci] - 6, align: ci === 3 ? 'right' : 'left', lineBreak: false });
+                    doc.text(c, x + 3, y + 4, {
+                        width: colW[ci] - 6,
+                        align: ci === 3 ? 'right' : 'left',
+                        lineBreak: false,
+                    });
                     x += colW[ci];
                 });
                 y += 18;
@@ -376,7 +467,10 @@ let ReportsService = class ReportsService {
             const confirmed = payments
                 .filter((p) => p.status === client_1.PaymentStatus.CONFIRMED)
                 .reduce((s, p) => s + Number(p.amount), 0);
-            doc.moveDown(1).font('Helvetica-Bold').fontSize(10)
+            doc
+                .moveDown(1)
+                .font('Helvetica-Bold')
+                .fontSize(10)
                 .text(`Итого подтверждённых: ${confirmed.toLocaleString('ru-RU')} сум`, { align: 'right' });
             doc.end();
         });
@@ -393,7 +487,9 @@ let ReportsService = class ReportsService {
         const students = await this.prisma.student.findMany({
             where,
             include: {
-                group: { select: { name: true, teacher: { select: { fullName: true } } } },
+                group: {
+                    select: { name: true, teacher: { select: { fullName: true } } },
+                },
                 parent: { select: { fullName: true, phone: true } },
             },
             orderBy: { fullName: 'asc' },
@@ -472,10 +568,15 @@ let ReportsService = class ReportsService {
         ];
         headerStyle(ws, 1, 6);
         const statusLabels = {
-            PRESENT: 'Присутствовал', ABSENT: 'Отсутствовал', LATE: 'Опоздал',
+            PRESENT: 'Присутствовал',
+            ABSENT: 'Отсутствовал',
+            LATE: 'Опоздал',
         };
         const lessonLabels = {
-            REGULAR: 'Обычное', PRACTICE: 'Практика', CONTROL: 'Контрольная', TEST: 'Тест',
+            REGULAR: 'Обычное',
+            PRACTICE: 'Практика',
+            CONTROL: 'Контрольная',
+            TEST: 'Тест',
         };
         records.forEach((r, i) => {
             const statusLabel = statusLabels[r.status] ?? r.status;
@@ -488,10 +589,16 @@ let ReportsService = class ReportsService {
                 status: statusLabel,
             });
             const statusColors = {
-                'Присутствовал': 'FFD1FAE5', 'Опоздал': 'FFFEF9C3', 'Отсутствовал': 'FFFEE2E2',
+                Присутствовал: 'FFD1FAE5',
+                Опоздал: 'FFFEF9C3',
+                Отсутствовал: 'FFFEE2E2',
             };
             const bg = statusColors[statusLabel] ?? 'FFFFFFFF';
-            row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+            row.getCell(6).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: bg },
+            };
         });
         ws.autoFilter = { from: 'A1', to: 'F1' };
         const wsSummary = wb.addWorksheet('Сводка по группам');
@@ -506,7 +613,11 @@ let ReportsService = class ReportsService {
         headerStyle(wsSummary, 1, 6);
         const byGroup = new Map();
         for (const r of records) {
-            const entry = byGroup.get(r.group.name) ?? { present: 0, late: 0, absent: 0 };
+            const entry = byGroup.get(r.group.name) ?? {
+                present: 0,
+                late: 0,
+                absent: 0,
+            };
             if (r.status === 'PRESENT')
                 entry.present++;
             else if (r.status === 'LATE')
@@ -517,10 +628,24 @@ let ReportsService = class ReportsService {
         }
         for (const [groupName, counts] of byGroup) {
             const total = counts.present + counts.late + counts.absent;
-            const pct = total > 0 ? Math.round(((counts.present + counts.late) / total) * 100) : 0;
-            const row = wsSummary.addRow({ group: groupName, total, present: counts.present, late: counts.late, absent: counts.absent, pct: `${pct}%` });
+            const pct = total > 0
+                ? Math.round(((counts.present + counts.late) / total) * 100)
+                : 0;
+            const row = wsSummary.addRow({
+                group: groupName,
+                total,
+                present: counts.present,
+                late: counts.late,
+                absent: counts.absent,
+                pct: `${pct}%`,
+            });
             const pctCell = row.getCell(6);
-            pctCell.font = { bold: true, color: { argb: pct >= 80 ? 'FF16A34A' : pct >= 60 ? 'FFD97706' : 'FFDC2626' } };
+            pctCell.font = {
+                bold: true,
+                color: {
+                    argb: pct >= 80 ? 'FF16A34A' : pct >= 60 ? 'FFD97706' : 'FFDC2626',
+                },
+            };
         }
         const buf = await wb.xlsx.writeBuffer();
         return Buffer.from(buf);
@@ -540,7 +665,9 @@ let ReportsService = class ReportsService {
                 student: {
                     select: {
                         fullName: true,
-                        group: { select: { name: true, teacher: { select: { fullName: true } } } },
+                        group: {
+                            select: { name: true, teacher: { select: { fullName: true } } },
+                        },
                     },
                 },
             },
@@ -562,7 +689,10 @@ let ReportsService = class ReportsService {
         ];
         headerStyle(wsGrades, 1, 9);
         const lessonTypeLabels = {
-            REGULAR: 'Обычное', PRACTICE: 'Практика', CONTROL: 'Контрольная', TEST: 'Тест',
+            REGULAR: 'Обычное',
+            PRACTICE: 'Практика',
+            CONTROL: 'Контрольная',
+            TEST: 'Тест',
         };
         grades.forEach((g, i) => {
             const score = Number(g.score);
@@ -580,7 +710,11 @@ let ReportsService = class ReportsService {
                 date: fmtDate(g.date),
             });
             const pctCell = row.getCell(8);
-            pctCell.font = { color: { argb: pct >= 80 ? 'FF16A34A' : pct >= 60 ? 'FFD97706' : 'FFDC2626' } };
+            pctCell.font = {
+                color: {
+                    argb: pct >= 80 ? 'FF16A34A' : pct >= 60 ? 'FFD97706' : 'FFDC2626',
+                },
+            };
         });
         wsGrades.autoFilter = { from: 'A1', to: 'I1' };
         const wsRating = wb.addWorksheet('Рейтинг');
@@ -597,16 +731,34 @@ let ReportsService = class ReportsService {
             const score = Number(g.score);
             const maxScore = Number(g.maxScore);
             const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
-            const entry = studentMap.get(g.studentId) ?? { name: g.student.fullName, group: g.student.group?.name ?? '—', scores: [] };
+            const entry = studentMap.get(g.studentId) ?? {
+                name: g.student.fullName,
+                group: g.student.group?.name ?? '—',
+                scores: [],
+            };
             entry.scores.push(pct);
             studentMap.set(g.studentId, entry);
         }
         const ranking = Array.from(studentMap.values())
-            .map((s) => ({ ...s, avg: Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length) }))
+            .map((s) => ({
+            ...s,
+            avg: Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length),
+        }))
             .sort((a, b) => b.avg - a.avg);
         ranking.forEach((s, i) => {
-            const row = wsRating.addRow({ rank: i + 1, student: s.name, group: s.group, total: s.scores.length, avg: `${s.avg}%` });
-            row.getCell(5).font = { bold: i < 3, color: { argb: s.avg >= 80 ? 'FF16A34A' : s.avg >= 60 ? 'FFD97706' : 'FFDC2626' } };
+            const row = wsRating.addRow({
+                rank: i + 1,
+                student: s.name,
+                group: s.group,
+                total: s.scores.length,
+                avg: `${s.avg}%`,
+            });
+            row.getCell(5).font = {
+                bold: i < 3,
+                color: {
+                    argb: s.avg >= 80 ? 'FF16A34A' : s.avg >= 60 ? 'FFD97706' : 'FFDC2626',
+                },
+            };
         });
         const buf = await wb.xlsx.writeBuffer();
         return Buffer.from(buf);
@@ -657,7 +809,9 @@ let ReportsService = class ReportsService {
             grandTotal += totalSalary;
             const allAtt = t.groups.flatMap((g) => g.attendances);
             const attPct = allAtt.length > 0
-                ? Math.round((allAtt.filter((a) => a.status !== 'ABSENT').length / allAtt.length) * 100)
+                ? Math.round((allAtt.filter((a) => a.status !== 'ABSENT').length /
+                    allAtt.length) *
+                    100)
                 : 0;
             const row = ws.addRow({
                 num: i + 1,
@@ -674,12 +828,22 @@ let ReportsService = class ReportsService {
             row.getCell(8).font = { bold: true };
         });
         const totalRow = ws.addRow({
-            num: '', fullName: 'ИТОГО', phone: '', groups: '', students: '',
-            rate: '', att: '', salary: grandTotal,
+            num: '',
+            fullName: 'ИТОГО',
+            phone: '',
+            groups: '',
+            students: '',
+            rate: '',
+            att: '',
+            salary: grandTotal,
         });
         totalRow.font = { bold: true };
         totalRow.getCell(8).numFmt = '#,##0 "сум"';
-        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEde9fe' } };
+        totalRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFEde9fe' },
+        };
         const buf = await wb.xlsx.writeBuffer();
         return Buffer.from(buf);
     }

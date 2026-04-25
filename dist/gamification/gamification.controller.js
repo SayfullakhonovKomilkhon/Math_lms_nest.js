@@ -63,7 +63,9 @@ let GamificationController = class GamificationController {
             const teacher = await this.prisma.teacher.findUnique({
                 where: { userId: req.user.id },
             });
-            const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+            const group = await this.prisma.group.findUnique({
+                where: { id: groupId },
+            });
             if (!teacher || group?.teacherId !== teacher.id) {
                 return [];
             }

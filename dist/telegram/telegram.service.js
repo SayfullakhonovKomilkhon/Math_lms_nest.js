@@ -103,7 +103,11 @@ let TelegramService = TelegramService_1 = class TelegramService {
             const chatId = String(ctx.chat.id);
             const user = await this.prisma.user.findFirst({
                 where: { telegramChatId: chatId },
-                include: { student: { include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
+                include: {
+                    student: {
+                        include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+                    },
+                },
             });
             if (!user || !user.student) {
                 await ctx.reply('❌ Аккаунт не привязан. Используйте /start для инструкций.');
@@ -142,14 +146,19 @@ let TelegramService = TelegramService_1 = class TelegramService {
                 await ctx.reply('📚 Нет домашних заданий.');
             }
             else {
-                const due = hw.dueDate ? `\nСрок: ${hw.dueDate.toLocaleDateString('ru-RU')}` : '';
+                const due = hw.dueDate
+                    ? `\nСрок: ${hw.dueDate.toLocaleDateString('ru-RU')}`
+                    : '';
                 await ctx.reply(`📚 Последнее ДЗ от ${hw.teacher.fullName}:\n\n${hw.text}${due}`);
             }
         });
     }
     generateCode() {
         const code = crypto.randomInt(100000, 999999).toString();
-        this.pendingCodes.set(code, { chatId: '', expiresAt: Date.now() + 10 * 60 * 1000 });
+        this.pendingCodes.set(code, {
+            chatId: '',
+            expiresAt: Date.now() + 10 * 60 * 1000,
+        });
         return code;
     }
     getChatIdForCode(code) {
@@ -167,7 +176,9 @@ let TelegramService = TelegramService_1 = class TelegramService {
         if (!this.bot)
             return;
         try {
-            await this.bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+            await this.bot.telegram.sendMessage(chatId, message, {
+                parse_mode: 'HTML',
+            });
         }
         catch (err) {
             this.logger.error(`Failed to send Telegram message to ${chatId}`, err);

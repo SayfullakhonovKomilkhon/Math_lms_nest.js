@@ -52,10 +52,18 @@ let NotificationsProcessor = NotificationsProcessor_1 = class NotificationsProce
     async processPaymentReminders() {
         const settings = await this.prisma.setting.findMany({
             where: {
-                key: { in: ['payment_reminder_days_1', 'payment_reminder_days_2', 'payment_reminder_days_3'] },
+                key: {
+                    in: [
+                        'payment_reminder_days_1',
+                        'payment_reminder_days_2',
+                        'payment_reminder_days_3',
+                    ],
+                },
             },
         });
-        const reminderDays = settings.map((s) => parseInt(s.value, 10)).filter((d) => !isNaN(d));
+        const reminderDays = settings
+            .map((s) => parseInt(s.value, 10))
+            .filter((d) => !isNaN(d));
         const now = new Date();
         const activeStudents = await this.prisma.student.findMany({
             where: { isActive: true },

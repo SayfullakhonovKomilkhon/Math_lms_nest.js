@@ -13,7 +13,10 @@ export class HealthService implements OnModuleDestroy {
   ) {
     this.redis = new Redis({
       host: this.configService.get<string>('REDIS_HOST') || 'localhost',
-      port: parseInt(this.configService.get<string>('REDIS_PORT') || '6379', 10),
+      port: parseInt(
+        this.configService.get<string>('REDIS_PORT') || '6379',
+        10,
+      ),
       password: this.configService.get<string>('REDIS_PASSWORD') || undefined,
       lazyConnect: true,
       maxRetriesPerRequest: 1,
@@ -42,7 +45,8 @@ export class HealthService implements OnModuleDestroy {
     }
 
     return {
-      status: database === 'connected' && redis === 'connected' ? 'ok' : 'degraded',
+      status:
+        database === 'connected' && redis === 'connected' ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       database,
       redis,
@@ -54,4 +58,3 @@ export class HealthService implements OnModuleDestroy {
     await this.redis.quit();
   }
 }
-

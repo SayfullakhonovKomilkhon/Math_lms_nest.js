@@ -14,7 +14,9 @@ export class LessonTopicsService {
   private async assertTeacherOwnsGroup(userId: string, groupId: string) {
     const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
     if (!teacher) throw new ForbiddenException('Teacher profile not found');
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+    });
     if (!group) throw new NotFoundException('Group not found');
     if (group.teacherId !== teacher.id)
       throw new ForbiddenException('You can only manage your own groups');
@@ -30,7 +32,7 @@ export class LessonTopicsService {
         teacherId: teacher.id,
         date: new Date(dto.date),
         topic: dto.topic,
-        materials: dto.materials as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        materials: (dto.materials as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       },
       include: {
         group: { select: { id: true, name: true } },
@@ -44,7 +46,9 @@ export class LessonTopicsService {
     user: { id: string; role: Role },
   ) {
     if (user.role === Role.STUDENT && query.groupId) {
-      const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+      const student = await this.prisma.student.findUnique({
+        where: { userId: user.id },
+      });
       if (!student || student.groupId !== query.groupId)
         throw new ForbiddenException('You can only view your own group topics');
     }

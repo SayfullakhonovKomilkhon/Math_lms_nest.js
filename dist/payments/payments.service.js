@@ -40,7 +40,9 @@ let PaymentsService = class PaymentsService {
         this.s3 = s3;
     }
     async create(dto, actorId) {
-        const student = await this.prisma.student.findUnique({ where: { id: dto.studentId } });
+        const student = await this.prisma.student.findUnique({
+            where: { id: dto.studentId },
+        });
         if (!student)
             throw new common_1.NotFoundException('Student not found');
         const payment = await this.prisma.payment.create({
@@ -48,7 +50,9 @@ let PaymentsService = class PaymentsService {
                 studentId: dto.studentId,
                 amount: dto.amount,
                 status: client_1.PaymentStatus.PENDING,
-                nextPaymentDate: dto.nextPaymentDate ? new Date(dto.nextPaymentDate) : null,
+                nextPaymentDate: dto.nextPaymentDate
+                    ? new Date(dto.nextPaymentDate)
+                    : null,
             },
             select: paymentSelect,
         });
@@ -58,7 +62,10 @@ let PaymentsService = class PaymentsService {
                 action: 'CREATE_PAYMENT',
                 entity: 'Payment',
                 entityId: payment.id,
-                details: { amount: dto.amount, studentId: dto.studentId },
+                details: {
+                    amount: dto.amount,
+                    studentId: dto.studentId,
+                },
             },
         });
         return payment;
@@ -87,14 +94,18 @@ let PaymentsService = class PaymentsService {
     }
     async findByStudent(studentId, user) {
         if (user.role === client_1.Role.STUDENT) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+            const student = await this.prisma.student.findUnique({
+                where: { userId: user.id },
+            });
             if (!student || student.id !== studentId)
                 throw new common_1.ForbiddenException('You can only view your own payments');
         }
         if (user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({ where: { userId: user.id } });
+            const parent = await this.prisma.parent.findUnique({
+                where: { userId: user.id },
+            });
             if (!parent || parent.studentId !== studentId)
-                throw new common_1.ForbiddenException('You can only view your child\'s payments');
+                throw new common_1.ForbiddenException("You can only view your child's payments");
         }
         return this.prisma.payment.findMany({
             where: { studentId },
@@ -142,7 +153,9 @@ let PaymentsService = class PaymentsService {
     async uploadReceipt(file, studentId, actorId) {
         if (!file)
             throw new common_1.BadRequestException('File is required');
-        const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+        const student = await this.prisma.student.findUnique({
+            where: { id: studentId },
+        });
         if (!student)
             throw new common_1.NotFoundException('Student not found');
         const receiptUrl = await this.s3.uploadFile(file, 'receipts');
@@ -213,7 +226,10 @@ let PaymentsService = class PaymentsService {
         return updated;
     }
     async getReceiptUrl(id) {
-        const payment = await this.prisma.payment.findUnique({ where: { id }, select: { receiptUrl: true } });
+        const payment = await this.prisma.payment.findUnique({
+            where: { id },
+            select: { receiptUrl: true },
+        });
         if (!payment)
             throw new common_1.NotFoundException('Payment not found');
         if (!payment.receiptUrl)

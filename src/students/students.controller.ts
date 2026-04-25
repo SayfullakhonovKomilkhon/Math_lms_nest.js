@@ -29,10 +29,7 @@ export class StudentsController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Create a new student' })
-  create(
-    @Body() dto: CreateStudentDto,
-    @CurrentUser('id') actorId: string,
-  ) {
+  create(@Body() dto: CreateStudentDto, @CurrentUser('id') actorId: string) {
     return this.studentsService.create(dto, actorId);
   }
 
@@ -97,20 +94,14 @@ export class StudentsController {
   @Patch(':id/remove-group')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Remove student from group' })
-  removeFromGroup(
-    @Param('id') id: string,
-    @CurrentUser('id') actorId: string,
-  ) {
+  removeFromGroup(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.studentsService.removeFromGroup(id, actorId);
   }
 
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Deactivate student' })
-  deactivate(
-    @Param('id') id: string,
-    @CurrentUser('id') actorId: string,
-  ) {
+  deactivate(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.studentsService.deactivate(id, actorId);
   }
 }

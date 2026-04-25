@@ -42,7 +42,9 @@ let HomeworkService = class HomeworkService {
     }
     async assertTeacherOwnsGroup(userId, groupId) {
         const teacher = await this.getTeacher(userId);
-        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: groupId },
+        });
         if (!group)
             throw new common_1.NotFoundException('Group not found');
         if (group.teacherId !== teacher.id)
@@ -70,7 +72,9 @@ let HomeworkService = class HomeworkService {
     }
     async findAll(groupId, user) {
         if (user.role === client_1.Role.STUDENT) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+            const student = await this.prisma.student.findUnique({
+                where: { userId: user.id },
+            });
             if (!student || student.groupId !== groupId)
                 throw new common_1.ForbiddenException('You can only view your own group homework');
         }
@@ -80,7 +84,7 @@ let HomeworkService = class HomeworkService {
                 include: { student: true },
             });
             if (!parent || parent.student.groupId !== groupId)
-                throw new common_1.ForbiddenException('You can only view your child\'s group homework');
+                throw new common_1.ForbiddenException("You can only view your child's group homework");
         }
         return this.prisma.homework.findMany({
             where: { groupId },
@@ -90,7 +94,9 @@ let HomeworkService = class HomeworkService {
     }
     async findLatest(groupId, user) {
         if (user?.role === client_1.Role.STUDENT) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+            const student = await this.prisma.student.findUnique({
+                where: { userId: user.id },
+            });
             if (!student || student.groupId !== groupId) {
                 throw new common_1.ForbiddenException('You can only view your own group homework');
             }

@@ -55,7 +55,9 @@ let AuthService = class AuthService {
         this.configService = configService;
     }
     async login(dto) {
-        const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        const user = await this.prisma.user.findUnique({
+            where: { email: dto.email },
+        });
         if (!user || !user.isActive) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }

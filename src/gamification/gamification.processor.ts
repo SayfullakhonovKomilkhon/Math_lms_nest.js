@@ -23,7 +23,10 @@ export class GamificationProcessor extends WorkerHost {
     // Calculate for the previous month
     let month = now.getMonth(); // 0-indexed, so current month - 1
     let year = now.getFullYear();
-    if (month === 0) { month = 12; year -= 1; }
+    if (month === 0) {
+      month = 12;
+      year -= 1;
+    }
 
     this.logger.log(`Scheduling monthly achievements for ${month}/${year}`);
     await this.gamificationQueue.add('calculate-monthly', { month, year });
@@ -34,11 +37,18 @@ export class GamificationProcessor extends WorkerHost {
       const { month, year } = job.data as { month: number; year: number };
       this.logger.log(`Calculating monthly achievements for ${month}/${year}`);
       try {
-        const result = await this.gamificationService.calculateMonthlyAchievements(month, year);
+        const result =
+          await this.gamificationService.calculateMonthlyAchievements(
+            month,
+            year,
+          );
         this.logger.log(`Awarded ${result.awarded} achievements`);
         return result;
       } catch (err) {
-        console.error(`[GamificationProcessor] Error processing job ${job.id}:`, err);
+        console.error(
+          `[GamificationProcessor] Error processing job ${job.id}:`,
+          err,
+        );
         throw err;
       }
     }

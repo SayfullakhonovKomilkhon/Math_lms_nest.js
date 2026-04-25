@@ -39,10 +39,7 @@ export class PaymentsController {
   @Post()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create payment record' })
-  create(
-    @Body() dto: CreatePaymentDto,
-    @CurrentUser('id') actorId: string,
-  ) {
+  create(@Body() dto: CreatePaymentDto, @CurrentUser('id') actorId: string) {
     return this.service.create(dto, actorId);
   }
 
@@ -55,7 +52,9 @@ export class PaymentsController {
 
   @Get('debtors')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get students with no confirmed payment this month' })
+  @ApiOperation({
+    summary: 'Get students with no confirmed payment this month',
+  })
   getDebtors() {
     return this.service.getDebtors();
   }
@@ -112,10 +111,7 @@ export class PaymentsController {
   @Patch(':id/confirm')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Confirm payment' })
-  confirm(
-    @Param('id') id: string,
-    @CurrentUser('id') actorId: string,
-  ) {
+  confirm(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.service.confirm(id, actorId);
   }
 

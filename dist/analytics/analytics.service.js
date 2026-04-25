@@ -14,8 +14,18 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const MONTH_NAMES = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+    'Январь',
+    'Февраль',
+    'Март',
+    'Апрель',
+    'Май',
+    'Июнь',
+    'Июль',
+    'Август',
+    'Сентябрь',
+    'Октябрь',
+    'Ноябрь',
+    'Декабрь',
 ];
 let AnalyticsService = class AnalyticsService {
     constructor(prisma) {
@@ -33,9 +43,14 @@ let AnalyticsService = class AnalyticsService {
             this.prisma.student.count({ where: { isActive: true } }),
             this.prisma.group.count({ where: { isActive: true } }),
             this.prisma.teacher.count({ where: { isActive: true } }),
-            this.prisma.student.count({ where: { enrolledAt: { gte: startOfWeek } } }),
+            this.prisma.student.count({
+                where: { enrolledAt: { gte: startOfWeek } },
+            }),
             this.prisma.payment.aggregate({
-                where: { status: client_1.PaymentStatus.CONFIRMED, confirmedAt: { gte: startOfMonth } },
+                where: {
+                    status: client_1.PaymentStatus.CONFIRMED,
+                    confirmedAt: { gte: startOfMonth },
+                },
                 _sum: { amount: true },
             }),
             this.prisma.payment.aggregate({
@@ -46,7 +61,10 @@ let AnalyticsService = class AnalyticsService {
                 _sum: { amount: true },
             }),
             this.prisma.payment.findMany({
-                where: { status: client_1.PaymentStatus.CONFIRMED, confirmedAt: { gte: startOfMonth } },
+                where: {
+                    status: client_1.PaymentStatus.CONFIRMED,
+                    confirmedAt: { gte: startOfMonth },
+                },
                 select: { studentId: true },
             }),
             this.prisma.student.aggregate({
@@ -64,9 +82,10 @@ let AnalyticsService = class AnalyticsService {
         const avgFee = Number(allActiveStudents._avg.monthlyFee ?? 0);
         const nextMonthForecast = totalStudents * avgFee;
         let present = 0;
-        let total = thisMonthAttendance.length;
+        const total = thisMonthAttendance.length;
         for (const a of thisMonthAttendance) {
-            if (a.status === client_1.AttendanceStatus.PRESENT || a.status === client_1.AttendanceStatus.LATE)
+            if (a.status === client_1.AttendanceStatus.PRESENT ||
+                a.status === client_1.AttendanceStatus.LATE)
                 present++;
         }
         const centerAttendancePercent = total > 0 ? Math.round((present / total) * 100) : 0;
@@ -104,7 +123,9 @@ let AnalyticsService = class AnalyticsService {
     }
     async getStudentsGrowth(query) {
         const period = query.period ?? 'monthly';
-        const from = query.from ? new Date(query.from) : new Date(new Date().getFullYear(), 0, 1);
+        const from = query.from
+            ? new Date(query.from)
+            : new Date(new Date().getFullYear(), 0, 1);
         const to = query.to ? new Date(query.to) : new Date();
         const students = await this.prisma.student.findMany({
             where: { enrolledAt: { gte: from, lte: to } },
@@ -156,7 +177,13 @@ let AnalyticsService = class AnalyticsService {
         const records = await this.prisma.attendance.findMany({
             where,
             include: {
-                group: { select: { id: true, name: true, teacher: { select: { fullName: true } } } },
+                group: {
+                    select: {
+                        id: true,
+                        name: true,
+                        teacher: { select: { fullName: true } },
+                    },
+                },
             },
         });
         let present = 0, absent = 0, late = 0;
@@ -177,7 +204,9 @@ let AnalyticsService = class AnalyticsService {
                 groupMap.set(key, {
                     groupName: r.group.name,
                     teacherName: r.group.teacher.fullName,
-                    p: 0, a: 0, l: 0,
+                    p: 0,
+                    a: 0,
+                    l: 0,
                 });
             }
             const entry = groupMap.get(key);
@@ -243,11 +272,16 @@ let AnalyticsService = class AnalyticsService {
             },
         });
         if (grades.length === 0) {
-            return { centerAverage: 0, byGroup: [], byTeacher: [], topStudents: [], byMonth: [] };
+            return {
+                centerAverage: 0,
+                byGroup: [],
+                byTeacher: [],
+                topStudents: [],
+                byMonth: [],
+            };
         }
         const toPercent = (score, max) => max > 0 ? (score / max) * 100 : 0;
-        const centerAverage = grades.reduce((sum, g) => sum + toPercent(Number(g.score), Number(g.maxScore)), 0) /
-            grades.length;
+        const centerAverage = grades.reduce((sum, g) => sum + toPercent(Number(g.score), Number(g.maxScore)), 0) / grades.length;
         const groupMap = new Map();
         for (const g of grades) {
             if (!groupMap.has(g.groupId)) {
@@ -266,7 +300,7 @@ let AnalyticsService = class AnalyticsService {
             groupId,
             groupName: v.groupName,
             teacherName: v.teacherName,
-            averageScore: Math.round(v.scores.reduce((a, b) => a + b, 0) / v.scores.length * 10) / 10,
+            averageScore: Math.round((v.scores.reduce((a, b) => a + b, 0) / v.scores.length) * 10) / 10,
             totalWorks: v.scores.length,
         }));
         const teacherMap = new Map();
@@ -290,7 +324,7 @@ let AnalyticsService = class AnalyticsService {
             teacherName: v.teacherName,
             groupsCount: v.groupIds.size,
             studentsCount: v.studentIds.size,
-            averageScore: Math.round(v.scores.reduce((a, b) => a + b, 0) / v.scores.length * 10) / 10,
+            averageScore: Math.round((v.scores.reduce((a, b) => a + b, 0) / v.scores.length) * 10) / 10,
         }));
         const studentMap = new Map();
         for (const g of grades) {
@@ -301,14 +335,16 @@ let AnalyticsService = class AnalyticsService {
                     scores: [],
                 });
             }
-            studentMap.get(g.studentId).scores.push(toPercent(Number(g.score), Number(g.maxScore)));
+            studentMap
+                .get(g.studentId)
+                .scores.push(toPercent(Number(g.score), Number(g.maxScore)));
         }
         const topStudents = Array.from(studentMap.entries())
             .map(([studentId, v]) => ({
             studentId,
             fullName: v.fullName,
             groupName: v.groupName,
-            averageScore: Math.round(v.scores.reduce((a, b) => a + b, 0) / v.scores.length * 10) / 10,
+            averageScore: Math.round((v.scores.reduce((a, b) => a + b, 0) / v.scores.length) * 10) / 10,
             totalWorks: v.scores.length,
         }))
             .sort((a, b) => b.averageScore - a.averageScore)
@@ -324,7 +360,8 @@ let AnalyticsService = class AnalyticsService {
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([key, scores]) => ({
             month: MONTH_NAMES[parseInt(key.split('-')[1]) - 1],
-            averageScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10,
+            averageScore: Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) /
+                10,
         }));
         return {
             centerAverage: Math.round(centerAverage * 10) / 10,
@@ -339,7 +376,10 @@ let AnalyticsService = class AnalyticsService {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const [confirmedThisMonth, allActiveStudents] = await Promise.all([
             this.prisma.payment.findMany({
-                where: { status: client_1.PaymentStatus.CONFIRMED, confirmedAt: { gte: startOfMonth } },
+                where: {
+                    status: client_1.PaymentStatus.CONFIRMED,
+                    confirmedAt: { gte: startOfMonth },
+                },
                 select: { studentId: true },
             }),
             this.prisma.student.findMany({

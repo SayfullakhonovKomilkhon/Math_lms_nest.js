@@ -126,7 +126,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('attendance/excel'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Export attendance records to Excel (with group summary)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Export attendance records to Excel (with group summary)',
+    }),
     (0, swagger_1.ApiProduces)(XLSX_MIME),
     __param(0, (0, common_1.Query)()),
     __param(1, (0, common_1.Res)()),

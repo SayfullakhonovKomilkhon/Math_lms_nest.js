@@ -18,10 +18,7 @@ let GamificationModule = class GamificationModule {
 exports.GamificationModule = GamificationModule;
 exports.GamificationModule = GamificationModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            prisma_module_1.PrismaModule,
-            bullmq_1.BullModule.registerQueue({ name: 'gamification' }),
-        ],
+        imports: [prisma_module_1.PrismaModule, bullmq_1.BullModule.registerQueue({ name: 'gamification' })],
         providers: [gamification_service_1.GamificationService, gamification_processor_1.GamificationProcessor],
         controllers: [gamification_controller_1.GamificationController],
         exports: [gamification_service_1.GamificationService],

@@ -10,13 +10,37 @@ const DEFAULT_SETTINGS: { key: string; value: string; label: string }[] = [
   { key: 'centerAddress', value: '', label: 'Адрес центра' },
   { key: 'currency', value: 'UZS', label: 'Валюта' },
   { key: 'monthlyFeeDefault', value: '0', label: 'Ежемес. взнос по умолчанию' },
-  { key: 'default_rate_per_student', value: '50000', label: 'Ставка за ученика по умолчанию (сум)' },
+  {
+    key: 'default_rate_per_student',
+    value: '50000',
+    label: 'Ставка за ученика по умолчанию (сум)',
+  },
   { key: 'timezone', value: 'Asia/Tashkent', label: 'Часовой пояс' },
-  { key: 'workingDays', value: 'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY', label: 'Рабочие дни' },
-  { key: 'academic_year_start', value: '09-01', label: 'Начало учебного года (MM-DD)' },
-  { key: 'payment_reminder_days_1', value: '1', label: 'Напомин. об оплате: 1-й день месяца' },
-  { key: 'payment_reminder_days_2', value: '10', label: 'Напомин. об оплате: 2-й день месяца' },
-  { key: 'payment_reminder_days_3', value: '20', label: 'Напомин. об оплате: 3-й день месяца' },
+  {
+    key: 'workingDays',
+    value: 'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY',
+    label: 'Рабочие дни',
+  },
+  {
+    key: 'academic_year_start',
+    value: '09-01',
+    label: 'Начало учебного года (MM-DD)',
+  },
+  {
+    key: 'payment_reminder_days_1',
+    value: '1',
+    label: 'Напомин. об оплате: 1-й день месяца',
+  },
+  {
+    key: 'payment_reminder_days_2',
+    value: '10',
+    label: 'Напомин. об оплате: 2-й день месяца',
+  },
+  {
+    key: 'payment_reminder_days_3',
+    value: '20',
+    label: 'Напомин. об оплате: 3-й день месяца',
+  },
 ];
 
 @Injectable()

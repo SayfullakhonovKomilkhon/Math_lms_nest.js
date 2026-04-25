@@ -81,7 +81,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('debtors'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Get students with no confirmed payment this month' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get students with no confirmed payment this month',
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)

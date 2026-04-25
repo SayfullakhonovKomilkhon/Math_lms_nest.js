@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -20,7 +24,10 @@ export class SalaryService {
 
     if (!teacher) throw new ForbiddenException('Teacher profile not found');
 
-    const studentCount = teacher.groups.reduce((sum, g) => sum + g._count.students, 0);
+    const studentCount = teacher.groups.reduce(
+      (sum, g) => sum + g._count.students,
+      0,
+    );
     const rate = Number(teacher.ratePerStudent);
     const totalSalary = studentCount * rate;
 
@@ -53,7 +60,10 @@ export class SalaryService {
     });
 
     return teachers.map((t) => {
-      const studentCount = t.groups.reduce((sum, g) => sum + g._count.students, 0);
+      const studentCount = t.groups.reduce(
+        (sum, g) => sum + g._count.students,
+        0,
+      );
       const rate = Number(t.ratePerStudent);
       return {
         teacherId: t.id,
@@ -68,28 +78,52 @@ export class SalaryService {
   // ── History ──────────────────────────────────────────────────────────────
 
   async getHistory(teacherId: string) {
-    const teacher = await this.prisma.teacher.findUnique({ where: { id: teacherId } });
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+    });
     if (!teacher) throw new NotFoundException('Teacher not found');
 
     // Build 6-month rolling history from attendance/payments data
-    const months: { month: string; studentsCount: number; ratePerStudent: number; totalSalary: number }[] = [];
+    const months: {
+      month: string;
+      studentsCount: number;
+      ratePerStudent: number;
+      totalSalary: number;
+    }[] = [];
 
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      const monthLabel = d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short' });
+      const monthEnd = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+      );
+      const monthLabel = d.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'short',
+      });
 
       if (i === 0) {
         // Current month — live calculation
         const groups = await this.prisma.group.findMany({
           where: { teacherId, isActive: true },
-          include: { _count: { select: { students: { where: { isActive: true } } } } },
+          include: {
+            _count: { select: { students: { where: { isActive: true } } } },
+          },
         });
         const studentsCount = groups.reduce((s, g) => s + g._count.students, 0);
         const rate = Number(teacher.ratePerStudent);
-        months.push({ month: monthLabel, studentsCount, ratePerStudent: rate, totalSalary: studentsCount * rate });
+        months.push({
+          month: monthLabel,
+          studentsCount,
+          ratePerStudent: rate,
+          totalSalary: studentsCount * rate,
+        });
       } else {
         // Historical — count active students in that period via attendance
         const uniqueStudents = await this.prisma.attendance.findMany({
@@ -102,7 +136,12 @@ export class SalaryService {
         });
         const rate = Number(teacher.ratePerStudent);
         const studentsCount = uniqueStudents.length;
-        months.push({ month: monthLabel, studentsCount, ratePerStudent: rate, totalSalary: studentsCount * rate });
+        months.push({
+          month: monthLabel,
+          studentsCount,
+          ratePerStudent: rate,
+          totalSalary: studentsCount * rate,
+        });
       }
     }
 
@@ -117,7 +156,9 @@ export class SalaryService {
   // ── Update rate ──────────────────────────────────────────────────────────
 
   async updateRate(teacherId: string, rate: number, actorId: string) {
-    const teacher = await this.prisma.teacher.findUnique({ where: { id: teacherId } });
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+    });
     if (!teacher) throw new NotFoundException('Teacher not found');
 
     const updated = await this.prisma.teacher.update({
@@ -132,7 +173,11 @@ export class SalaryService {
         action: 'UPDATE',
         entity: 'Teacher',
         entityId: teacherId,
-        details: { field: 'ratePerStudent', oldValue: Number(teacher.ratePerStudent), newValue: rate } as any,
+        details: {
+          field: 'ratePerStudent',
+          oldValue: Number(teacher.ratePerStudent),
+          newValue: rate,
+        } as any,
       },
     });
 

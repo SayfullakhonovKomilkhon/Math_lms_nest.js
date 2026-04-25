@@ -40,7 +40,9 @@ export class GamificationService {
       const attendanceRate = totalLessons > 0 ? present / totalLessons : 0;
 
       const gradeValues = s.grades.map((g) =>
-        Number(g.maxScore) > 0 ? (Number(g.score) / Number(g.maxScore)) * 100 : 0,
+        Number(g.maxScore) > 0
+          ? (Number(g.score) / Number(g.maxScore)) * 100
+          : 0,
       );
       const avgScore =
         gradeValues.length > 0
@@ -55,7 +57,12 @@ export class GamificationService {
     // Sort by score descending
     scored.sort((a, b) => b.score - a.score);
 
-    const results: Array<{ studentId: string; place: number; title: string; icon: string }> = [];
+    const results: Array<{
+      studentId: string;
+      place: number;
+      title: string;
+      icon: string;
+    }> = [];
 
     for (let i = 0; i < Math.min(scored.length, 3); i++) {
       const { student } = scored[i];
@@ -149,7 +156,11 @@ export class GamificationService {
     return { month, year, awarded: results.length, results };
   }
 
-  async checkSpecialAchievements(studentId: string, month: number, year: number) {
+  async checkSpecialAchievements(
+    studentId: string,
+    month: number,
+    year: number,
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       select: { id: true, gender: true },
@@ -169,12 +180,19 @@ export class GamificationService {
     await this.checkNoAbsencesYear(studentId, year);
   }
 
-  private async checkIronAttendance(studentId: string, month: number, year: number) {
+  private async checkIronAttendance(
+    studentId: string,
+    month: number,
+    year: number,
+  ) {
     let streak = 0;
     for (let i = 0; i < 3; i++) {
       let m = month - i;
       let y = year;
-      if (m <= 0) { m += 12; y -= 1; }
+      if (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
 
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 0, 23, 59, 59);
@@ -193,12 +211,19 @@ export class GamificationService {
     }
   }
 
-  private async checkPerfectScore(studentId: string, month: number, year: number) {
+  private async checkPerfectScore(
+    studentId: string,
+    month: number,
+    year: number,
+  ) {
     let streak = 0;
     for (let i = 0; i < 2; i++) {
       let m = month - i;
       let y = year;
-      if (m <= 0) { m += 12; y -= 1; }
+      if (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
 
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 0, 23, 59, 59);
@@ -208,8 +233,13 @@ export class GamificationService {
       });
       if (grades.length === 0) break;
       const avg =
-        grades.reduce((s, g) =>
-          s + (Number(g.maxScore) > 0 ? (Number(g.score) / Number(g.maxScore)) * 100 : 0), 0,
+        grades.reduce(
+          (s, g) =>
+            s +
+            (Number(g.maxScore) > 0
+              ? (Number(g.score) / Number(g.maxScore)) * 100
+              : 0),
+          0,
         ) / grades.length;
       if (avg < 95) break;
       streak++;
@@ -220,12 +250,19 @@ export class GamificationService {
     }
   }
 
-  private async checkThreeMonthsStreak(studentId: string, month: number, year: number) {
+  private async checkThreeMonthsStreak(
+    studentId: string,
+    month: number,
+    year: number,
+  ) {
     let streak = 0;
     for (let i = 0; i < 3; i++) {
       let m = month - i;
       let y = year;
-      if (m <= 0) { m += 12; y -= 1; }
+      if (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
 
       const achievement = await this.prisma.achievement.findFirst({
         where: {
@@ -329,7 +366,12 @@ export class GamificationService {
   async getStudentAchievements(studentId: string) {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      select: { id: true, fullName: true, gender: true, group: { select: { name: true } } },
+      select: {
+        id: true,
+        fullName: true,
+        gender: true,
+        group: { select: { name: true } },
+      },
     });
     if (!student) return null;
 
@@ -338,12 +380,17 @@ export class GamificationService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const monthly = achievements.filter((a) => a.type === AchievementType.MONTHLY);
-    const specials = achievements.filter((a) => a.type === AchievementType.SPECIAL);
+    const monthly = achievements.filter(
+      (a) => a.type === AchievementType.MONTHLY,
+    );
+    const specials = achievements.filter(
+      (a) => a.type === AchievementType.SPECIAL,
+    );
 
     const monthGrid = MONTHLY_ACHIEVEMENTS.map((mc) => {
       const found = monthly.find((a) => a.month === mc.month);
-      if (!found) return { month: mc.month, monthName: mc.monthName, unlocked: false };
+      if (!found)
+        return { month: mc.month, monthName: mc.monthName, unlocked: false };
       return {
         month: mc.month,
         monthName: mc.monthName,
@@ -386,7 +433,9 @@ export class GamificationService {
         goldCount,
         silverCount,
         bronzeCount,
-        totalAchievements: monthly.length + specials.filter((_, i) => specialAchievements[i]?.unlocked).length,
+        totalAchievements:
+          monthly.length +
+          specials.filter((_, i) => specialAchievements[i]?.unlocked).length,
       },
     };
   }

@@ -182,13 +182,17 @@ let ParentsService = class ParentsService {
         });
         return grades.map((g) => ({
             ...g,
-            scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+            scorePercent: Number(g.maxScore) > 0
+                ? Math.round((Number(g.score) / Number(g.maxScore)) * 100)
+                : 0,
             groupName: g.group.name,
         }));
     }
     async getChildHomework(userId) {
         const studentId = await this.getChildByIdGuard(userId);
-        const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+        const student = await this.prisma.student.findUnique({
+            where: { id: studentId },
+        });
         if (!student || !student.groupId)
             return [];
         return this.prisma.homework.findMany({
@@ -202,7 +206,9 @@ let ParentsService = class ParentsService {
     }
     async getChildPayments(userId) {
         const studentId = await this.getChildByIdGuard(userId);
-        const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+        const student = await this.prisma.student.findUnique({
+            where: { id: studentId },
+        });
         return this.paymentsService.findMy(student.userId);
     }
     async uploadChildReceipt(userId, file) {

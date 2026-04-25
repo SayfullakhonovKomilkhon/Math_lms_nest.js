@@ -116,16 +116,19 @@ export class ParentsService {
     return parent.studentId;
   }
 
-  async getChildAttendance(userId: string, query: { from?: string; to?: string }) {
+  async getChildAttendance(
+    userId: string,
+    query: { from?: string; to?: string },
+  ) {
     const studentId = await this.getChildByIdGuard(userId);
     const where: any = { studentId };
-    
+
     if (query.from || query.to) {
       where.date = {};
       if (query.from) where.date.gte = new Date(query.from);
       if (query.to) where.date.lte = new Date(query.to);
     }
-    
+
     return this.prisma.attendance.findMany({
       where,
       include: { group: { select: { name: true } } },
@@ -133,17 +136,20 @@ export class ParentsService {
     });
   }
 
-  async getChildGrades(userId: string, query: { from?: string; to?: string; lessonType?: string }) {
+  async getChildGrades(
+    userId: string,
+    query: { from?: string; to?: string; lessonType?: string },
+  ) {
     const studentId = await this.getChildByIdGuard(userId);
     const where: any = { studentId };
-    
+
     if (query.lessonType) where.lessonType = query.lessonType;
     if (query.from || query.to) {
       where.date = {};
       if (query.from) where.date.gte = new Date(query.from);
       if (query.to) where.date.lte = new Date(query.to);
     }
-    
+
     const grades = await this.prisma.grade.findMany({
       where,
       include: { group: { select: { name: true } } },
@@ -152,16 +158,21 @@ export class ParentsService {
 
     return grades.map((g) => ({
       ...g,
-      scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+      scorePercent:
+        Number(g.maxScore) > 0
+          ? Math.round((Number(g.score) / Number(g.maxScore)) * 100)
+          : 0,
       groupName: g.group.name,
     }));
   }
 
   async getChildHomework(userId: string) {
     const studentId = await this.getChildByIdGuard(userId);
-    const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
     if (!student || !student.groupId) return [];
-    
+
     return this.prisma.homework.findMany({
       where: { groupId: student.groupId },
       orderBy: { createdAt: 'desc' },
@@ -174,10 +185,12 @@ export class ParentsService {
 
   async getChildPayments(userId: string) {
     const studentId = await this.getChildByIdGuard(userId);
-    // Reuse PaymentsService findMy logic but for the child. 
+    // Reuse PaymentsService findMy logic but for the child.
     // BUT findMy in PaymentsService takes userId, not studentId.
     // I can just reuse student's user.id!
-    const student = await this.prisma.student.findUnique({ where: { id: studentId } });
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
     return this.paymentsService.findMy(student!.userId);
   }
 

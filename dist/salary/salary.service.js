@@ -72,7 +72,9 @@ let SalaryService = class SalaryService {
         });
     }
     async getHistory(teacherId) {
-        const teacher = await this.prisma.teacher.findUnique({ where: { id: teacherId } });
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+        });
         if (!teacher)
             throw new common_1.NotFoundException('Teacher not found');
         const months = [];
@@ -81,15 +83,25 @@ let SalaryService = class SalaryService {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
             const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-            const monthLabel = d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short' });
+            const monthLabel = d.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'short',
+            });
             if (i === 0) {
                 const groups = await this.prisma.group.findMany({
                     where: { teacherId, isActive: true },
-                    include: { _count: { select: { students: { where: { isActive: true } } } } },
+                    include: {
+                        _count: { select: { students: { where: { isActive: true } } } },
+                    },
                 });
                 const studentsCount = groups.reduce((s, g) => s + g._count.students, 0);
                 const rate = Number(teacher.ratePerStudent);
-                months.push({ month: monthLabel, studentsCount, ratePerStudent: rate, totalSalary: studentsCount * rate });
+                months.push({
+                    month: monthLabel,
+                    studentsCount,
+                    ratePerStudent: rate,
+                    totalSalary: studentsCount * rate,
+                });
             }
             else {
                 const uniqueStudents = await this.prisma.attendance.findMany({
@@ -102,7 +114,12 @@ let SalaryService = class SalaryService {
                 });
                 const rate = Number(teacher.ratePerStudent);
                 const studentsCount = uniqueStudents.length;
-                months.push({ month: monthLabel, studentsCount, ratePerStudent: rate, totalSalary: studentsCount * rate });
+                months.push({
+                    month: monthLabel,
+                    studentsCount,
+                    ratePerStudent: rate,
+                    totalSalary: studentsCount * rate,
+                });
             }
         }
         return {
@@ -113,7 +130,9 @@ let SalaryService = class SalaryService {
         };
     }
     async updateRate(teacherId, rate, actorId) {
-        const teacher = await this.prisma.teacher.findUnique({ where: { id: teacherId } });
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+        });
         if (!teacher)
             throw new common_1.NotFoundException('Teacher not found');
         const updated = await this.prisma.teacher.update({
@@ -127,7 +146,11 @@ let SalaryService = class SalaryService {
                 action: 'UPDATE',
                 entity: 'Teacher',
                 entityId: teacherId,
-                details: { field: 'ratePerStudent', oldValue: Number(teacher.ratePerStudent), newValue: rate },
+                details: {
+                    field: 'ratePerStudent',
+                    oldValue: Number(teacher.ratePerStudent),
+                    newValue: rate,
+                },
             },
         });
         return updated;

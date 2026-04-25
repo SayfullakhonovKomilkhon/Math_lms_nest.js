@@ -25,7 +25,9 @@ let GradesService = class GradesService {
     }
     async assertTeacherOwnsGroup(userId, groupId) {
         const teacher = await this.getTeacherOrThrow(userId);
-        const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: groupId },
+        });
         if (!group)
             throw new common_1.NotFoundException('Group not found');
         if (group.teacherId !== teacher.id)
@@ -165,7 +167,8 @@ let GradesService = class GradesService {
                 continue;
             const entry = studentMap.get(a.studentId);
             entry.totalDays++;
-            if (a.status === client_1.AttendanceStatus.PRESENT || a.status === client_1.AttendanceStatus.LATE)
+            if (a.status === client_1.AttendanceStatus.PRESENT ||
+                a.status === client_1.AttendanceStatus.LATE)
                 entry.presentDays++;
         }
         const sorted = Array.from(studentMap.values())
@@ -176,9 +179,7 @@ let GradesService = class GradesService {
                 ? Math.round((s.totalScore / s.totalMax) * 100 * 100) / 100
                 : 0,
             totalWorks: s.count,
-            attendancePercent: s.totalDays > 0
-                ? Math.round((s.presentDays / s.totalDays) * 100)
-                : 0,
+            attendancePercent: s.totalDays > 0 ? Math.round((s.presentDays / s.totalDays) * 100) : 0,
         }))
             .sort((a, b) => b.averageScore - a.averageScore)
             .map((s, i) => ({ place: i + 1, ...s }));
@@ -186,14 +187,18 @@ let GradesService = class GradesService {
     }
     async getStudentAverage(studentId, query, user) {
         if (user.role === client_1.Role.STUDENT) {
-            const student = await this.prisma.student.findUnique({ where: { userId: user.id } });
+            const student = await this.prisma.student.findUnique({
+                where: { userId: user.id },
+            });
             if (!student || student.id !== studentId)
                 throw new common_1.ForbiddenException('You can only view your own grades');
         }
         if (user.role === client_1.Role.PARENT) {
-            const parent = await this.prisma.parent.findUnique({ where: { userId: user.id } });
+            const parent = await this.prisma.parent.findUnique({
+                where: { userId: user.id },
+            });
             if (!parent || parent.studentId !== studentId)
-                throw new common_1.ForbiddenException('You can only view your child\'s grades');
+                throw new common_1.ForbiddenException("You can only view your child's grades");
         }
         const where = { studentId };
         if (query.lessonType)
@@ -238,7 +243,9 @@ let GradesService = class GradesService {
         });
         return grades.map((g) => ({
             ...g,
-            scorePercent: Number(g.maxScore) > 0 ? Math.round((Number(g.score) / Number(g.maxScore)) * 100) : 0,
+            scorePercent: Number(g.maxScore) > 0
+                ? Math.round((Number(g.score) / Number(g.maxScore)) * 100)
+                : 0,
             groupName: g.group.name,
         }));
     }
@@ -282,15 +289,20 @@ let GradesService = class GradesService {
             t.max += gMax;
             t.count++;
         }
-        stats.averageScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 100 * 100) / 100 : 0;
+        stats.averageScore =
+            totalMax > 0 ? Math.round((totalScore / totalMax) * 100 * 100) / 100 : 0;
         stats.byMonth = Array.from(byMonthMap.entries()).map(([month, data]) => ({
             month,
-            averageScore: data.max > 0 ? Math.round((data.total / data.max) * 100 * 100) / 100 : 0,
+            averageScore: data.max > 0
+                ? Math.round((data.total / data.max) * 100 * 100) / 100
+                : 0,
         }));
         stats.byType = Array.from(byTypeMap.entries()).map(([lessonType, data]) => ({
             lessonType,
             count: data.count,
-            averageScore: data.max > 0 ? Math.round((data.total / data.max) * 100 * 100) / 100 : 0,
+            averageScore: data.max > 0
+                ? Math.round((data.total / data.max) * 100 * 100) / 100
+                : 0,
         }));
         return stats;
     }
@@ -301,11 +313,25 @@ let GradesService = class GradesService {
         if (!student)
             throw new common_1.NotFoundException('Student profile not found');
         if (!student.groupId) {
-            return { myPlace: 0, totalStudents: 0, myAverageScore: 0, isVisible: false, rating: [] };
+            return {
+                myPlace: 0,
+                totalStudents: 0,
+                myAverageScore: 0,
+                isVisible: false,
+                rating: [],
+            };
         }
-        const group = await this.prisma.group.findUnique({ where: { id: student.groupId } });
+        const group = await this.prisma.group.findUnique({
+            where: { id: student.groupId },
+        });
         if (!group) {
-            return { myPlace: 0, totalStudents: 0, myAverageScore: 0, isVisible: false, rating: [] };
+            return {
+                myPlace: 0,
+                totalStudents: 0,
+                myAverageScore: 0,
+                isVisible: false,
+                rating: [],
+            };
         }
         const ratingList = await this.getRating(student.groupId, { period: query.period }, { id: userId, role: client_1.Role.STUDENT });
         const myEntry = ratingList.find((r) => r.studentId === student.id);

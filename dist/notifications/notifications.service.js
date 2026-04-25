@@ -64,9 +64,15 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         const message = daysLeft > 0
             ? `💳 До оплаты осталось ${daysLeft} дней. Сумма: ${amount.toLocaleString('ru-RU')} сум`
             : `⚠️ Срок оплаты прошёл. Сумма: ${amount.toLocaleString('ru-RU')} сум`;
-        await this.sendToUser(student.userId, { type: client_1.NotificationType.PAYMENT, message });
+        await this.sendToUser(student.userId, {
+            type: client_1.NotificationType.PAYMENT,
+            message,
+        });
         if (student.parent) {
-            await this.sendToUser(student.parent.userId, { type: client_1.NotificationType.PAYMENT, message });
+            await this.sendToUser(student.parent.userId, {
+                type: client_1.NotificationType.PAYMENT,
+                message,
+            });
         }
     }
     async sendAbsenceAlert(studentId, date) {
@@ -131,7 +137,10 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         const message = `📚 Новое домашнее задание от ${homework.teacher.fullName}`;
         const userIds = students.map((s) => s.userId);
         if (userIds.length > 0) {
-            await this.sendToMany(userIds, { type: client_1.NotificationType.HOMEWORK, message });
+            await this.sendToMany(userIds, {
+                type: client_1.NotificationType.HOMEWORK,
+                message,
+            });
         }
     }
     async getNotifications(userId, params) {

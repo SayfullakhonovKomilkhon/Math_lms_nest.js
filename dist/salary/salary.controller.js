@@ -52,7 +52,9 @@ exports.SalaryController = SalaryController;
 __decorate([
     (0, common_1.Get)('my'),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER),
-    (0, swagger_1.ApiOperation)({ summary: 'Get current teacher salary based on active students' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get current teacher salary based on active students',
+    }),
     __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

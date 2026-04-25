@@ -14,8 +14,7 @@ export class UpdateMeDto {
   newPassword?: string;
 
   @ApiProperty({
-    description:
-      'Current password, required when changing email or password',
+    description: 'Current password, required when changing email or password',
   })
   @IsString()
   currentPassword: string;

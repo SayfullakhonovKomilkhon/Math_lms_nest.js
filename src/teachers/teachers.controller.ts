@@ -27,10 +27,7 @@ export class TeachersController {
   @Post()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new teacher' })
-  create(
-    @Body() dto: CreateTeacherDto,
-    @CurrentUser('id') actorId: string,
-  ) {
+  create(@Body() dto: CreateTeacherDto, @CurrentUser('id') actorId: string) {
     return this.teachersService.create(dto, actorId);
   }
 
@@ -62,10 +59,7 @@ export class TeachersController {
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Deactivate teacher' })
-  deactivate(
-    @Param('id') id: string,
-    @CurrentUser('id') actorId: string,
-  ) {
+  deactivate(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.teachersService.deactivate(id, actorId);
   }
 }

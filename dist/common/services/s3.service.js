@@ -15,7 +15,12 @@ const config_1 = require("@nestjs/config");
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const uuid_1 = require("uuid");
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const ALLOWED_MIME_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MIME_TYPE_TO_EXTENSION = {
     'image/jpeg': 'jpg',
@@ -26,7 +31,8 @@ const MIME_TYPE_TO_EXTENSION = {
 let S3Service = class S3Service {
     constructor(config) {
         this.config = config;
-        this.endpoint = this.config.get('s3.endpoint') || 'http://localhost:9000';
+        this.endpoint =
+            this.config.get('s3.endpoint') || 'http://localhost:9000';
         this.bucket = this.config.get('s3.bucket') || 'mathcenter';
         this.client = new client_s3_1.S3Client({
             endpoint: this.endpoint,
@@ -57,7 +63,9 @@ let S3Service = class S3Service {
     }
     async getPresignedUrl(fileUrl, expiresIn = 300) {
         const prefix = `${this.endpoint}/${this.bucket}/`;
-        const key = fileUrl.startsWith(prefix) ? fileUrl.slice(prefix.length) : fileUrl;
+        const key = fileUrl.startsWith(prefix)
+            ? fileUrl.slice(prefix.length)
+            : fileUrl;
         const command = new client_s3_1.GetObjectCommand({ Bucket: this.bucket, Key: key });
         return (0, s3_request_presigner_1.getSignedUrl)(this.client, command, { expiresIn });
     }

@@ -26,7 +26,8 @@ let GlobalExceptionFilter = GlobalExceptionFilter_1 = class GlobalExceptionFilte
             if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse;
             }
-            else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+            else if (typeof exceptionResponse === 'object' &&
+                exceptionResponse !== null) {
                 const resp = exceptionResponse;
                 message = resp.message || message;
                 error = resp.error || error;
