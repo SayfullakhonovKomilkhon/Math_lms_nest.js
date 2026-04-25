@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -16,8 +17,9 @@ export class GradeRecordDto {
   @IsString()
   studentId: string;
 
-  @ApiPropertyOptional({ description: 'null if student was absent' })
+  @ApiPropertyOptional({ description: 'null if student was absent / clear grade' })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsNumber()
   @Min(0)
   score?: number | null;

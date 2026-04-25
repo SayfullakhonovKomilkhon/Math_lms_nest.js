@@ -35,27 +35,46 @@ export class GradesService {
       throw new ForbiddenException('Only teachers can bulk-create grades');
     }
     await this.assertTeacherOwnsGroup(user.id, dto.groupId);
+
+    // Idempotent: per (student, group, date-day, lessonType) we keep at most one
+    // grade. Re-submitting overwrites previous score; score=null deletes it
+    // (e.g. when student is marked absent).
     const date = new Date(dto.date);
-    const created: any[] = [];
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
-    for (const r of dto.records) {
-      if (r.score == null) continue; // student absent — skip
-      const grade = await this.prisma.grade.create({
-        data: {
-          studentId: r.studentId,
-          groupId: dto.groupId,
-          date,
-          lessonType: dto.lessonType,
-          score: r.score,
-          maxScore: dto.maxScore,
-          comment: r.comment,
-          gradedAt: new Date(),
-        },
-      });
-      created.push(grade);
-    }
+    let written = 0;
 
-    return { created: created.length };
+    await this.prisma.$transaction(async (tx) => {
+      for (const r of dto.records) {
+        await tx.grade.deleteMany({
+          where: {
+            studentId: r.studentId,
+            groupId: dto.groupId,
+            lessonType: dto.lessonType,
+            date: { gte: dayStart, lt: dayEnd },
+          },
+        });
+        if (r.score == null) continue; // absent / cleared — skip create
+        await tx.grade.create({
+          data: {
+            studentId: r.studentId,
+            groupId: dto.groupId,
+            date,
+            lessonType: dto.lessonType,
+            score: r.score,
+            maxScore: dto.maxScore,
+            comment: r.comment,
+            gradedAt: new Date(),
+          },
+        });
+        written += 1;
+      }
+    });
+
+    return { created: written };
   }
 
   async findAll(query: QueryGradesDto, user: { id: string; role: Role }) {
