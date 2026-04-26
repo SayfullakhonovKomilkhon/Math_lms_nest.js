@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -15,20 +15,22 @@ export class UpdateMyProfileDto {
   @MaxLength(120)
   fullName?: string;
 
-  @ApiProperty({ required: false, example: '+998901234567' })
+  @ApiProperty({
+    required: false,
+    example: '+998901234567',
+    description:
+      'Phone number — also used as the login identifier. Changing it requires currentPassword.',
+  })
   @IsOptional()
   @IsString()
-  @MaxLength(32)
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
   phone?: string;
-
-  @ApiProperty({ required: false, example: 'student@mathcenter.uz' })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
 
   @ApiProperty({
     required: false,
-    description: 'Required when changing email or password',
+    description: 'Required when changing phone or password',
   })
   @IsOptional()
   @IsString()

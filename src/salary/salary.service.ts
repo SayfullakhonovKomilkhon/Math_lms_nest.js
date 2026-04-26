@@ -10,13 +10,20 @@ export class SalaryService {
   constructor(private prisma: PrismaService) {}
 
   async getMySalary(userId: string) {
+    // `Group.students` is now the StudentGroup join table; counting active
+    // students in a group means filtering the link rows by the *student*
+    // being active.
     const teacher = await this.prisma.teacher.findUnique({
       where: { userId },
       include: {
         groups: {
           where: { isActive: true },
           include: {
-            _count: { select: { students: { where: { isActive: true } } } },
+            _count: {
+              select: {
+                students: { where: { student: { isActive: true } } },
+              },
+            },
           },
         },
       },
@@ -53,7 +60,11 @@ export class SalaryService {
         groups: {
           where: { isActive: true },
           include: {
-            _count: { select: { students: { where: { isActive: true } } } },
+            _count: {
+              select: {
+                students: { where: { student: { isActive: true } } },
+              },
+            },
           },
         },
       },
@@ -109,11 +120,14 @@ export class SalaryService {
       });
 
       if (i === 0) {
-        // Current month — live calculation
         const groups = await this.prisma.group.findMany({
           where: { teacherId, isActive: true },
           include: {
-            _count: { select: { students: { where: { isActive: true } } } },
+            _count: {
+              select: {
+                students: { where: { student: { isActive: true } } },
+              },
+            },
           },
         });
         const studentsCount = groups.reduce((s, g) => s + g._count.students, 0);

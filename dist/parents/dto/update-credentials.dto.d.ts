@@ -1,4 +1,4 @@
 export declare class UpdateParentCredentialsDto {
-    email?: string;
+    phone?: string;
     password?: string;
 }

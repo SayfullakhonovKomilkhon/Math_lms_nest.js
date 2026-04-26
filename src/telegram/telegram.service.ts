@@ -80,7 +80,10 @@ export class TelegramService implements OnModuleDestroy {
         where: { telegramChatId: chatId },
         include: {
           student: {
-            include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+            include: {
+              payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+              groups: { select: { monthlyFee: true } },
+            },
           },
         },
       });
@@ -93,7 +96,10 @@ export class TelegramService implements OnModuleDestroy {
       }
 
       const lastPayment = user.student.payments[0];
-      const fee = Number(user.student.monthlyFee);
+      const fee = user.student.groups.reduce(
+        (acc, link) => acc + Number(link.monthlyFee),
+        0,
+      );
       if (!lastPayment) {
         await ctx.reply(
           `💳 Ежемесячная оплата: ${fee.toLocaleString('ru-RU')} сум\nСтатус: не оплачено`,
@@ -114,16 +120,22 @@ export class TelegramService implements OnModuleDestroy {
       const chatId = String(ctx.chat.id);
       const user = await this.prisma.user.findFirst({
         where: { telegramChatId: chatId },
-        include: { student: true },
+        include: {
+          student: {
+            include: { groups: { select: { groupId: true } } },
+          },
+        },
       });
 
-      if (!user?.student?.groupId) {
+      const groupIds = user?.student?.groups.map((g) => g.groupId) ?? [];
+      if (!user?.student || groupIds.length === 0) {
         await ctx.reply('❌ Аккаунт не привязан или нет группы.');
         return;
       }
 
+      // Latest homework across any of the student's groups.
       const hw = await this.prisma.homework.findFirst({
-        where: { groupId: user.student.groupId },
+        where: { groupId: { in: groupIds } },
         orderBy: { createdAt: 'desc' },
         include: { teacher: { select: { fullName: true } } },
       });

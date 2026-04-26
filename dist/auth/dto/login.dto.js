@@ -16,10 +16,16 @@ class LoginDto {
 }
 exports.LoginDto = LoginDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'admin@mathcenter.uz' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, swagger_1.ApiProperty)({
+        example: '+998901234567',
+        description: 'Phone number used as the login identifier',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], LoginDto.prototype, "email", void 0);
+], LoginDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Admin123!' }),
     (0, class_validator_1.IsString)(),

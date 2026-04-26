@@ -10,10 +10,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 import { Role } from '@prisma/client';
@@ -24,9 +24,12 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
+const PHONE_REGEX = /^\+?[0-9\s\-()]{6,20}$/;
+
 class CreateStaffDto {
-  @IsEmail()
-  email: string;
+  @IsString()
+  @Matches(PHONE_REGEX, { message: 'phone must be a valid phone number' })
+  phone: string;
 
   @IsString()
   @MinLength(8)
@@ -38,16 +41,13 @@ class CreateStaffDto {
   @IsOptional()
   @IsString()
   fullName?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
 }
 
 class UpdateUserDto {
   @IsOptional()
-  @IsEmail()
-  email?: string;
+  @IsString()
+  @Matches(PHONE_REGEX, { message: 'phone must be a valid phone number' })
+  phone?: string;
 
   @IsOptional()
   @IsString()
@@ -147,7 +147,7 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Update user credentials (email / password)' })
+  @ApiOperation({ summary: 'Update user credentials (phone / password)' })
   updateUser(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,

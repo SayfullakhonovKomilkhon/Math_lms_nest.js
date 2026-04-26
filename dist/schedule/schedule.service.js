@@ -21,31 +21,37 @@ let ScheduleService = class ScheduleService {
         const student = await this.prisma.student.findUnique({
             where: { userId },
             include: {
-                group: {
+                groups: {
+                    orderBy: { joinedAt: 'asc' },
                     include: {
-                        teacher: { select: { fullName: true, phone: true } },
+                        group: {
+                            include: {
+                                teacher: { select: { fullName: true, phone: true } },
+                            },
+                        },
                     },
                 },
             },
         });
         if (!student)
             throw new common_1.ForbiddenException('Student profile not found');
-        if (!student.group)
+        const primary = student.groups[0]?.group;
+        if (!primary)
             return { schedule: null, nextTopic: null };
         const nextTopic = await this.prisma.lessonTopic.findFirst({
             where: {
-                groupId: student.group.id,
+                groupId: primary.id,
                 date: { gte: new Date() },
             },
             orderBy: { date: 'asc' },
         });
         return {
-            groupId: student.group.id,
-            groupName: student.group.name,
-            schedule: student.group.schedule,
+            groupId: primary.id,
+            groupName: primary.name,
+            schedule: primary.schedule,
             teacher: {
-                fullName: student.group.teacher.fullName,
-                phone: student.group.teacher.phone,
+                fullName: primary.teacher.fullName,
+                phone: primary.teacher.phone,
             },
             nextTopic: nextTopic
                 ? {

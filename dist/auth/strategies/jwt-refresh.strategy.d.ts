@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 export interface JwtRefreshPayload {
     sub: string;
-    email: string;
+    phone: string;
     role: string;
 }
 declare const JwtRefreshStrategy_base: new (...args: [opt: import("passport-jwt").StrategyOptionsWithRequest] | [opt: import("passport-jwt").StrategyOptionsWithoutRequest]) => Strategy & {
@@ -15,7 +15,7 @@ export declare class JwtRefreshStrategy extends JwtRefreshStrategy_base {
     validate(req: Request, payload: JwtRefreshPayload): Promise<{
         refreshToken: any;
         sub: string;
-        email: string;
+        phone: string;
         role: string;
     }>;
 }

@@ -39,26 +39,44 @@ async function main() {
 
   const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
 
+  // Phones are used as login identifiers. Test placeholders below.
+  const PHONES = {
+    superAdmin: '+998000000001',
+    admin: '+998000000002',
+    teacher: '+998900000001',
+    teacher1: '+998901111111',
+    teacher2: '+998902222222',
+    student: '+998900000010',
+    parent: '+998900000020',
+    student1: '+998901111101',
+    student2: '+998901111102',
+    student3: '+998901111103',
+    student4: '+998901111104',
+    student5: '+998901111105',
+    parent1: '+998901111201',
+    parent2: '+998901111202',
+  };
+
   // Admin
   const adminHash = await hashPassword('123456');
   await prisma.user.upsert({
-    where: { email: 'admin@math.com' },
+    where: { phone: PHONES.admin },
     update: { passwordHash: adminHash },
     create: {
-      email: 'admin@math.com',
+      phone: PHONES.admin,
       passwordHash: adminHash,
       role: Role.ADMIN,
     },
   });
-  console.log('Created admin: admin@math.com');
+  console.log('Created admin:', PHONES.admin);
 
   // Teacher
   const teacherHash = await hashPassword('123456');
   const teacherUser = await prisma.user.upsert({
-    where: { email: 'teacher@math.com' },
+    where: { phone: PHONES.teacher },
     update: { passwordHash: teacherHash },
     create: {
-      email: 'teacher@math.com',
+      phone: PHONES.teacher,
       passwordHash: teacherHash,
       role: Role.TEACHER,
     },
@@ -69,19 +87,19 @@ async function main() {
     create: {
       userId: teacherUser.id,
       fullName: 'Default Teacher',
-      phone: '+998900000001',
+      phone: PHONES.teacher,
       ratePerStudent: 50000,
     },
   });
-  console.log('Created teacher: teacher@math.com');
+  console.log('Created teacher:', PHONES.teacher);
 
   // Student
   const studentHash = await hashPassword('123456');
   const studentUser = await prisma.user.upsert({
-    where: { email: 'student@math.com' },
+    where: { phone: PHONES.student },
     update: { passwordHash: studentHash },
     create: {
-      email: 'student@math.com',
+      phone: PHONES.student,
       passwordHash: studentHash,
       role: Role.STUDENT,
     },
@@ -92,54 +110,61 @@ async function main() {
     create: {
       userId: studentUser.id,
       fullName: 'Default Student',
+      phone: PHONES.student,
       gender: Gender.MALE,
-      monthlyFee: 500000,
     },
   });
-  console.log('Created student: student@math.com');
+  console.log('Created student:', PHONES.student);
 
   // Parent
   const parentHash = await hashPassword('123456');
   const parentUser = await prisma.user.upsert({
-    where: { email: 'parent@math.com' },
+    where: { phone: PHONES.parent },
     update: { passwordHash: parentHash },
     create: {
-      email: 'parent@math.com',
+      phone: PHONES.parent,
       passwordHash: parentHash,
       role: Role.PARENT,
     },
   });
-  await prisma.parent.upsert({
+  const defaultParent = await prisma.parent.upsert({
     where: { userId: parentUser.id },
     update: {},
     create: {
       userId: parentUser.id,
       fullName: 'Default Parent',
-      studentId: student.id,
+      phone: PHONES.parent,
     },
   });
-  console.log('Created parent: parent@math.com');
+  await prisma.parentStudent.upsert({
+    where: {
+      parentId_studentId: { parentId: defaultParent.id, studentId: student.id },
+    },
+    update: {},
+    create: { parentId: defaultParent.id, studentId: student.id },
+  });
+  console.log('Created parent:', PHONES.parent);
 
   // Super Admin
   const superAdminHash = await hashPassword('123456');
   const superAdminUser = await prisma.user.upsert({
-    where: { email: 'superadmin@math.com' },
+    where: { phone: PHONES.superAdmin },
     update: { passwordHash: superAdminHash },
     create: {
-      email: 'superadmin@math.com',
+      phone: PHONES.superAdmin,
       passwordHash: superAdminHash,
       role: Role.SUPER_ADMIN,
     },
   });
-  console.log('Created super admin: superadmin@math.com');
+  console.log('Created super admin:', PHONES.superAdmin);
 
   // Teacher 1
   const teacher1Hash = await hashPassword('Teacher123!');
   const teacher1User = await prisma.user.upsert({
-    where: { email: 'teacher1@mathcenter.uz' },
+    where: { phone: PHONES.teacher1 },
     update: {},
     create: {
-      email: 'teacher1@mathcenter.uz',
+      phone: PHONES.teacher1,
       passwordHash: teacher1Hash,
       role: Role.TEACHER,
     },
@@ -150,7 +175,7 @@ async function main() {
     create: {
       userId: teacher1User.id,
       fullName: 'Bobur Toshmatov',
-      phone: '+998901111111',
+      phone: PHONES.teacher1,
       ratePerStudent: 50000,
     },
   });
@@ -159,10 +184,10 @@ async function main() {
   // Teacher 2
   const teacher2Hash = await hashPassword('Teacher123!');
   const teacher2User = await prisma.user.upsert({
-    where: { email: 'teacher2@mathcenter.uz' },
+    where: { phone: PHONES.teacher2 },
     update: {},
     create: {
-      email: 'teacher2@mathcenter.uz',
+      phone: PHONES.teacher2,
       passwordHash: teacher2Hash,
       role: Role.TEACHER,
     },
@@ -173,7 +198,7 @@ async function main() {
     create: {
       userId: teacher2User.id,
       fullName: 'Gulnora Rashidova',
-      phone: '+998902222222',
+      phone: PHONES.teacher2,
       ratePerStudent: 55000,
     },
   });
@@ -219,63 +244,84 @@ async function main() {
 
   // Students
   const studentsData = [
-    { email: 'student1@mathcenter.uz', fullName: 'Alisher Karimov', gender: Gender.MALE, groupId: group1.id },
-    { email: 'student2@mathcenter.uz', fullName: 'Malika Yusupova', gender: Gender.FEMALE, groupId: group1.id },
-    { email: 'student3@mathcenter.uz', fullName: 'Jasur Mirzaev', gender: Gender.MALE, groupId: group2.id },
-    { email: 'student4@mathcenter.uz', fullName: 'Nodira Xasanova', gender: Gender.FEMALE, groupId: group2.id },
-    { email: 'student5@mathcenter.uz', fullName: 'Otabek Nazarov', gender: Gender.MALE, groupId: group3.id },
+    { phone: PHONES.student1, fullName: 'Alisher Karimov', gender: Gender.MALE, groupId: group1.id },
+    { phone: PHONES.student2, fullName: 'Malika Yusupova', gender: Gender.FEMALE, groupId: group1.id },
+    { phone: PHONES.student3, fullName: 'Jasur Mirzaev', gender: Gender.MALE, groupId: group2.id },
+    { phone: PHONES.student4, fullName: 'Nodira Xasanova', gender: Gender.FEMALE, groupId: group2.id },
+    { phone: PHONES.student5, fullName: 'Otabek Nazarov', gender: Gender.MALE, groupId: group3.id },
   ];
 
   const createdStudentIds: string[] = [];
   for (const s of studentsData) {
     const hash = await hashPassword('Student123!');
     const user = await prisma.user.upsert({
-      where: { email: s.email },
+      where: { phone: s.phone },
       update: {},
       create: {
-        email: s.email,
+        phone: s.phone,
         passwordHash: hash,
         role: Role.STUDENT,
       },
     });
-    const student = await prisma.student.upsert({
+    const created = await prisma.student.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
         fullName: s.fullName,
+        phone: s.phone,
         gender: s.gender,
+      },
+    });
+    // Link to group via the m2m table.
+    await prisma.studentGroup.upsert({
+      where: {
+        studentId_groupId: { studentId: created.id, groupId: s.groupId },
+      },
+      update: {},
+      create: {
+        studentId: created.id,
         groupId: s.groupId,
         monthlyFee: 500000,
       },
     });
-    createdStudentIds.push(student.id);
+    createdStudentIds.push(created.id);
   }
   console.log('Created 5 students');
 
   // Parents (2 parents linked to first 2 students)
   const parentsData = [
-    { email: 'parent1@mathcenter.uz', fullName: 'Karim Karimov', studentId: createdStudentIds[0] },
-    { email: 'parent2@mathcenter.uz', fullName: 'Yusuf Yusupov', studentId: createdStudentIds[1] },
+    { phone: PHONES.parent1, fullName: 'Karim Karimov', studentId: createdStudentIds[0] },
+    { phone: PHONES.parent2, fullName: 'Yusuf Yusupov', studentId: createdStudentIds[1] },
   ];
 
   for (const p of parentsData) {
     const hash = await hashPassword('Parent123!');
     const user = await prisma.user.upsert({
-      where: { email: p.email },
+      where: { phone: p.phone },
       update: {},
       create: {
-        email: p.email,
+        phone: p.phone,
         passwordHash: hash,
         role: Role.PARENT,
       },
     });
-    await prisma.parent.upsert({
+    const parent = await prisma.parent.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
         fullName: p.fullName,
+        phone: p.phone,
+      },
+    });
+    await prisma.parentStudent.upsert({
+      where: {
+        parentId_studentId: { parentId: parent.id, studentId: p.studentId },
+      },
+      update: {},
+      create: {
+        parentId: parent.id,
         studentId: p.studentId,
       },
     });
@@ -294,13 +340,13 @@ async function main() {
 
   console.log('\nSeeding complete!');
   console.log('');
-  console.log('Test credentials:');
-  console.log('  Super Admin: admin@mathcenter.uz / Admin123!');
-  console.log('  Admin:       manager@mathcenter.uz / Admin123!');
-  console.log('  Teacher 1:   teacher1@mathcenter.uz / Teacher123!');
-  console.log('  Teacher 2:   teacher2@mathcenter.uz / Teacher123!');
-  console.log('  Student 1:   student1@mathcenter.uz / Student123!');
-  console.log('  Parent 1:    parent1@mathcenter.uz / Parent123!');
+  console.log('Test credentials (login by phone):');
+  console.log(`  Super Admin: ${PHONES.superAdmin} / 123456`);
+  console.log(`  Admin:       ${PHONES.admin} / 123456`);
+  console.log(`  Teacher 1:   ${PHONES.teacher1} / Teacher123!`);
+  console.log(`  Teacher 2:   ${PHONES.teacher2} / Teacher123!`);
+  console.log(`  Student 1:   ${PHONES.student1} / Student123!`);
+  console.log(`  Parent 1:    ${PHONES.parent1} / Parent123!`);
 }
 
 main()

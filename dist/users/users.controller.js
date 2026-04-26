@@ -23,12 +23,14 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const PHONE_REGEX = /^\+?[0-9\s\-()]{6,20}$/;
 class CreateStaffDto {
 }
 __decorate([
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(PHONE_REGEX, { message: 'phone must be a valid phone number' }),
     __metadata("design:type", String)
-], CreateStaffDto.prototype, "email", void 0);
+], CreateStaffDto.prototype, "phone", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(8),
@@ -43,18 +45,14 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "fullName", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateStaffDto.prototype, "phone", void 0);
 class UpdateUserDto {
 }
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(PHONE_REGEX, { message: 'phone must be a valid phone number' }),
     __metadata("design:type", String)
-], UpdateUserDto.prototype, "email", void 0);
+], UpdateUserDto.prototype, "phone", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -191,7 +189,7 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Update user credentials (email / password)' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user credentials (phone / password)' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)('id')),

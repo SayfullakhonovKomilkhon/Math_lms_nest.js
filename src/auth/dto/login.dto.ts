@@ -1,10 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsString, Matches, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ example: 'admin@mathcenter.uz' })
-  @IsEmail()
-  email: string;
+  @ApiProperty({
+    example: '+998901234567',
+    description: 'Phone number used as the login identifier',
+  })
+  @IsString()
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
+  phone: string;
 
   @ApiProperty({ example: 'Admin123!' })
   @IsString()

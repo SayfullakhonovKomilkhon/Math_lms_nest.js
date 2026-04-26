@@ -86,7 +86,9 @@ export class ReportsService {
   async paymentsExcel(query: PaymentsReportQueryDto): Promise<Buffer> {
     const where: any = {};
     if (query.status) where.status = query.status;
-    if (query.groupId) where.student = { groupId: query.groupId };
+    if (query.groupId) {
+      where.student = { groups: { some: { groupId: query.groupId } } };
+    }
     if (query.from || query.to) {
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);
@@ -99,7 +101,10 @@ export class ReportsService {
         student: {
           select: {
             fullName: true,
-            group: { select: { name: true } },
+            groups: {
+              orderBy: { joinedAt: 'asc' },
+              select: { group: { select: { name: true } } },
+            },
           },
         },
       },
@@ -129,10 +134,11 @@ export class ReportsService {
     };
 
     payments.forEach((p, i) => {
+      const groupNames = p.student.groups.map((link) => link.group.name);
       const row = ws.addRow({
         num: i + 1,
         student: p.student.fullName,
-        group: p.student.group?.name ?? '—',
+        group: groupNames.length === 0 ? '—' : groupNames.join(', '),
         amount: Number(p.amount),
         status: statusLabels[p.status] ?? p.status,
         createdAt: fmtDate(p.createdAt),
@@ -184,7 +190,9 @@ export class ReportsService {
   async financeExcel(query: PaymentsReportQueryDto): Promise<Buffer> {
     const where: any = {};
     if (query.status) where.status = query.status;
-    if (query.groupId) where.student = { groupId: query.groupId };
+    if (query.groupId) {
+      where.student = { groups: { some: { groupId: query.groupId } } };
+    }
     if (query.from || query.to) {
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);
@@ -206,7 +214,10 @@ export class ReportsService {
             select: {
               fullName: true,
               phone: true,
-              group: { select: { name: true } },
+              groups: {
+                orderBy: { joinedAt: 'asc' },
+                select: { group: { select: { name: true } } },
+              },
             },
           },
         },
@@ -229,8 +240,14 @@ export class ReportsService {
           },
         },
         include: {
-          group: {
-            select: { name: true, teacher: { select: { fullName: true } } },
+          groups: {
+            orderBy: { joinedAt: 'asc' },
+            select: {
+              monthlyFee: true,
+              group: {
+                select: { name: true, teacher: { select: { fullName: true } } },
+              },
+            },
           },
           parents: {
             select: { parent: { select: { fullName: true, phone: true } } },
@@ -270,11 +287,12 @@ export class ReportsService {
 
     payments.forEach((p, i) => {
       const label = statusLabels[p.status] ?? p.status;
+      const groupNames = p.student.groups.map((link) => link.group.name);
       const row = wsAll.addRow({
         num: i + 1,
         student: p.student.fullName,
         phone: p.student.phone ?? '—',
-        group: p.student.group?.name ?? '—',
+        group: groupNames.length === 0 ? '—' : groupNames.join(', '),
         amount: Number(p.amount),
         status: label,
         createdAt: fmtDate(p.createdAt),
@@ -327,14 +345,23 @@ export class ReportsService {
     headerStyle(wsDebt, 1, 8);
 
     debtors.forEach((s, i) => {
+      // Aggregate every group enrollment into a single debtor row.
+      const groupNames = s.groups.map((link) => link.group.name);
+      const teacherNames = Array.from(
+        new Set(s.groups.map((link) => link.group.teacher.fullName)),
+      );
+      const fee = s.groups.reduce(
+        (acc, link) => acc + Number(link.monthlyFee),
+        0,
+      );
       wsDebt
         .addRow({
           num: i + 1,
           student: s.fullName,
           phone: s.phone ?? '—',
-          group: s.group?.name ?? '—',
-          teacher: s.group?.teacher?.fullName ?? '—',
-          fee: Number(s.monthlyFee),
+          group: groupNames.length === 0 ? '—' : groupNames.join(', '),
+          teacher: teacherNames.length === 0 ? '—' : teacherNames.join(', '),
+          fee,
           parent: s.parents?.[0]?.parent?.fullName ?? '—',
           parentPhone: s.parents?.[0]?.parent?.phone ?? '—',
         })
@@ -396,7 +423,9 @@ export class ReportsService {
   async financePdf(query: PaymentsReportQueryDto): Promise<Buffer> {
     const where: any = {};
     if (query.status) where.status = query.status;
-    if (query.groupId) where.student = { groupId: query.groupId };
+    if (query.groupId) {
+      where.student = { groups: { some: { groupId: query.groupId } } };
+    }
     if (query.from || query.to) {
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);
@@ -407,7 +436,13 @@ export class ReportsService {
       where,
       include: {
         student: {
-          select: { fullName: true, group: { select: { name: true } } },
+          select: {
+            fullName: true,
+            groups: {
+              orderBy: { joinedAt: 'asc' },
+              select: { group: { select: { name: true } } },
+            },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -496,10 +531,11 @@ export class ReportsService {
           .fill(bg);
         doc.fillColor('#1E293B');
 
+        const groupNames = p.student.groups.map((link) => link.group.name);
         const cells = [
           String(i + 1),
           p.student.fullName,
-          p.student.group?.name ?? '—',
+          groupNames.length === 0 ? '—' : groupNames.join(', '),
           `${Number(p.amount).toLocaleString('ru-RU')} сум`,
           statusLabels[p.status] ?? p.status,
           fmtDate(p.createdAt),
@@ -543,15 +579,23 @@ export class ReportsService {
 
   async studentsExcel(query: StudentsReportQueryDto): Promise<Buffer> {
     const where: any = {};
-    if (query.groupId) where.groupId = query.groupId;
+    if (query.groupId) {
+      where.groups = { some: { groupId: query.groupId } };
+    }
     if (query.isActive !== undefined)
       where.isActive = query.isActive === 'false' ? false : true;
 
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        group: {
-          select: { name: true, teacher: { select: { fullName: true } } },
+        groups: {
+          orderBy: { joinedAt: 'asc' },
+          select: {
+            monthlyFee: true,
+            group: {
+              select: { name: true, teacher: { select: { fullName: true } } },
+            },
+          },
         },
         parents: {
           select: { parent: { select: { fullName: true, phone: true } } },
@@ -580,13 +624,21 @@ export class ReportsService {
     headerStyle(ws, 1, 10);
 
     students.forEach((s, i) => {
+      const groupNames = s.groups.map((link) => link.group.name);
+      const teacherNames = Array.from(
+        new Set(s.groups.map((link) => link.group.teacher.fullName)),
+      );
+      const monthlyFee = s.groups.reduce(
+        (acc, link) => acc + Number(link.monthlyFee),
+        0,
+      );
       const row = ws.addRow({
         num: i + 1,
         fullName: s.fullName,
         phone: s.phone ?? '—',
-        group: s.group?.name ?? '—',
-        teacher: s.group?.teacher?.fullName ?? '—',
-        monthlyFee: Number(s.monthlyFee),
+        group: groupNames.length === 0 ? '—' : groupNames.join(', '),
+        teacher: teacherNames.length === 0 ? '—' : teacherNames.join(', '),
+        monthlyFee,
         parent: s.parents?.[0]?.parent?.fullName ?? '—',
         parentPhone: s.parents?.[0]?.parent?.phone ?? '—',
         enrolledAt: fmtDate(s.enrolledAt),
@@ -749,13 +801,11 @@ export class ReportsService {
     const grades = await this.prisma.grade.findMany({
       where,
       include: {
-        student: {
-          select: {
-            fullName: true,
-            group: {
-              select: { name: true, teacher: { select: { fullName: true } } },
-            },
-          },
+        student: { select: { fullName: true } },
+        // The grade itself is bound to a specific group/lesson — use that
+        // instead of trying to derive it from the student's enrollments.
+        group: {
+          select: { name: true, teacher: { select: { fullName: true } } },
         },
       },
       orderBy: [{ student: { fullName: 'asc' } }, { createdAt: 'desc' }],
@@ -793,8 +843,8 @@ export class ReportsService {
       const row = wsGrades.addRow({
         num: i + 1,
         student: g.student.fullName,
-        group: g.student.group?.name ?? '—',
-        teacher: g.student.group?.teacher?.fullName ?? '—',
+        group: g.group?.name ?? '—',
+        teacher: g.group?.teacher?.fullName ?? '—',
         lessonType: lessonTypeLabels[g.lessonType] ?? g.lessonType,
         score,
         maxScore,
@@ -832,7 +882,7 @@ export class ReportsService {
       const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
       const entry = studentMap.get(g.studentId) ?? {
         name: g.student.fullName,
-        group: g.student.group?.name ?? '—',
+        group: g.group?.name ?? '—',
         scores: [],
       };
       entry.scores.push(pct);
@@ -876,7 +926,11 @@ export class ReportsService {
         groups: {
           where: { isActive: true },
           include: {
-            _count: { select: { students: { where: { isActive: true } } } },
+            _count: {
+              select: {
+                students: { where: { student: { isActive: true } } },
+              },
+            },
             attendances:
               query.from || query.to
                 ? {

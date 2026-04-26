@@ -4,7 +4,7 @@ export declare class UsersService {
     private prisma;
     constructor(prisma: PrismaService);
     create(dto: CreateUserDto): Promise<{
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -14,12 +14,12 @@ export declare class UsersService {
     }>;
     findAll(role?: string): Promise<{
         teacher: {
+            phone: string | null;
             id: string;
             fullName: string;
-            phone: string | null;
             ratePerStudent: import("@prisma/client/runtime/library").Decimal;
         } | null;
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -28,7 +28,7 @@ export declare class UsersService {
         updatedAt: Date;
     }[]>;
     findOne(id: string): Promise<{
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -41,8 +41,7 @@ export declare class UsersService {
             id: string;
             userId: string;
             fullName: string;
-            phone: string | null;
-            email: string;
+            phone: string;
             isActive: boolean;
             ratePerStudent: number;
             studentsCount: number;
@@ -51,19 +50,18 @@ export declare class UsersService {
         admins: {
             id: string;
             fullName: null;
-            email: string;
+            phone: string;
             isActive: boolean;
             createdAt: Date;
         }[];
     }>;
     createStaff(dto: {
-        email: string;
+        phone: string;
         password: string;
         role: 'TEACHER' | 'ADMIN';
         fullName?: string;
-        phone?: string;
     }): Promise<{
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -72,10 +70,10 @@ export declare class UsersService {
         updatedAt: Date;
     }>;
     updateCredentials(id: string, dto: {
-        email?: string;
+        phone?: string;
         password?: string;
     }, actorId: string): Promise<{
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -83,7 +81,7 @@ export declare class UsersService {
         updatedAt: Date;
     }>;
     deactivate(id: string, actorId: string): Promise<{
-        email: string;
+        phone: string;
         id: string;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
@@ -99,7 +97,7 @@ export declare class UsersService {
         total: number;
         records: ({
             user: {
-                email: string;
+                phone: string;
                 role: import(".prisma/client").$Enums.Role;
             };
         } & {

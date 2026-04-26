@@ -21,7 +21,11 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto, RejectPaymentDto } from './dto/create-payment.dto';
+import {
+  CreateManualPaymentDto,
+  CreatePaymentDto,
+  RejectPaymentDto,
+} from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -74,6 +78,36 @@ export class PaymentsController {
     @CurrentUser() user: { id: string; role: Role },
   ) {
     return this.service.findByStudent(studentId, user);
+  }
+
+  @Post('manual')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(UploadThrottleGuard)
+  @Throttle({ default: { limit: 60, ttl: 1000 * 60 * 60 } })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        studentId: { type: 'string' },
+        amount: { type: 'number' },
+        paidAt: { type: 'string', example: '2025-02-01' },
+        nextPaymentDate: { type: 'string', example: '2025-03-01' },
+      },
+      required: ['studentId', 'amount'],
+    },
+  })
+  @ApiOperation({
+    summary: 'Admin: manually record a confirmed payment (with optional receipt)',
+  })
+  createManual(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() dto: CreateManualPaymentDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.service.createManual(dto, file, actorId);
   }
 
   @Post('upload-receipt')

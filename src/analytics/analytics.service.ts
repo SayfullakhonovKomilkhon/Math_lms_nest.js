@@ -82,10 +82,12 @@ export class AnalyticsService {
         },
         select: { studentId: true },
       }),
-      this.prisma.student.aggregate({
-        where: { isActive: true },
-        _avg: { monthlyFee: true },
-        _count: { id: true },
+      // Sum of all StudentGroup link fees across active students gives us
+      // the expected next-month gross. We can't run prisma.aggregate on a
+      // joined table easily, so we sum after filtering to active students.
+      this.prisma.studentGroup.findMany({
+        where: { student: { isActive: true } },
+        select: { monthlyFee: true },
       }),
       this.prisma.attendance.findMany({
         where: { date: { gte: startOfMonth } },
@@ -96,8 +98,10 @@ export class AnalyticsService {
     const paidIds = new Set(debtorsData.map((p) => p.studentId));
     const debtorsCount = totalStudents - paidIds.size;
 
-    const avgFee = Number(allActiveStudents._avg.monthlyFee ?? 0);
-    const nextMonthForecast = totalStudents * avgFee;
+    const nextMonthForecast = allActiveStudents.reduce(
+      (acc, link) => acc + Number(link.monthlyFee),
+      0,
+    );
 
     let present = 0;
     const total = thisMonthAttendance.length;
@@ -492,11 +496,16 @@ export class AnalyticsService {
         select: {
           id: true,
           fullName: true,
-          monthlyFee: true,
-          group: {
+          groups: {
+            orderBy: { joinedAt: 'asc' },
             select: {
-              name: true,
-              teacher: { select: { fullName: true } },
+              monthlyFee: true,
+              group: {
+                select: {
+                  name: true,
+                  teacher: { select: { fullName: true } },
+                },
+              },
             },
           },
           parents: {
@@ -525,12 +534,30 @@ export class AnalyticsService {
               (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
             )
           : null;
+        // Aggregate every group enrollment into the row the debtor table
+        // expects: a single concatenated group label and the *summed* fee.
+        const groups = s.groups.map((link) => ({
+          name: link.group.name,
+          teacherName: link.group.teacher.fullName,
+          monthlyFee: Number(link.monthlyFee),
+        }));
+        const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+        const groupName =
+          groups.length === 0
+            ? '—'
+            : groups.length === 1
+              ? groups[0].name
+              : groups.map((g) => g.name).join(', ');
+        const teacherName =
+          groups.length === 0
+            ? '—'
+            : Array.from(new Set(groups.map((g) => g.teacherName))).join(', ');
         return {
           studentId: s.id,
           fullName: s.fullName,
-          groupName: s.group?.name ?? '—',
-          teacherName: s.group?.teacher?.fullName ?? '—',
-          monthlyFee: Number(s.monthlyFee),
+          groupName,
+          teacherName,
+          monthlyFee,
           lastPaymentDate: lastDate ? lastDate.toISOString() : null,
           daysSinceLastPayment: daysSince,
           parentPhone: s.parents?.[0]?.parent?.phone ?? null,
@@ -555,7 +582,11 @@ export class AnalyticsService {
         groups: {
           where: { isActive: true },
           include: {
-            _count: { select: { students: { where: { isActive: true } } } },
+            _count: {
+              select: {
+                students: { where: { student: { isActive: true } } },
+              },
+            },
             attendances: {
               where: { date: { gte: startOfMonth } },
               select: { status: true },

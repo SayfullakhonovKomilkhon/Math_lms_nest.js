@@ -47,46 +47,98 @@ const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
-const studentSelect = {
-    id: true,
-    fullName: true,
-    phone: true,
-    birthDate: true,
-    gender: true,
-    enrolledAt: true,
-    groupId: true,
-    monthlyFee: true,
-    isActive: true,
-    createdAt: true,
-    updatedAt: true,
-    user: { select: { id: true, email: true, role: true, isActive: true } },
-    group: { select: { id: true, name: true } },
+const studentInclude = {
+    user: { select: { id: true, phone: true, role: true, isActive: true } },
+    groups: {
+        select: {
+            id: true,
+            monthlyFee: true,
+            joinedAt: true,
+            group: { select: { id: true, name: true, teacherId: true } },
+        },
+        orderBy: { joinedAt: 'asc' },
+    },
 };
+function shapeStudent(s) {
+    const groups = s.groups.map((link) => ({
+        linkId: link.id,
+        groupId: link.group.id,
+        groupName: link.group.name,
+        teacherId: link.group.teacherId,
+        monthlyFee: Number(link.monthlyFee),
+        joinedAt: link.joinedAt,
+    }));
+    const monthlyFeeTotal = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+    const primary = groups[0];
+    return {
+        id: s.id,
+        fullName: s.fullName,
+        phone: s.phone,
+        birthDate: s.birthDate,
+        gender: s.gender,
+        enrolledAt: s.enrolledAt,
+        isActive: s.isActive,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+        user: s.user,
+        groups,
+        monthlyFee: monthlyFeeTotal,
+        monthlyFeeTotal,
+        groupId: primary?.groupId ?? null,
+        group: primary
+            ? { id: primary.groupId, name: primary.groupName }
+            : null,
+    };
+}
 let StudentsService = class StudentsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async create(dto, actorId) {
         const passwordHash = await bcrypt.hash(dto.password, 10);
+        const phoneClash = await this.prisma.user.findUnique({
+            where: { phone: dto.phone },
+        });
+        if (phoneClash) {
+            throw new common_1.ConflictException('Phone is already in use');
+        }
         const student = await this.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
-                    email: dto.email,
+                    phone: dto.phone,
                     passwordHash,
                     role: client_1.Role.STUDENT,
                 },
             });
-            return tx.student.create({
+            const created = await tx.student.create({
                 data: {
                     userId: user.id,
                     fullName: dto.fullName,
                     phone: dto.phone,
                     birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
                     gender: dto.gender,
-                    groupId: dto.groupId,
-                    monthlyFee: dto.monthlyFee ?? 0,
                 },
-                select: studentSelect,
+            });
+            if (dto.groupId) {
+                let fee = dto.monthlyFee;
+                if (fee === undefined) {
+                    const grp = await tx.group.findUnique({
+                        where: { id: dto.groupId },
+                        select: { defaultMonthlyFee: true },
+                    });
+                    fee = grp ? Number(grp.defaultMonthlyFee) : 0;
+                }
+                await tx.studentGroup.create({
+                    data: {
+                        studentId: created.id,
+                        groupId: dto.groupId,
+                        monthlyFee: fee,
+                    },
+                });
+            }
+            return tx.student.findUniqueOrThrow({
+                where: { id: created.id },
+                include: studentInclude,
             });
         });
         await this.prisma.auditLog.create({
@@ -95,82 +147,87 @@ let StudentsService = class StudentsService {
                 action: 'CREATE',
                 entity: 'Student',
                 entityId: student.id,
-                details: { email: dto.email, fullName: dto.fullName },
+                details: { phone: dto.phone, fullName: dto.fullName },
             },
         });
-        return student;
+        return shapeStudent(student);
     }
     async findAll() {
-        return this.prisma.student.findMany({ select: studentSelect });
+        const rows = await this.prisma.student.findMany({ include: studentInclude });
+        return rows.map(shapeStudent);
     }
     async findOne(id, requestingUser) {
-        const student = await this.prisma.student.findUnique({
+        const raw = await this.prisma.student.findUnique({
             where: { id },
-            select: {
-                ...studentSelect,
-                group: { select: { id: true, name: true, teacherId: true } },
-            },
+            include: studentInclude,
         });
-        if (!student) {
+        if (!raw) {
             throw new common_1.NotFoundException('Student not found');
         }
+        const student = shapeStudent(raw);
         if (requestingUser?.role === client_1.Role.TEACHER) {
             const teacher = await this.prisma.teacher.findUnique({
                 where: { userId: requestingUser.id },
             });
-            if (!teacher || student.group?.id !== student.groupId) {
-                const teacherGroups = await this.prisma.group.findMany({
-                    where: { teacherId: teacher?.id },
-                    select: { id: true },
-                });
-                const groupIds = teacherGroups.map((g) => g.id);
-                if (!student.groupId || !groupIds.includes(student.groupId)) {
-                    throw new common_1.ForbiddenException('You can only view students in your groups');
-                }
+            if (!teacher) {
+                throw new common_1.ForbiddenException('You can only view students in your groups');
+            }
+            const teachesAny = student.groups.some((g) => g.teacherId === teacher.id);
+            if (!teachesAny) {
+                throw new common_1.ForbiddenException('You can only view students in your groups');
             }
         }
         return student;
     }
     async findMyProfile(userId) {
-        const student = await this.prisma.student.findUnique({
+        const raw = await this.prisma.student.findUnique({
             where: { userId },
-            select: {
-                id: true,
-                fullName: true,
-                phone: true,
-                birthDate: true,
-                gender: true,
-                enrolledAt: true,
-                monthlyFee: true,
-                group: {
+            include: {
+                groups: {
                     select: {
                         id: true,
-                        name: true,
-                        schedule: true,
-                        teacher: {
+                        monthlyFee: true,
+                        joinedAt: true,
+                        group: {
                             select: {
-                                fullName: true,
-                                phone: true,
+                                id: true,
+                                name: true,
+                                schedule: true,
+                                teacher: {
+                                    select: { fullName: true, phone: true },
+                                },
                             },
                         },
                     },
+                    orderBy: { joinedAt: 'asc' },
                 },
             },
         });
-        if (!student) {
+        if (!raw) {
             throw new common_1.NotFoundException('Student profile not found');
         }
+        const groups = raw.groups.map((link) => ({
+            id: link.group.id,
+            name: link.group.name,
+            schedule: link.group.schedule,
+            teacher: link.group.teacher,
+            monthlyFee: Number(link.monthlyFee),
+            joinedAt: link.joinedAt,
+        }));
+        const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+        const primary = groups[0] ?? null;
         let totalLessons = 0;
         const attendanceStats = { present: 0, absent: 0, late: 0, percentage: 0 };
-        if (student.group) {
+        if (groups.length > 0) {
+            const groupIds = groups.map((g) => g.id);
             totalLessons = await this.prisma.attendance
                 .groupBy({
-                by: ['date'],
-                where: { groupId: student.group.id },
+                by: ['groupId', 'date'],
+                where: { groupId: { in: groupIds } },
             })
                 .then((res) => res.length);
             const attendance = await this.prisma.attendance.findMany({
-                where: { studentId: student.id },
+                where: { studentId: raw.id },
             });
             attendance.forEach((record) => {
                 if (record.status === 'PRESENT')
@@ -188,7 +245,22 @@ let StudentsService = class StudentsService {
                     : 0;
         }
         return {
-            ...student,
+            id: raw.id,
+            fullName: raw.fullName,
+            phone: raw.phone,
+            birthDate: raw.birthDate,
+            gender: raw.gender,
+            enrolledAt: raw.enrolledAt,
+            monthlyFee,
+            group: primary
+                ? {
+                    id: primary.id,
+                    name: primary.name,
+                    schedule: primary.schedule,
+                    teacher: primary.teacher,
+                }
+                : null,
+            groups,
             totalLessons,
             attendanceStats,
         };
@@ -201,28 +273,28 @@ let StudentsService = class StudentsService {
         if (!student || !student.user) {
             throw new common_1.NotFoundException('Student profile not found');
         }
-        const wantsEmailChange = !!dto.email && dto.email !== student.user.email;
+        const wantsPhoneChange = !!dto.phone && dto.phone !== student.user.phone;
         const wantsPasswordChange = !!dto.newPassword;
-        if (wantsEmailChange || wantsPasswordChange) {
+        if (wantsPhoneChange || wantsPasswordChange) {
             if (!dto.currentPassword) {
-                throw new common_1.BadRequestException('Current password is required to change email or password');
+                throw new common_1.BadRequestException('Current password is required to change phone or password');
             }
             const ok = await bcrypt.compare(dto.currentPassword, student.user.passwordHash);
             if (!ok) {
                 throw new common_1.UnauthorizedException('Current password is incorrect');
             }
         }
-        if (wantsEmailChange) {
+        if (wantsPhoneChange) {
             const clash = await this.prisma.user.findUnique({
-                where: { email: dto.email },
+                where: { phone: dto.phone },
             });
             if (clash && clash.id !== student.user.id) {
-                throw new common_1.ConflictException('Email is already in use');
+                throw new common_1.ConflictException('Phone is already in use');
             }
         }
         const userData = {};
-        if (wantsEmailChange)
-            userData.email = dto.email;
+        if (wantsPhoneChange)
+            userData.phone = dto.phone;
         if (wantsPasswordChange) {
             userData.passwordHash = await bcrypt.hash(dto.newPassword, 10);
         }
@@ -230,8 +302,8 @@ let StudentsService = class StudentsService {
         if (typeof dto.fullName === 'string' && dto.fullName.trim()) {
             studentData.fullName = dto.fullName.trim();
         }
-        if (typeof dto.phone === 'string') {
-            studentData.phone = dto.phone.trim() || null;
+        if (wantsPhoneChange) {
+            studentData.phone = dto.phone.trim();
         }
         await this.prisma.$transaction(async (tx) => {
             if (Object.keys(userData).length > 0) {
@@ -260,8 +332,7 @@ let StudentsService = class StudentsService {
                 entityId: student.id,
                 details: {
                     fullNameChanged: !!studentData.fullName,
-                    phoneChanged: 'phone' in studentData,
-                    emailChanged: wantsEmailChange,
+                    phoneChanged: wantsPhoneChange,
                     passwordChanged: wantsPasswordChange,
                 },
             },
@@ -279,7 +350,7 @@ let StudentsService = class StudentsService {
                 ...dto,
                 birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
             },
-            select: studentSelect,
+            include: studentInclude,
         });
         await this.prisma.auditLog.create({
             data: {
@@ -290,43 +361,35 @@ let StudentsService = class StudentsService {
                 details: dto,
             },
         });
-        return updated;
+        return shapeStudent(updated);
     }
-    async removeFromGroup(id, actorId) {
-        const existing = await this.prisma.student.findUnique({ where: { id } });
-        if (!existing)
-            throw new common_1.NotFoundException('Student not found');
-        const updated = await this.prisma.student.update({
-            where: { id },
-            data: { groupId: null },
-            select: studentSelect,
-        });
-        await this.prisma.auditLog.create({
-            data: {
-                userId: actorId,
-                action: 'REMOVE_FROM_GROUP',
-                entity: 'Student',
-                entityId: id,
-                details: { previousGroupId: existing.groupId },
-            },
-        });
-        return updated;
-    }
-    async assignGroup(id, groupId, actorId) {
+    async addGroup(id, payload, actorId) {
         const existing = await this.prisma.student.findUnique({ where: { id } });
         if (!existing) {
             throw new common_1.NotFoundException('Student not found');
         }
         const group = await this.prisma.group.findUnique({
-            where: { id: groupId },
+            where: { id: payload.groupId },
+            select: { id: true, defaultMonthlyFee: true },
         });
         if (!group) {
             throw new common_1.NotFoundException('Group not found');
         }
-        const updated = await this.prisma.student.update({
-            where: { id },
-            data: { groupId },
-            select: studentSelect,
+        const fee = payload.monthlyFee !== undefined
+            ? payload.monthlyFee
+            : Number(group.defaultMonthlyFee);
+        await this.prisma.studentGroup.upsert({
+            where: {
+                studentId_groupId: { studentId: id, groupId: payload.groupId },
+            },
+            create: {
+                studentId: id,
+                groupId: payload.groupId,
+                monthlyFee: fee,
+            },
+            update: payload.monthlyFee !== undefined
+                ? { monthlyFee: payload.monthlyFee }
+                : {},
         });
         await this.prisma.auditLog.create({
             data: {
@@ -334,10 +397,101 @@ let StudentsService = class StudentsService {
                 action: 'ASSIGN_GROUP',
                 entity: 'Student',
                 entityId: id,
+                details: {
+                    groupId: payload.groupId,
+                    monthlyFee: payload.monthlyFee ?? null,
+                },
+            },
+        });
+        const refreshed = await this.prisma.student.findUniqueOrThrow({
+            where: { id },
+            include: studentInclude,
+        });
+        return shapeStudent(refreshed);
+    }
+    async updateGroupFee(id, groupId, monthlyFee, actorId) {
+        const link = await this.prisma.studentGroup.findUnique({
+            where: { studentId_groupId: { studentId: id, groupId } },
+        });
+        if (!link) {
+            throw new common_1.NotFoundException('Student is not assigned to this group');
+        }
+        await this.prisma.studentGroup.update({
+            where: { studentId_groupId: { studentId: id, groupId } },
+            data: { monthlyFee },
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'UPDATE_GROUP_FEE',
+                entity: 'Student',
+                entityId: id,
+                details: {
+                    groupId,
+                    previousFee: Number(link.monthlyFee),
+                    newFee: monthlyFee,
+                },
+            },
+        });
+        const refreshed = await this.prisma.student.findUniqueOrThrow({
+            where: { id },
+            include: studentInclude,
+        });
+        return shapeStudent(refreshed);
+    }
+    async removeGroup(id, groupId, actorId) {
+        const link = await this.prisma.studentGroup.findUnique({
+            where: { studentId_groupId: { studentId: id, groupId } },
+        });
+        if (!link) {
+            throw new common_1.NotFoundException('Student is not assigned to this group');
+        }
+        await this.prisma.studentGroup.delete({
+            where: { studentId_groupId: { studentId: id, groupId } },
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'REMOVE_FROM_GROUP',
+                entity: 'Student',
+                entityId: id,
                 details: { groupId },
             },
         });
-        return updated;
+        const refreshed = await this.prisma.student.findUniqueOrThrow({
+            where: { id },
+            include: studentInclude,
+        });
+        return shapeStudent(refreshed);
+    }
+    async removeFromAllGroups(id, actorId) {
+        const existing = await this.prisma.student.findUnique({
+            where: { id },
+            include: { groups: { select: { groupId: true } } },
+        });
+        if (!existing)
+            throw new common_1.NotFoundException('Student not found');
+        if (existing.groups.length > 0) {
+            await this.prisma.studentGroup.deleteMany({
+                where: { studentId: id },
+            });
+        }
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'REMOVE_FROM_GROUP',
+                entity: 'Student',
+                entityId: id,
+                details: {
+                    previousGroupIds: existing.groups.map((g) => g.groupId),
+                },
+            },
+        });
+        const refreshed = await this.prisma.student.findUniqueOrThrow({
+            where: { id },
+            include: studentInclude,
+        });
+        return shapeStudent(refreshed);
     }
     async deactivate(id, actorId) {
         const existing = await this.prisma.student.findUnique({ where: { id } });
@@ -347,7 +501,7 @@ let StudentsService = class StudentsService {
         const updated = await this.prisma.student.update({
             where: { id },
             data: { isActive: false },
-            select: studentSelect,
+            include: studentInclude,
         });
         await this.prisma.auditLog.create({
             data: {
@@ -357,24 +511,24 @@ let StudentsService = class StudentsService {
                 entityId: id,
             },
         });
-        return updated;
+        return shapeStudent(updated);
     }
     async updateCredentials(studentId, payload, actorId) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },
-            select: { id: true, userId: true, user: { select: { email: true } } },
+            select: { id: true, userId: true, user: { select: { phone: true } } },
         });
         if (!student)
             throw new common_1.NotFoundException('Student not found');
         const data = {};
-        if (payload.email && payload.email !== student.user.email) {
+        if (payload.phone && payload.phone !== student.user.phone) {
             const existing = await this.prisma.user.findUnique({
-                where: { email: payload.email },
+                where: { phone: payload.phone },
             });
             if (existing && existing.id !== student.userId) {
-                throw new common_1.ConflictException('Email already in use');
+                throw new common_1.ConflictException('Phone already in use');
             }
-            data.email = payload.email;
+            data.phone = payload.phone;
         }
         if (payload.password) {
             if (payload.password.length < 8) {
@@ -385,9 +539,17 @@ let StudentsService = class StudentsService {
         if (Object.keys(data).length === 0) {
             return { ok: true };
         }
-        await this.prisma.user.update({
-            where: { id: student.userId },
-            data,
+        await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: { id: student.userId },
+                data,
+            });
+            if (data.phone) {
+                await tx.student.update({
+                    where: { id: student.id },
+                    data: { phone: data.phone },
+                });
+            }
         });
         if (data.passwordHash) {
             await this.prisma.refreshToken.deleteMany({
@@ -401,12 +563,12 @@ let StudentsService = class StudentsService {
                 entity: 'Student',
                 entityId: studentId,
                 details: {
-                    emailChanged: Boolean(data.email),
+                    phoneChanged: Boolean(data.phone),
                     passwordChanged: Boolean(data.passwordHash),
                 },
             },
         });
-        return { ok: true, emailChanged: Boolean(data.email) };
+        return { ok: true, phoneChanged: Boolean(data.phone) };
     }
 };
 exports.StudentsService = StudentsService;

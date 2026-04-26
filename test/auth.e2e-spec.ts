@@ -28,11 +28,13 @@ describe('Auth (e2e)', () => {
     await app.close();
   });
 
+  const SUPER_ADMIN_PHONE = '+998000000001';
+
   describe('POST /auth/login', () => {
     it('should return tokens for valid credentials', async () => {
       const res = await supertest(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@mathcenter.uz', password: 'Admin123!' });
+        .send({ phone: SUPER_ADMIN_PHONE, password: '123456' });
 
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveProperty('accessToken');
@@ -43,15 +45,15 @@ describe('Auth (e2e)', () => {
     it('should return 401 for invalid password', async () => {
       const res = await supertest(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@mathcenter.uz', password: 'WrongPassword!' });
+        .send({ phone: SUPER_ADMIN_PHONE, password: 'WrongPassword!' });
 
       expect(res.status).toBe(401);
     });
 
-    it('should return 400 for invalid email format', async () => {
+    it('should return 400 for invalid phone format', async () => {
       const res = await supertest(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'notanemail', password: 'Admin123!' });
+        .send({ phone: 'not-a-phone!!', password: '123456' });
 
       expect(res.status).toBe(400);
     });
@@ -63,7 +65,7 @@ describe('Auth (e2e)', () => {
     beforeAll(async () => {
       const res = await supertest(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@mathcenter.uz', password: 'Admin123!' });
+        .send({ phone: SUPER_ADMIN_PHONE, password: '123456' });
       accessToken = res.body.data?.accessToken;
     });
 

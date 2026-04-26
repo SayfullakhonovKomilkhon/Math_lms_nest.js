@@ -13,7 +13,7 @@ export declare class GamificationController {
             id: string;
             fullName: string;
             gender: import(".prisma/client").$Enums.Gender;
-            groupName: string | null;
+            groupName: string;
         };
         monthGrid: ({
             month: number;
@@ -57,7 +57,7 @@ export declare class GamificationController {
             id: string;
             fullName: string;
             gender: import(".prisma/client").$Enums.Gender;
-            groupName: string | null;
+            groupName: string;
         };
         monthGrid: ({
             month: number;
@@ -163,7 +163,7 @@ export declare class GamificationController {
             id: string;
             fullName: string;
             gender: import(".prisma/client").$Enums.Gender;
-            groupName: string | null;
+            groupName: string;
         };
         monthGrid: ({
             month: number;

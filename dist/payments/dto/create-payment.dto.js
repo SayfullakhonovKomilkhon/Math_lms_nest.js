@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RejectPaymentDto = exports.CreatePaymentDto = void 0;
+exports.RejectPaymentDto = exports.CreateManualPaymentDto = exports.CreatePaymentDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -34,6 +34,36 @@ __decorate([
     (0, class_validator_1.IsDateString)(),
     __metadata("design:type", String)
 ], CreatePaymentDto.prototype, "nextPaymentDate", void 0);
+class CreateManualPaymentDto {
+}
+exports.CreateManualPaymentDto = CreateManualPaymentDto;
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateManualPaymentDto.prototype, "studentId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 500000 }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateManualPaymentDto.prototype, "amount", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '2025-02-01',
+        description: 'Дата оплаты. Если не указана — берётся текущая.',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateManualPaymentDto.prototype, "paidAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2025-03-01' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateManualPaymentDto.prototype, "nextPaymentDate", void 0);
 class RejectPaymentDto {
 }
 exports.RejectPaymentDto = RejectPaymentDto;

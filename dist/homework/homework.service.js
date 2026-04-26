@@ -74,15 +74,24 @@ let HomeworkService = class HomeworkService {
         if (user.role === client_1.Role.STUDENT) {
             const student = await this.prisma.student.findUnique({
                 where: { userId: user.id },
+                select: { id: true },
             });
-            if (!student || student.groupId !== groupId)
+            const link = student
+                ? await this.prisma.studentGroup.findUnique({
+                    where: {
+                        studentId_groupId: { studentId: student.id, groupId },
+                    },
+                    select: { studentId: true },
+                })
+                : null;
+            if (!link)
                 throw new common_1.ForbiddenException('You can only view your own group homework');
         }
         if (user.role === client_1.Role.PARENT) {
             const link = await this.prisma.parentStudent.findFirst({
                 where: {
                     parent: { userId: user.id },
-                    student: { groupId },
+                    student: { groups: { some: { groupId } } },
                 },
                 select: { parentId: true },
             });
@@ -99,8 +108,17 @@ let HomeworkService = class HomeworkService {
         if (user?.role === client_1.Role.STUDENT) {
             const student = await this.prisma.student.findUnique({
                 where: { userId: user.id },
+                select: { id: true },
             });
-            if (!student || student.groupId !== groupId) {
+            const link = student
+                ? await this.prisma.studentGroup.findUnique({
+                    where: {
+                        studentId_groupId: { studentId: student.id, groupId },
+                    },
+                    select: { studentId: true },
+                })
+                : null;
+            if (!link) {
                 throw new common_1.ForbiddenException('You can only view your own group homework');
             }
         }
@@ -108,7 +126,7 @@ let HomeworkService = class HomeworkService {
             const link = await this.prisma.parentStudent.findFirst({
                 where: {
                     parent: { userId: user.id },
-                    student: { groupId },
+                    student: { groups: { some: { groupId } } },
                 },
                 select: { parentId: true },
             });
@@ -123,21 +141,47 @@ let HomeworkService = class HomeworkService {
         });
     }
     async findMy(limit, userId) {
-        const student = await this.prisma.student.findUnique({ where: { userId } });
-        if (!student || !student.groupId)
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+            select: { id: true },
+        });
+        if (!student)
+            return [];
+        const groupIds = await this.prisma.studentGroup
+            .findMany({
+            where: { studentId: student.id },
+            select: { groupId: true },
+        })
+            .then((rows) => rows.map((r) => r.groupId));
+        if (groupIds.length === 0)
             return [];
         return this.prisma.homework.findMany({
-            where: { groupId: student.groupId },
+            where: { groupId: { in: groupIds } },
             select: hwSelect,
             orderBy: { createdAt: 'desc' },
             take: limit,
         });
     }
     async findMyLatest(userId) {
-        const student = await this.prisma.student.findUnique({ where: { userId } });
-        if (!student || !student.groupId)
+        const student = await this.prisma.student.findUnique({
+            where: { userId },
+            select: { id: true },
+        });
+        if (!student)
             return null;
-        return this.findLatest(student.groupId);
+        const groupIds = await this.prisma.studentGroup
+            .findMany({
+            where: { studentId: student.id },
+            select: { groupId: true },
+        })
+            .then((rows) => rows.map((r) => r.groupId));
+        if (groupIds.length === 0)
+            return null;
+        return this.prisma.homework.findFirst({
+            where: { groupId: { in: groupIds } },
+            select: hwSelect,
+            orderBy: { createdAt: 'desc' },
+        });
     }
     async update(id, dto, user) {
         const hw = await this.prisma.homework.findUnique({ where: { id } });

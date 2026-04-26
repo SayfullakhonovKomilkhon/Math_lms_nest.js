@@ -17,10 +17,16 @@ class CreateTeacherDto {
 }
 exports.CreateTeacherDto = CreateTeacherDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'teacher@mathcenter.uz' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, swagger_1.ApiProperty)({
+        example: '+998901234567',
+        description: 'Phone number used as the login identifier',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], CreateTeacherDto.prototype, "email", void 0);
+], CreateTeacherDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Teacher123!' }),
     (0, class_validator_1.IsString)(),
@@ -32,12 +38,6 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateTeacherDto.prototype, "fullName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: '+998901234567' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateTeacherDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false, example: 50000 }),
     (0, class_validator_1.IsOptional)(),

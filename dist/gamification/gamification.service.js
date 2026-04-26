@@ -299,11 +299,15 @@ let GamificationService = GamificationService_1 = class GamificationService {
                 id: true,
                 fullName: true,
                 gender: true,
-                group: { select: { name: true } },
+                groups: {
+                    orderBy: { joinedAt: 'asc' },
+                    select: { group: { select: { name: true } } },
+                },
             },
         });
         if (!student)
             return null;
+        const primaryGroupName = student.groups[0]?.group.name ?? null;
         const achievements = await this.prisma.achievement.findMany({
             where: { studentId },
             orderBy: { createdAt: 'asc' },
@@ -346,7 +350,7 @@ let GamificationService = GamificationService_1 = class GamificationService {
                 id: student.id,
                 fullName: student.fullName,
                 gender: student.gender,
-                groupName: student.group?.name ?? null,
+                groupName: primaryGroupName,
             },
             monthGrid,
             specialAchievements,
@@ -361,7 +365,7 @@ let GamificationService = GamificationService_1 = class GamificationService {
     }
     async getGroupAchievements(groupId) {
         const students = await this.prisma.student.findMany({
-            where: { groupId, isActive: true },
+            where: { isActive: true, groups: { some: { groupId } } },
             select: { id: true, fullName: true, gender: true },
         });
         const results = await Promise.all(students.map(async (s) => {
@@ -521,7 +525,10 @@ let GamificationService = GamificationService_1 = class GamificationService {
                 id: true,
                 fullName: true,
                 gender: true,
-                group: { select: { name: true } },
+                groups: {
+                    orderBy: { joinedAt: 'asc' },
+                    select: { group: { select: { name: true } } },
+                },
                 achievements: {
                     where: { type: client_1.AchievementType.MONTHLY },
                     select: { place: true },
@@ -535,7 +542,7 @@ let GamificationService = GamificationService_1 = class GamificationService {
             return {
                 studentId: sid,
                 fullName: s?.fullName ?? '',
-                groupName: s?.group?.name ?? '',
+                groupName: s?.groups[0]?.group.name ?? '',
                 totalAchievements: count,
                 goldCount: gold,
             };

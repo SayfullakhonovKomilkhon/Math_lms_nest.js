@@ -79,7 +79,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Update own login email and/or password',
+    summary: 'Update own login phone and/or password',
     description:
       'Current password is required. Returns the updated user plus a fresh token pair.',
   })

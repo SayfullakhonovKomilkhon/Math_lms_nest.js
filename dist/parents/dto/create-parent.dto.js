@@ -16,10 +16,16 @@ class CreateParentDto {
 }
 exports.CreateParentDto = CreateParentDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'parent@mathcenter.uz' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, swagger_1.ApiProperty)({
+        example: '+998901234567',
+        description: 'Phone number used as the login identifier',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], CreateParentDto.prototype, "email", void 0);
+], CreateParentDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Parent123!' }),
     (0, class_validator_1.IsString)(),
@@ -31,12 +37,6 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateParentDto.prototype, "fullName", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '+998901234567' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateParentDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({
         description: 'IDs of students to link to this parent',

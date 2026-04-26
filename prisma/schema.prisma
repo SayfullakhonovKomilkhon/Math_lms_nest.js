@@ -60,7 +60,7 @@ enum AchievementType {
 
 model User {
   id             String   @id @default(cuid())
-  email          String   @unique
+  phone          String   @unique
   passwordHash   String
   role           Role
   isActive       Boolean  @default(true)
@@ -96,18 +96,36 @@ model Student {
   birthDate  DateTime?
   gender     Gender
   enrolledAt DateTime  @default(now())
-  groupId    String?
-  group      Group?    @relation(fields: [groupId], references: [id])
-  monthlyFee Decimal   @default(0) @db.Decimal(10, 2)
   isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
+  groups       StudentGroup[]
   parents      ParentStudent[]
   attendances  Attendance[]
   grades       Grade[]
   payments     Payment[]
   achievements Achievement[]
+}
+
+// Many-to-many between students and groups, with a per-link monthly fee
+// override. The student's expected monthly tuition is the sum of
+// `monthlyFee` across all of their StudentGroup rows. Unlinking a student
+// from a group hard-deletes the row; historical attendance/grades survive
+// because they reference the student/group ids directly.
+model StudentGroup {
+  id         String   @id @default(cuid())
+  studentId  String
+  groupId    String
+  monthlyFee Decimal  @default(0) @db.Decimal(10, 2)
+  joinedAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, groupId])
+  @@index([studentId])
+  @@index([groupId])
 }
 
 model Parent {
@@ -160,13 +178,16 @@ model Group {
   teacher         Teacher   @relation(fields: [teacherId], references: [id])
   maxStudents     Int       @default(20)
   schedule        Json
+  // Suggested monthly fee for new students enrolled into this group; admin
+  // can still override per-student in the StudentGroup link.
+  defaultMonthlyFee Decimal @default(0) @db.Decimal(10, 2)
   isActive        Boolean   @default(true)
   isRatingVisible Boolean   @default(false)
   archivedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  students      Student[]
+  students      StudentGroup[]
   attendances   Attendance[]
   grades        Grade[]
   homeworks     Homework[]

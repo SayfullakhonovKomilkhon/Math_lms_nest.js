@@ -3,4 +3,5 @@ export declare class CreateGroupDto {
     teacherId: string;
     maxStudents?: number;
     schedule: Record<string, unknown>;
+    defaultMonthlyFee?: number;
 }

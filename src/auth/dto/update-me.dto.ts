@@ -1,11 +1,14 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateMeDto {
-  @ApiProperty({ required: false, description: 'New email (login)' })
+  @ApiProperty({ required: false, description: 'New phone (login)' })
   @IsOptional()
-  @IsEmail()
-  email?: string;
+  @IsString()
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
+  phone?: string;
 
   @ApiProperty({ required: false, description: 'New password, min 8 chars' })
   @IsOptional()
@@ -14,7 +17,7 @@ export class UpdateMeDto {
   newPassword?: string;
 
   @ApiProperty({
-    description: 'Current password, required when changing email or password',
+    description: 'Current password, required when changing phone or password',
   })
   @IsString()
   currentPassword: string;

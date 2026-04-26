@@ -17,10 +17,13 @@ class CreateUserDto {
 }
 exports.CreateUserDto = CreateUserDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'user@mathcenter.uz' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, swagger_1.ApiProperty)({ example: '+998901234567' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], CreateUserDto.prototype, "email", void 0);
+], CreateUserDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Password123!' }),
     (0, class_validator_1.IsString)(),

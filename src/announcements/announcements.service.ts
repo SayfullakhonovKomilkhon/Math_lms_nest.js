@@ -56,7 +56,7 @@ export class AnnouncementsService {
           select: {
             id: true,
             role: true,
-            email: true,
+            phone: true,
             teacher: { select: { fullName: true } },
           },
         },
@@ -88,7 +88,7 @@ export class AnnouncementsService {
             select: {
               id: true,
               role: true,
-              email: true,
+              phone: true,
               teacher: { select: { fullName: true } },
             },
           },
@@ -139,7 +139,7 @@ export class AnnouncementsService {
             select: {
               id: true,
               role: true,
-              email: true,
+              phone: true,
               teacher: { select: { fullName: true } },
             },
           },
@@ -254,12 +254,16 @@ export class AnnouncementsService {
         user: {
           select: {
             id: true,
-            email: true,
+            phone: true,
             role: true,
             student: {
               select: {
                 fullName: true,
-                group: { select: { id: true, name: true } },
+                groups: {
+                  orderBy: { joinedAt: 'asc' },
+                  take: 1,
+                  select: { group: { select: { id: true, name: true } } },
+                },
               },
             },
             teacher: { select: { fullName: true } },
@@ -271,7 +275,13 @@ export class AnnouncementsService {
                     student: {
                       select: {
                         fullName: true,
-                        group: { select: { id: true, name: true } },
+                        groups: {
+                          orderBy: { joinedAt: 'asc' },
+                          take: 1,
+                          select: {
+                            group: { select: { id: true, name: true } },
+                          },
+                        },
                       },
                     },
                   },
@@ -311,11 +321,16 @@ export class AnnouncementsService {
     if (actor.role === Role.STUDENT) {
       const student = await this.prisma.student.findUnique({
         where: { userId: actor.id },
-        select: { groupId: true },
+        select: {
+          groups: { select: { groupId: true } },
+        },
       });
-      const groupId = student?.groupId;
+      const groupIds = (student?.groups ?? []).map((g) => g.groupId);
       return {
-        OR: [{ groupId: null }, ...(groupId ? [{ groupId }] : [])],
+        OR: [
+          { groupId: null },
+          ...(groupIds.length ? [{ groupId: { in: groupIds } }] : []),
+        ],
       };
     }
 
@@ -324,13 +339,23 @@ export class AnnouncementsService {
         where: { userId: actor.id },
         select: {
           students: {
-            select: { student: { select: { groupId: true } } },
+            select: {
+              student: {
+                select: {
+                  groups: { select: { groupId: true } },
+                },
+              },
+            },
           },
         },
       });
-      const groupIds = (parent?.students ?? [])
-        .map((l) => l.student.groupId)
-        .filter((g): g is string => Boolean(g));
+      const groupIds = Array.from(
+        new Set(
+          (parent?.students ?? []).flatMap((l) =>
+            l.student.groups.map((g) => g.groupId),
+          ),
+        ),
+      );
       return {
         OR: [
           { groupId: null },
@@ -365,7 +390,7 @@ export class AnnouncementsService {
       author: {
         id: string;
         role: Role;
-        email: string;
+        phone: string;
         teacher: { fullName: string } | null;
       };
       group: { id: string; name: string } | null;
@@ -390,7 +415,7 @@ export class AnnouncementsService {
 
   private getAuthorName(author: {
     role: Role;
-    email: string;
+    phone: string;
     teacher: { fullName: string } | null;
   }): string {
     if (author.teacher?.fullName) return author.teacher.fullName;
@@ -421,8 +446,13 @@ export class AnnouncementsService {
     const userIds = new Set<string>();
 
     if (groupId) {
+      // Now that students belong to multiple groups, we resolve the
+      // group-based audience through the StudentGroup join table.
       const students = await this.prisma.student.findMany({
-        where: { groupId, isActive: true },
+        where: {
+          isActive: true,
+          groups: { some: { groupId } },
+        },
         select: {
           userId: true,
           parents: { select: { parent: { select: { userId: true } } } },
@@ -462,11 +492,11 @@ export class AnnouncementsService {
   private shapeReader(
     user: {
       id: string;
-      email: string;
+      phone: string;
       role: Role;
       student: {
         fullName: string;
-        group: { id: string; name: string } | null;
+        groups: { group: { id: string; name: string } }[];
       } | null;
       teacher: { fullName: string } | null;
       parent: {
@@ -474,7 +504,7 @@ export class AnnouncementsService {
         students: {
           student: {
             fullName: string;
-            group: { id: string; name: string } | null;
+            groups: { group: { id: string; name: string } }[];
           };
         }[];
       } | null;
@@ -487,27 +517,26 @@ export class AnnouncementsService {
 
     if (user.student) {
       fullName = user.student.fullName;
-      group = user.student.group;
+      group = user.student.groups[0]?.group ?? null;
     } else if (user.teacher) {
       fullName = user.teacher.fullName;
     } else if (user.parent) {
       fullName = user.parent.fullName;
       const childNames = user.parent.students.map((l) => l.student.fullName);
-      // Use the first child's group as a representative; cross-group parents
-      // simply omit the group label.
-      group = user.parent.students[0]?.student.group ?? null;
+      // Use the first child's primary group as a representative.
+      group = user.parent.students[0]?.student.groups[0]?.group ?? null;
       extra = childNames.length
         ? `Родитель: ${childNames.join(', ')}`
         : 'Родитель';
     } else {
-      fullName = user.email;
+      fullName = user.phone;
     }
 
     return {
       userId: user.id,
       fullName,
       role: user.role,
-      email: user.email,
+      phone: user.phone,
       group,
       extra,
       readAt,

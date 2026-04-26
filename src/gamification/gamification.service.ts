@@ -369,10 +369,16 @@ export class GamificationService {
         id: true,
         fullName: true,
         gender: true,
-        group: { select: { name: true } },
+        groups: {
+          orderBy: { joinedAt: 'asc' },
+          select: { group: { select: { name: true } } },
+        },
       },
     });
     if (!student) return null;
+    // With multi-group enrollment, surface the primary (first joined)
+    // group name. The achievements card only ever shows one group.
+    const primaryGroupName = student.groups[0]?.group.name ?? null;
 
     const achievements = await this.prisma.achievement.findMany({
       where: { studentId },
@@ -425,7 +431,7 @@ export class GamificationService {
         id: student.id,
         fullName: student.fullName,
         gender: student.gender,
-        groupName: student.group?.name ?? null,
+        groupName: primaryGroupName,
       },
       monthGrid,
       specialAchievements,
@@ -442,7 +448,7 @@ export class GamificationService {
 
   async getGroupAchievements(groupId: string) {
     const students = await this.prisma.student.findMany({
-      where: { groupId, isActive: true },
+      where: { isActive: true, groups: { some: { groupId } } },
       select: { id: true, fullName: true, gender: true },
     });
 
@@ -638,7 +644,10 @@ export class GamificationService {
         id: true,
         fullName: true,
         gender: true,
-        group: { select: { name: true } },
+        groups: {
+          orderBy: { joinedAt: 'asc' },
+          select: { group: { select: { name: true } } },
+        },
         achievements: {
           where: { type: AchievementType.MONTHLY },
           select: { place: true },
@@ -653,7 +662,7 @@ export class GamificationService {
       return {
         studentId: sid,
         fullName: s?.fullName ?? '',
-        groupName: s?.group?.name ?? '',
+        groupName: s?.groups[0]?.group.name ?? '',
         totalAchievements: count,
         goldCount: gold,
       };

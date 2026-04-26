@@ -22,7 +22,7 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { phone: dto.phone },
     });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
@@ -33,12 +33,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.phone, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     return {
       ...tokens,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, phone: user.phone, role: user.role },
     };
   }
 
@@ -58,7 +58,7 @@ export class AuthService {
 
     // Token rotation: delete old, create new
     await this.prisma.refreshToken.delete({ where: { token: refreshToken } });
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.phone, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
@@ -69,7 +69,7 @@ export class AuthService {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
+        phone: true,
         role: true,
         isActive: true,
         createdAt: true,
@@ -85,10 +85,10 @@ export class AuthService {
       throw new NotFoundException('User not found or inactive');
     }
 
-    const wantsEmailChange = !!dto.email && dto.email !== user.email;
+    const wantsPhoneChange = !!dto.phone && dto.phone !== user.phone;
     const wantsPasswordChange = !!dto.newPassword;
 
-    if (!wantsEmailChange && !wantsPasswordChange) {
+    if (!wantsPhoneChange && !wantsPasswordChange) {
       throw new BadRequestException('Nothing to update');
     }
 
@@ -103,17 +103,17 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    if (wantsEmailChange) {
+    if (wantsPhoneChange) {
       const clash = await this.prisma.user.findUnique({
-        where: { email: dto.email! },
+        where: { phone: dto.phone! },
       });
       if (clash && clash.id !== user.id) {
-        throw new ConflictException('Email is already in use');
+        throw new ConflictException('Phone is already in use');
       }
     }
 
-    const data: { email?: string; passwordHash?: string } = {};
-    if (wantsEmailChange) data.email = dto.email!;
+    const data: { phone?: string; passwordHash?: string } = {};
+    if (wantsPhoneChange) data.phone = dto.phone!;
     if (wantsPasswordChange) {
       data.passwordHash = await bcrypt.hash(dto.newPassword!, 10);
     }
@@ -123,7 +123,7 @@ export class AuthService {
       data,
       select: {
         id: true,
-        email: true,
+        phone: true,
         role: true,
         isActive: true,
       },
@@ -134,7 +134,7 @@ export class AuthService {
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
     const tokens = await this.generateTokens(
       updated.id,
-      updated.email,
+      updated.phone,
       updated.role,
     );
     await this.saveRefreshToken(updated.id, tokens.refreshToken);
@@ -155,8 +155,8 @@ export class AuthService {
     }
   }
 
-  private async generateTokens(userId: string, email: string, role: string) {
-    const payload = { sub: userId, email, role };
+  private async generateTokens(userId: string, phone: string, role: string) {
+    const payload = { sub: userId, phone, role };
 
     const accessSecret = this.configService.get<string>('jwt.accessSecret');
     const refreshSecret = this.configService.get<string>('jwt.refreshSecret');

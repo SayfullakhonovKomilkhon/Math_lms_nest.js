@@ -79,8 +79,20 @@ let LessonTopicsService = class LessonTopicsService {
         if (user.role === client_1.Role.STUDENT && query.groupId) {
             const student = await this.prisma.student.findUnique({
                 where: { userId: user.id },
+                select: { id: true },
             });
-            if (!student || student.groupId !== query.groupId)
+            const link = student
+                ? await this.prisma.studentGroup.findUnique({
+                    where: {
+                        studentId_groupId: {
+                            studentId: student.id,
+                            groupId: query.groupId,
+                        },
+                    },
+                    select: { studentId: true },
+                })
+                : null;
+            if (!link)
                 throw new common_1.ForbiddenException('You can only view your own group topics');
         }
         const where = {};

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,7 +18,7 @@ const teacherSelect = {
   isActive: true,
   createdAt: true,
   updatedAt: true,
-  user: { select: { id: true, email: true, role: true, isActive: true } },
+  user: { select: { id: true, phone: true, role: true, isActive: true } },
 };
 
 @Injectable()
@@ -36,10 +40,17 @@ export class TeachersService {
       ratePerStudent = Number.isFinite(parsed) ? parsed : 0;
     }
 
+    const phoneClash = await this.prisma.user.findUnique({
+      where: { phone: dto.phone },
+    });
+    if (phoneClash) {
+      throw new ConflictException('Phone is already in use');
+    }
+
     const teacher = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email: dto.email,
+          phone: dto.phone,
           passwordHash,
           role: Role.TEACHER,
         },
@@ -62,7 +73,7 @@ export class TeachersService {
         action: 'CREATE',
         entity: 'Teacher',
         entityId: teacher.id,
-        details: { email: dto.email, fullName: dto.fullName },
+        details: { phone: dto.phone, fullName: dto.fullName },
       },
     });
 

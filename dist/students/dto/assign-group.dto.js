@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AssignGroupDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 class AssignGroupDto {
 }
@@ -20,4 +21,16 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], AssignGroupDto.prototype, "groupId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: 500000,
+        description: 'Monthly fee for this student in this group (currency units)',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], AssignGroupDto.prototype, "monthlyFee", void 0);
 //# sourceMappingURL=assign-group.dto.js.map

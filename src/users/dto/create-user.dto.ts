@@ -1,17 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'user@mathcenter.uz' })
-  @IsEmail()
-  email: string;
+  @ApiProperty({ example: '+998901234567' })
+  @IsString()
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
+  phone: string;
 
   @ApiProperty({ example: 'Password123!' })
   @IsString()

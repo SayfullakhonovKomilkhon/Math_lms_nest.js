@@ -82,9 +82,12 @@ let GamificationController = class GamificationController {
             });
             const student = await this.prisma.student.findUnique({
                 where: { id },
-                select: { group: { select: { teacherId: true } } },
+                select: {
+                    groups: { select: { group: { select: { teacherId: true } } } },
+                },
             });
-            if (!teacher || student?.group?.teacherId !== teacher.id)
+            const teachesAny = student?.groups.some((g) => g.group.teacherId === teacher?.id);
+            if (!teacher || !teachesAny)
                 return null;
         }
         return this.gamificationService.computeStudentProgress(id);

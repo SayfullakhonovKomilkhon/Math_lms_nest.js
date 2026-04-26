@@ -31,8 +31,8 @@ export declare class AttendanceService {
         id: string;
         createdAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
@@ -51,8 +51,8 @@ export declare class AttendanceService {
         id: string;
         createdAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
@@ -65,8 +65,8 @@ export declare class AttendanceService {
         id: string;
         createdAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;

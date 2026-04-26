@@ -45,6 +45,9 @@ let PaymentsController = class PaymentsController {
     findByStudent(studentId, user) {
         return this.service.findByStudent(studentId, user);
     }
+    createManual(file, dto, actorId) {
+        return this.service.createManual(dto, file, actorId);
+    }
     uploadReceipt(file, studentId, actorId) {
         return this.service.uploadReceipt(file, studentId, actorId);
     }
@@ -107,6 +110,36 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "findByStudent", null);
+__decorate([
+    (0, common_1.Post)('manual'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, common_1.UseGuards)(upload_throttle_guard_1.UploadThrottleGuard),
+    (0, throttler_1.Throttle)({ default: { limit: 60, ttl: 1000 * 60 * 60 } }),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary' },
+                studentId: { type: 'string' },
+                amount: { type: 'number' },
+                paidAt: { type: 'string', example: '2025-02-01' },
+                nextPaymentDate: { type: 'string', example: '2025-03-01' },
+            },
+            required: ['studentId', 'amount'],
+        },
+    }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Admin: manually record a confirmed payment (with optional receipt)',
+    }),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, create_payment_dto_1.CreateManualPaymentDto, String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "createManual", null);
 __decorate([
     (0, common_1.Post)('upload-receipt'),
     (0, roles_decorator_1.Roles)(client_1.Role.PARENT, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),

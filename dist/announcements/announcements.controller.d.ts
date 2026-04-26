@@ -93,7 +93,7 @@ export declare class AnnouncementsController {
             userId: string;
             fullName: string;
             role: import(".prisma/client").$Enums.Role;
-            email: string;
+            phone: string;
             group: {
                 id: string;
                 name: string;

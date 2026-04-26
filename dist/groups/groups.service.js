@@ -18,6 +18,7 @@ const groupSelect = {
     name: true,
     maxStudents: true,
     schedule: true,
+    defaultMonthlyFee: true,
     isActive: true,
     isRatingVisible: true,
     archivedAt: true,
@@ -26,6 +27,12 @@ const groupSelect = {
     teacher: { select: { id: true, fullName: true } },
     _count: { select: { students: true } },
 };
+function shapeGroup(g) {
+    return {
+        ...g,
+        defaultMonthlyFee: Number(g.defaultMonthlyFee),
+    };
+}
 let GroupsService = class GroupsService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -43,6 +50,7 @@ let GroupsService = class GroupsService {
                 teacherId: dto.teacherId,
                 maxStudents: dto.maxStudents ?? 20,
                 schedule: dto.schedule,
+                defaultMonthlyFee: dto.defaultMonthlyFee ?? 0,
             },
             select: groupSelect,
         });
@@ -55,7 +63,7 @@ let GroupsService = class GroupsService {
                 details: { name: dto.name },
             },
         });
-        return group;
+        return shapeGroup(group);
     }
     async findAll(user) {
         if (user.role === client_1.Role.TEACHER) {
@@ -64,12 +72,14 @@ let GroupsService = class GroupsService {
             });
             if (!teacher)
                 return [];
-            return this.prisma.group.findMany({
+            const rows = await this.prisma.group.findMany({
                 where: { teacherId: teacher.id },
                 select: groupSelect,
             });
+            return rows.map(shapeGroup);
         }
-        return this.prisma.group.findMany({ select: groupSelect });
+        const rows = await this.prisma.group.findMany({ select: groupSelect });
+        return rows.map(shapeGroup);
     }
     async findOne(id, user) {
         const group = await this.prisma.group.findUnique({
@@ -87,36 +97,47 @@ let GroupsService = class GroupsService {
                 throw new common_1.ForbiddenException('You can only access your own groups');
             }
         }
-        return group;
+        return shapeGroup(group);
     }
     async findStudents(groupId, user) {
         await this.findOne(groupId, user);
-        const students = await this.prisma.student.findMany({
+        const links = await this.prisma.studentGroup.findMany({
             where: { groupId },
             select: {
-                id: true,
-                fullName: true,
-                phone: true,
-                gender: true,
-                isActive: true,
                 monthlyFee: true,
-                user: { select: { email: true } },
+                joinedAt: true,
+                student: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        phone: true,
+                        gender: true,
+                        isActive: true,
+                        user: { select: { phone: true } },
+                    },
+                },
             },
+            orderBy: { joinedAt: 'asc' },
         });
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const paidThisMonth = await this.prisma.payment.findMany({
-            where: {
-                studentId: { in: students.map((s) => s.id) },
-                status: client_1.PaymentStatus.CONFIRMED,
-                confirmedAt: { gte: startOfMonth },
-            },
-            select: { studentId: true },
-        });
+        const studentIds = links.map((l) => l.student.id);
+        const paidThisMonth = studentIds.length > 0
+            ? await this.prisma.payment.findMany({
+                where: {
+                    studentId: { in: studentIds },
+                    status: client_1.PaymentStatus.CONFIRMED,
+                    confirmedAt: { gte: startOfMonth },
+                },
+                select: { studentId: true },
+            })
+            : [];
         const paidSet = new Set(paidThisMonth.map((p) => p.studentId));
-        return students.map((s) => ({
-            ...s,
-            hasPaidThisMonth: paidSet.has(s.id),
+        return links.map((link) => ({
+            ...link.student,
+            monthlyFee: Number(link.monthlyFee),
+            joinedAt: link.joinedAt,
+            hasPaidThisMonth: paidSet.has(link.student.id),
         }));
     }
     async update(id, dto, actorId) {
@@ -143,14 +164,14 @@ let GroupsService = class GroupsService {
                 details: dto,
             },
         });
-        return updated;
+        return shapeGroup(updated);
     }
     async archive(id, actorId) {
         const existing = await this.prisma.group.findUnique({ where: { id } });
         if (!existing) {
             throw new common_1.NotFoundException('Group not found');
         }
-        const updated = await this.prisma.group.update({
+        const archived = await this.prisma.group.update({
             where: { id },
             data: { isActive: false, archivedAt: new Date() },
             select: groupSelect,
@@ -163,11 +184,11 @@ let GroupsService = class GroupsService {
                 entityId: id,
             },
         });
-        return updated;
+        return shapeGroup(archived);
     }
     async updateRatingVisibility(id, isRatingVisible, user) {
         const group = await this.findOne(id, user);
-        const updated = await this.prisma.group.update({
+        const visibilityUpdated = await this.prisma.group.update({
             where: { id: group.id },
             data: { isRatingVisible },
             select: groupSelect,
@@ -181,7 +202,7 @@ let GroupsService = class GroupsService {
                 details: { isRatingVisible },
             },
         });
-        return updated;
+        return shapeGroup(visibilityUpdated);
     }
 };
 exports.GroupsService = GroupsService;

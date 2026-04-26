@@ -409,7 +409,16 @@ export class GradesService {
     });
     if (!student) throw new NotFoundException('Student profile not found');
 
-    if (!student.groupId) {
+    // The student panel renders a single podium per visit, so we pick the
+    // primary (= first joined) group when the student is in several. The
+    // UI can pass an explicit group id later if we expose multi-group
+    // ratings — for now this matches the previous "one rating" behavior.
+    const link = await this.prisma.studentGroup.findFirst({
+      where: { studentId: student.id },
+      orderBy: { joinedAt: 'asc' },
+      select: { groupId: true },
+    });
+    if (!link) {
       return {
         myPlace: 0,
         totalStudents: 0,
@@ -420,7 +429,7 @@ export class GradesService {
     }
 
     const group = await this.prisma.group.findUnique({
-      where: { id: student.groupId },
+      where: { id: link.groupId },
     });
     if (!group) {
       return {
@@ -432,9 +441,8 @@ export class GradesService {
       };
     }
 
-    // Reuse getRating
     const ratingList = await this.getRating(
-      student.groupId,
+      link.groupId,
       { period: query.period as any },
       { id: userId, role: Role.STUDENT },
     );

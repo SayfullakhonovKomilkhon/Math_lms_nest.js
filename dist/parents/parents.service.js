@@ -55,7 +55,7 @@ const parentSummarySelect = {
     phone: true,
     createdAt: true,
     updatedAt: true,
-    user: { select: { id: true, email: true, role: true, isActive: true } },
+    user: { select: { id: true, phone: true, role: true, isActive: true } },
 };
 let ParentsService = class ParentsService {
     constructor(prisma, paymentsService, gradesService) {
@@ -98,15 +98,47 @@ let ParentsService = class ParentsService {
             gender: true,
             enrolledAt: true,
             isActive: true,
-            monthlyFee: true,
-            group: {
+            groups: {
+                orderBy: { joinedAt: 'asc' },
                 select: {
-                    id: true,
-                    name: true,
-                    schedule: true,
-                    teacher: { select: { fullName: true, phone: true } },
+                    monthlyFee: true,
+                    joinedAt: true,
+                    group: {
+                        select: {
+                            id: true,
+                            name: true,
+                            schedule: true,
+                            teacher: { select: { fullName: true, phone: true } },
+                        },
+                    },
                 },
             },
+        };
+    }
+    shapeChild(child) {
+        const groups = child.groups.map((link) => ({
+            id: link.group.id,
+            name: link.group.name,
+            schedule: link.group.schedule,
+            teacher: link.group.teacher,
+            monthlyFee: Number(link.monthlyFee),
+            joinedAt: link.joinedAt,
+        }));
+        const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+        const primary = groups[0] ?? null;
+        const { groups: _omit, ...rest } = child;
+        return {
+            ...rest,
+            monthlyFee,
+            group: primary
+                ? {
+                    id: primary.id,
+                    name: primary.name,
+                    schedule: primary.schedule,
+                    teacher: primary.teacher,
+                }
+                : null,
+            groups,
         };
     }
     async create(dto, actorId) {
@@ -121,16 +153,16 @@ let ParentsService = class ParentsService {
             }
         }
         const existingUser = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { phone: dto.phone },
         });
         if (existingUser) {
-            throw new common_1.ConflictException('Email already in use');
+            throw new common_1.ConflictException('Phone already in use');
         }
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const parent = await this.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
-                    email: dto.email,
+                    phone: dto.phone,
                     passwordHash,
                     role: client_1.Role.PARENT,
                 },
@@ -159,7 +191,7 @@ let ParentsService = class ParentsService {
                 action: 'CREATE',
                 entity: 'Parent',
                 entityId: parent.id,
-                details: { email: dto.email, studentIds },
+                details: { phone: dto.phone, studentIds },
             },
         });
         return this.findOne(parent.id);
@@ -176,7 +208,7 @@ let ParentsService = class ParentsService {
                     },
                     {
                         user: {
-                            email: {
+                            phone: {
                                 contains: query.search,
                                 mode: 'insensitive',
                             },
@@ -186,7 +218,7 @@ let ParentsService = class ParentsService {
                 ],
             }
             : {};
-        return this.prisma.parent.findMany({
+        const parents = await this.prisma.parent.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             select: {
@@ -198,13 +230,28 @@ let ParentsService = class ParentsService {
                                 id: true,
                                 fullName: true,
                                 isActive: true,
-                                group: { select: { id: true, name: true } },
+                                groups: {
+                                    orderBy: { joinedAt: 'asc' },
+                                    take: 1,
+                                    select: { group: { select: { id: true, name: true } } },
+                                },
                             },
                         },
                     },
                 },
             },
         });
+        return parents.map((p) => ({
+            ...p,
+            students: p.students.map((s) => ({
+                student: {
+                    id: s.student.id,
+                    fullName: s.student.fullName,
+                    isActive: s.student.isActive,
+                    group: s.student.groups[0]?.group ?? null,
+                },
+            })),
+        }));
     }
     async findOne(id) {
         const parent = await this.prisma.parent.findUnique({
@@ -219,7 +266,11 @@ let ParentsService = class ParentsService {
                                 id: true,
                                 fullName: true,
                                 isActive: true,
-                                group: { select: { id: true, name: true } },
+                                groups: {
+                                    orderBy: { joinedAt: 'asc' },
+                                    take: 1,
+                                    select: { group: { select: { id: true, name: true } } },
+                                },
                             },
                         },
                     },
@@ -229,7 +280,18 @@ let ParentsService = class ParentsService {
         });
         if (!parent)
             throw new common_1.NotFoundException('Parent not found');
-        return parent;
+        return {
+            ...parent,
+            students: parent.students.map((s) => ({
+                createdAt: s.createdAt,
+                student: {
+                    id: s.student.id,
+                    fullName: s.student.fullName,
+                    isActive: s.student.isActive,
+                    group: s.student.groups[0]?.group ?? null,
+                },
+            })),
+        };
     }
     async update(id, dto, actorId) {
         const existing = await this.prisma.parent.findUnique({ where: { id } });
@@ -253,19 +315,19 @@ let ParentsService = class ParentsService {
     async updateCredentials(parentId, payload, actorId) {
         const parent = await this.prisma.parent.findUnique({
             where: { id: parentId },
-            select: { id: true, userId: true, user: { select: { email: true } } },
+            select: { id: true, userId: true, user: { select: { phone: true } } },
         });
         if (!parent)
             throw new common_1.NotFoundException('Parent not found');
         const data = {};
-        if (payload.email && payload.email !== parent.user.email) {
+        if (payload.phone && payload.phone !== parent.user.phone) {
             const existing = await this.prisma.user.findUnique({
-                where: { email: payload.email },
+                where: { phone: payload.phone },
             });
             if (existing && existing.id !== parent.userId) {
-                throw new common_1.ConflictException('Email already in use');
+                throw new common_1.ConflictException('Phone already in use');
             }
-            data.email = payload.email;
+            data.phone = payload.phone;
         }
         if (payload.password) {
             if (payload.password.length < 8) {
@@ -276,9 +338,17 @@ let ParentsService = class ParentsService {
         if (Object.keys(data).length === 0) {
             return { ok: true };
         }
-        await this.prisma.user.update({
-            where: { id: parent.userId },
-            data,
+        await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: { id: parent.userId },
+                data,
+            });
+            if (data.phone) {
+                await tx.parent.update({
+                    where: { id: parent.id },
+                    data: { phone: data.phone },
+                });
+            }
         });
         if (data.passwordHash) {
             await this.prisma.refreshToken.deleteMany({
@@ -292,12 +362,12 @@ let ParentsService = class ParentsService {
                 entity: 'Parent',
                 entityId: parentId,
                 details: {
-                    emailChanged: Boolean(data.email),
+                    phoneChanged: Boolean(data.phone),
                     passwordChanged: Boolean(data.passwordHash),
                 },
             },
         });
-        return { ok: true, emailChanged: Boolean(data.email) };
+        return { ok: true, phoneChanged: Boolean(data.phone) };
     }
     async linkStudent(parentId, studentId, actorId) {
         const parent = await this.prisma.parent.findUnique({
@@ -353,7 +423,7 @@ let ParentsService = class ParentsService {
                 id: true,
                 fullName: true,
                 phone: true,
-                user: { select: { email: true } },
+                user: { select: { phone: true } },
                 students: {
                     orderBy: { createdAt: 'asc' },
                     select: {
@@ -367,9 +437,8 @@ let ParentsService = class ParentsService {
         return {
             id: parent.id,
             fullName: parent.fullName,
-            phone: parent.phone,
-            email: parent.user.email,
-            children: parent.students.map((s) => s.student),
+            phone: parent.phone ?? parent.user.phone,
+            children: parent.students.map((s) => this.shapeChild(s.student)),
         };
     }
     async getChildAttendance(userId, query) {
@@ -415,13 +484,14 @@ let ParentsService = class ParentsService {
     }
     async getChildHomework(userId, query = {}) {
         const studentId = await this.resolveChildId(userId, query.studentId);
-        const student = await this.prisma.student.findUnique({
-            where: { id: studentId },
+        const links = await this.prisma.studentGroup.findMany({
+            where: { studentId },
+            select: { groupId: true },
         });
-        if (!student || !student.groupId)
+        if (links.length === 0)
             return [];
         return this.prisma.homework.findMany({
-            where: { groupId: student.groupId },
+            where: { groupId: { in: links.map((l) => l.groupId) } },
             orderBy: { createdAt: 'desc' },
             take: 6,
             include: { teacher: { select: { fullName: true } } },
@@ -440,11 +510,12 @@ let ParentsService = class ParentsService {
     }
     async getChildRating(userId, query) {
         const studentId = await this.resolveChildId(userId, query.studentId);
-        const student = await this.prisma.student.findUnique({
-            where: { id: studentId },
-            select: { id: true, groupId: true },
+        const link = await this.prisma.studentGroup.findFirst({
+            where: { studentId },
+            orderBy: { joinedAt: 'asc' },
+            select: { groupId: true, student: { select: { id: true } } },
         });
-        if (!student || !student.groupId) {
+        if (!link) {
             return {
                 myPlace: 0,
                 totalStudents: 0,
@@ -455,7 +526,7 @@ let ParentsService = class ParentsService {
             };
         }
         const group = await this.prisma.group.findUnique({
-            where: { id: student.groupId },
+            where: { id: link.groupId },
             select: { isRatingVisible: true },
         });
         if (!group) {
@@ -468,8 +539,8 @@ let ParentsService = class ParentsService {
                 rating: [],
             };
         }
-        const ratingList = await this.gradesService.getRating(student.groupId, { period: query.period }, { id: userId, role: client_1.Role.PARENT });
-        const myEntry = ratingList.find((r) => r.studentId === student.id);
+        const ratingList = await this.gradesService.getRating(link.groupId, { period: query.period }, { id: userId, role: client_1.Role.PARENT });
+        const myEntry = ratingList.find((r) => r.studentId === link.student.id);
         return {
             myPlace: myEntry ? myEntry.place : 0,
             totalStudents: ratingList.length,

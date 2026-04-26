@@ -23,7 +23,11 @@ let SalaryService = class SalaryService {
                 groups: {
                     where: { isActive: true },
                     include: {
-                        _count: { select: { students: { where: { isActive: true } } } },
+                        _count: {
+                            select: {
+                                students: { where: { student: { isActive: true } } },
+                            },
+                        },
                     },
                 },
             },
@@ -54,7 +58,11 @@ let SalaryService = class SalaryService {
                 groups: {
                     where: { isActive: true },
                     include: {
-                        _count: { select: { students: { where: { isActive: true } } } },
+                        _count: {
+                            select: {
+                                students: { where: { student: { isActive: true } } },
+                            },
+                        },
                     },
                 },
             },
@@ -91,7 +99,11 @@ let SalaryService = class SalaryService {
                 const groups = await this.prisma.group.findMany({
                     where: { teacherId, isActive: true },
                     include: {
-                        _count: { select: { students: { where: { isActive: true } } } },
+                        _count: {
+                            select: {
+                                students: { where: { student: { isActive: true } } },
+                            },
+                        },
                     },
                 });
                 const studentsCount = groups.reduce((s, g) => s + g._count.students, 0);

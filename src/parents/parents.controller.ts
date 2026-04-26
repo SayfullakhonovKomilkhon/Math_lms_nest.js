@@ -177,7 +177,7 @@ export class ParentsController {
   @Patch(':id/credentials')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({
-    summary: 'Reset parent email and/or password (no old password required)',
+    summary: 'Reset parent phone and/or password (no old password required)',
   })
   updateCredentials(
     @Param('id') id: string,

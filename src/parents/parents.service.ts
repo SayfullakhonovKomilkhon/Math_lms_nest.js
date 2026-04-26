@@ -20,7 +20,7 @@ const parentSummarySelect = {
   phone: true,
   createdAt: true,
   updatedAt: true,
-  user: { select: { id: true, email: true, role: true, isActive: true } },
+  user: { select: { id: true, phone: true, role: true, isActive: true } },
 };
 
 @Injectable()
@@ -77,16 +77,67 @@ export class ParentsService {
       gender: true,
       enrolledAt: true,
       isActive: true,
-      monthlyFee: true,
-      group: {
+      groups: {
+        orderBy: { joinedAt: 'asc' },
         select: {
-          id: true,
-          name: true,
-          schedule: true,
-          teacher: { select: { fullName: true, phone: true } },
+          monthlyFee: true,
+          joinedAt: true,
+          group: {
+            select: {
+              id: true,
+              name: true,
+              schedule: true,
+              teacher: { select: { fullName: true, phone: true } },
+            },
+          },
         },
       },
     } as const;
+  }
+
+  // Reshape the raw child row from `childSelect()` into the legacy-flat
+  // structure the parent UI expects: a single `group` (= primary group)
+  // plus an aggregate `monthlyFee` (= sum across all groups). The full
+  // multi-group breakdown is also exposed via `groups` so newer screens
+  // can render every enrollment separately.
+  private shapeChild<
+    T extends {
+      groups: Array<{
+        monthlyFee: unknown;
+        joinedAt: Date;
+        group: {
+          id: string;
+          name: string;
+          schedule: unknown;
+          teacher: { fullName: string; phone: string | null };
+        };
+      }>;
+    },
+  >(child: T) {
+    const groups = child.groups.map((link) => ({
+      id: link.group.id,
+      name: link.group.name,
+      schedule: link.group.schedule,
+      teacher: link.group.teacher,
+      monthlyFee: Number(link.monthlyFee),
+      joinedAt: link.joinedAt,
+    }));
+    const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+    const primary = groups[0] ?? null;
+    const { groups: _omit, ...rest } = child;
+    return {
+      ...rest,
+      monthlyFee,
+      group: primary
+        ? {
+            id: primary.id,
+            name: primary.name,
+            schedule: primary.schedule,
+            teacher: primary.teacher,
+          }
+        : null,
+      groups,
+    };
   }
 
   // ---------- Admin/SuperAdmin CRUD -----------------------------------
@@ -110,10 +161,10 @@ export class ParentsService {
     }
 
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { phone: dto.phone },
     });
     if (existingUser) {
-      throw new ConflictException('Email already in use');
+      throw new ConflictException('Phone already in use');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -121,7 +172,7 @@ export class ParentsService {
     const parent = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email: dto.email,
+          phone: dto.phone,
           passwordHash,
           role: Role.PARENT,
         },
@@ -154,7 +205,7 @@ export class ParentsService {
         action: 'CREATE',
         entity: 'Parent',
         entityId: parent.id,
-        details: { email: dto.email, studentIds },
+        details: { phone: dto.phone, studentIds },
       },
     });
 
@@ -173,7 +224,7 @@ export class ParentsService {
             },
             {
               user: {
-                email: {
+                phone: {
                   contains: query.search,
                   mode: 'insensitive' as const,
                 },
@@ -184,7 +235,7 @@ export class ParentsService {
         }
       : {};
 
-    return this.prisma.parent.findMany({
+    const parents = await this.prisma.parent.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -196,13 +247,28 @@ export class ParentsService {
                 id: true,
                 fullName: true,
                 isActive: true,
-                group: { select: { id: true, name: true } },
+                groups: {
+                  orderBy: { joinedAt: 'asc' },
+                  take: 1,
+                  select: { group: { select: { id: true, name: true } } },
+                },
               },
             },
           },
         },
       },
     });
+    return parents.map((p) => ({
+      ...p,
+      students: p.students.map((s) => ({
+        student: {
+          id: s.student.id,
+          fullName: s.student.fullName,
+          isActive: s.student.isActive,
+          group: s.student.groups[0]?.group ?? null,
+        },
+      })),
+    }));
   }
 
   async findOne(id: string) {
@@ -218,7 +284,11 @@ export class ParentsService {
                 id: true,
                 fullName: true,
                 isActive: true,
-                group: { select: { id: true, name: true } },
+                groups: {
+                  orderBy: { joinedAt: 'asc' },
+                  take: 1,
+                  select: { group: { select: { id: true, name: true } } },
+                },
               },
             },
           },
@@ -227,7 +297,18 @@ export class ParentsService {
       },
     });
     if (!parent) throw new NotFoundException('Parent not found');
-    return parent;
+    return {
+      ...parent,
+      students: parent.students.map((s) => ({
+        createdAt: s.createdAt,
+        student: {
+          id: s.student.id,
+          fullName: s.student.fullName,
+          isActive: s.student.isActive,
+          group: s.student.groups[0]?.group ?? null,
+        },
+      })),
+    };
   }
 
   async update(id: string, dto: UpdateParentDto, actorId: string) {
@@ -259,20 +340,20 @@ export class ParentsService {
   ) {
     const parent = await this.prisma.parent.findUnique({
       where: { id: parentId },
-      select: { id: true, userId: true, user: { select: { email: true } } },
+      select: { id: true, userId: true, user: { select: { phone: true } } },
     });
     if (!parent) throw new NotFoundException('Parent not found');
 
-    const data: { email?: string; passwordHash?: string } = {};
+    const data: { phone?: string; passwordHash?: string } = {};
 
-    if (payload.email && payload.email !== parent.user.email) {
+    if (payload.phone && payload.phone !== parent.user.phone) {
       const existing = await this.prisma.user.findUnique({
-        where: { email: payload.email },
+        where: { phone: payload.phone },
       });
       if (existing && existing.id !== parent.userId) {
-        throw new ConflictException('Email already in use');
+        throw new ConflictException('Phone already in use');
       }
-      data.email = payload.email;
+      data.phone = payload.phone;
     }
 
     if (payload.password) {
@@ -288,9 +369,17 @@ export class ParentsService {
       return { ok: true };
     }
 
-    await this.prisma.user.update({
-      where: { id: parent.userId },
-      data,
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: parent.userId },
+        data,
+      });
+      if (data.phone) {
+        await tx.parent.update({
+          where: { id: parent.id },
+          data: { phone: data.phone },
+        });
+      }
     });
 
     if (data.passwordHash) {
@@ -306,13 +395,13 @@ export class ParentsService {
         entity: 'Parent',
         entityId: parentId,
         details: {
-          emailChanged: Boolean(data.email),
+          phoneChanged: Boolean(data.phone),
           passwordChanged: Boolean(data.passwordHash),
         },
       },
     });
 
-    return { ok: true, emailChanged: Boolean(data.email) };
+    return { ok: true, phoneChanged: Boolean(data.phone) };
   }
 
   async linkStudent(parentId: string, studentId: string, actorId: string) {
@@ -377,7 +466,7 @@ export class ParentsService {
         id: true,
         fullName: true,
         phone: true,
-        user: { select: { email: true } },
+        user: { select: { phone: true } },
         students: {
           orderBy: { createdAt: 'asc' },
           select: {
@@ -390,11 +479,11 @@ export class ParentsService {
 
     return {
       id: parent.id,
+      // Login phone (User.phone) — kept in sync with parent.phone.
       fullName: parent.fullName,
-      phone: parent.phone,
-      email: parent.user.email,
+      phone: parent.phone ?? parent.user.phone,
       // Flatten the join table so the frontend gets a clean list of children.
-      children: parent.students.map((s) => s.student),
+      children: parent.students.map((s) => this.shapeChild(s.student)),
     };
   }
 
@@ -458,13 +547,14 @@ export class ParentsService {
     query: { studentId?: string } = {},
   ) {
     const studentId = await this.resolveChildId(userId, query.studentId);
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+    const links = await this.prisma.studentGroup.findMany({
+      where: { studentId },
+      select: { groupId: true },
     });
-    if (!student || !student.groupId) return [];
+    if (links.length === 0) return [];
 
     return this.prisma.homework.findMany({
-      where: { groupId: student.groupId },
+      where: { groupId: { in: links.map((l) => l.groupId) } },
       orderBy: { createdAt: 'desc' },
       take: 6,
       include: { teacher: { select: { fullName: true } } },
@@ -499,12 +589,16 @@ export class ParentsService {
     query: { period?: 'month' | 'quarter' | 'all'; studentId?: string },
   ) {
     const studentId = await this.resolveChildId(userId, query.studentId);
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-      select: { id: true, groupId: true },
+    // With multi-group enrollment we still display a single podium for the
+    // child — the primary (first joined) group. Picking one is intentional:
+    // the parent UI assumes one rating per child.
+    const link = await this.prisma.studentGroup.findFirst({
+      where: { studentId },
+      orderBy: { joinedAt: 'asc' },
+      select: { groupId: true, student: { select: { id: true } } },
     });
 
-    if (!student || !student.groupId) {
+    if (!link) {
       return {
         myPlace: 0,
         totalStudents: 0,
@@ -516,7 +610,7 @@ export class ParentsService {
     }
 
     const group = await this.prisma.group.findUnique({
-      where: { id: student.groupId },
+      where: { id: link.groupId },
       select: { isRatingVisible: true },
     });
     if (!group) {
@@ -531,12 +625,12 @@ export class ParentsService {
     }
 
     const ratingList = await this.gradesService.getRating(
-      student.groupId,
+      link.groupId,
       { period: query.period as any },
       { id: userId, role: Role.PARENT },
     );
 
-    const myEntry = ratingList.find((r) => r.studentId === student.id);
+    const myEntry = ratingList.find((r) => r.studentId === link.student.id);
 
     return {
       myPlace: myEntry ? myEntry.place : 0,

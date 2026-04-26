@@ -1,8 +1,7 @@
 export declare class CreateParentDto {
-    email: string;
+    phone: string;
     password: string;
     fullName: string;
-    phone?: string;
     studentIds?: string[];
     studentId?: string;
 }

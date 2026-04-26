@@ -1,7 +1,6 @@
 export declare class CreateTeacherDto {
-    email: string;
+    phone: string;
     password: string;
     fullName: string;
-    phone?: string;
     ratePerStudent?: number;
 }

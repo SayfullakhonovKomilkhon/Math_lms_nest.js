@@ -16,11 +16,17 @@ class UpdateCredentialsDto {
 }
 exports.UpdateCredentialsDto = UpdateCredentialsDto;
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'new-email@mathcenter.uz' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '+998901234567',
+        description: 'New phone (also used as the login identifier)',
+    }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], UpdateCredentialsDto.prototype, "email", void 0);
+], UpdateCredentialsDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'new-strong-password', minLength: 8 }),
     (0, class_validator_1.IsOptional)(),

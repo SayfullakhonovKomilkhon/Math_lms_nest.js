@@ -56,7 +56,7 @@ let AuthService = class AuthService {
     }
     async login(dto) {
         const user = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { phone: dto.phone },
         });
         if (!user || !user.isActive) {
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -65,11 +65,11 @@ let AuthService = class AuthService {
         if (!passwordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const tokens = await this.generateTokens(user.id, user.email, user.role);
+        const tokens = await this.generateTokens(user.id, user.phone, user.role);
         await this.saveRefreshToken(user.id, tokens.refreshToken);
         return {
             ...tokens,
-            user: { id: user.id, email: user.email, role: user.role },
+            user: { id: user.id, phone: user.phone, role: user.role },
         };
     }
     async refresh(userId, refreshToken) {
@@ -84,7 +84,7 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('User not found or inactive');
         }
         await this.prisma.refreshToken.delete({ where: { token: refreshToken } });
-        const tokens = await this.generateTokens(user.id, user.email, user.role);
+        const tokens = await this.generateTokens(user.id, user.phone, user.role);
         await this.saveRefreshToken(user.id, tokens.refreshToken);
         return tokens;
     }
@@ -93,7 +93,7 @@ let AuthService = class AuthService {
             where: { id: userId },
             select: {
                 id: true,
-                email: true,
+                phone: true,
                 role: true,
                 isActive: true,
                 createdAt: true,
@@ -108,9 +108,9 @@ let AuthService = class AuthService {
         if (!user || !user.isActive) {
             throw new common_1.NotFoundException('User not found or inactive');
         }
-        const wantsEmailChange = !!dto.email && dto.email !== user.email;
+        const wantsPhoneChange = !!dto.phone && dto.phone !== user.phone;
         const wantsPasswordChange = !!dto.newPassword;
-        if (!wantsEmailChange && !wantsPasswordChange) {
+        if (!wantsPhoneChange && !wantsPasswordChange) {
             throw new common_1.BadRequestException('Nothing to update');
         }
         if (!dto.currentPassword) {
@@ -120,17 +120,17 @@ let AuthService = class AuthService {
         if (!passwordOk) {
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
-        if (wantsEmailChange) {
+        if (wantsPhoneChange) {
             const clash = await this.prisma.user.findUnique({
-                where: { email: dto.email },
+                where: { phone: dto.phone },
             });
             if (clash && clash.id !== user.id) {
-                throw new common_1.ConflictException('Email is already in use');
+                throw new common_1.ConflictException('Phone is already in use');
             }
         }
         const data = {};
-        if (wantsEmailChange)
-            data.email = dto.email;
+        if (wantsPhoneChange)
+            data.phone = dto.phone;
         if (wantsPasswordChange) {
             data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
         }
@@ -139,13 +139,13 @@ let AuthService = class AuthService {
             data,
             select: {
                 id: true,
-                email: true,
+                phone: true,
                 role: true,
                 isActive: true,
             },
         });
         await this.prisma.refreshToken.deleteMany({ where: { userId } });
-        const tokens = await this.generateTokens(updated.id, updated.email, updated.role);
+        const tokens = await this.generateTokens(updated.id, updated.phone, updated.role);
         await this.saveRefreshToken(updated.id, tokens.refreshToken);
         return {
             user: updated,
@@ -162,8 +162,8 @@ let AuthService = class AuthService {
             await this.prisma.refreshToken.deleteMany({ where: { userId } });
         }
     }
-    async generateTokens(userId, email, role) {
-        const payload = { sub: userId, email, role };
+    async generateTokens(userId, phone, role) {
+        const payload = { sub: userId, phone, role };
         const accessSecret = this.configService.get('jwt.accessSecret');
         const refreshSecret = this.configService.get('jwt.refreshSecret');
         const accessExpiresIn = this.configService.get('jwt.accessExpiresIn') ?? '15m';

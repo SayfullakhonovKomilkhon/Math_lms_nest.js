@@ -2,16 +2,22 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayUnique,
   IsArray,
-  IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 
 export class CreateParentDto {
-  @ApiProperty({ example: 'parent@mathcenter.uz' })
-  @IsEmail()
-  email: string;
+  @ApiProperty({
+    example: '+998901234567',
+    description: 'Phone number used as the login identifier',
+  })
+  @IsString()
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
+  phone: string;
 
   @ApiProperty({ example: 'Parent123!' })
   @IsString()
@@ -21,11 +27,6 @@ export class CreateParentDto {
   @ApiProperty({ example: 'Sherzod Valiyev' })
   @IsString()
   fullName: string;
-
-  @ApiPropertyOptional({ example: '+998901234567' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
 
   // Modern: link any number of children at creation time.
   @ApiPropertyOptional({

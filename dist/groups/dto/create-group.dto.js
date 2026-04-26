@@ -42,4 +42,16 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], CreateGroupDto.prototype, "schedule", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: 500000,
+        description: 'Default monthly fee suggested when adding new students to this group',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateGroupDto.prototype, "defaultMonthlyFee", void 0);
 //# sourceMappingURL=create-group.dto.js.map

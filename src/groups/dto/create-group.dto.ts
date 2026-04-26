@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsInt,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -31,4 +32,16 @@ export class CreateGroupDto {
   })
   @IsObject()
   schedule: Record<string, unknown>;
+
+  @ApiProperty({
+    required: false,
+    example: 500000,
+    description:
+      'Default monthly fee suggested when adding new students to this group',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  defaultMonthlyFee?: number;
 }

@@ -207,7 +207,7 @@ __decorate([
     (0, common_1.Patch)(':id/credentials'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({
-        summary: 'Reset parent email and/or password (no old password required)',
+        summary: 'Reset parent phone and/or password (no old password required)',
     }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),

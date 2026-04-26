@@ -16,11 +16,14 @@ class UpdateMeDto {
 }
 exports.UpdateMeDto = UpdateMeDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, description: 'New email (login)' }),
+    (0, swagger_1.ApiProperty)({ required: false, description: 'New phone (login)' }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], UpdateMeDto.prototype, "email", void 0);
+], UpdateMeDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false, description: 'New password, min 8 chars' }),
     (0, class_validator_1.IsOptional)(),
@@ -30,7 +33,7 @@ __decorate([
 ], UpdateMeDto.prototype, "newPassword", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: 'Current password, required when changing email or password',
+        description: 'Current password, required when changing phone or password',
     }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)

@@ -1,5 +1,5 @@
 export declare class UpdateMeDto {
-    email?: string;
+    phone?: string;
     newPassword?: string;
     currentPassword: string;
 }

@@ -18,10 +18,16 @@ class CreateStudentDto {
 }
 exports.CreateStudentDto = CreateStudentDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'student@mathcenter.uz' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, swagger_1.ApiProperty)({
+        example: '+998901234567',
+        description: 'Phone number used as the login identifier',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
-], CreateStudentDto.prototype, "email", void 0);
+], CreateStudentDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Student123!' }),
     (0, class_validator_1.IsString)(),
@@ -34,12 +40,6 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStudentDto.prototype, "fullName", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: '+998901234567' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateStudentDto.prototype, "phone", void 0);
-__decorate([
     (0, swagger_1.ApiProperty)({ required: false, example: '2005-06-15' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsISO8601)(),
@@ -51,13 +51,21 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStudentDto.prototype, "gender", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: 'group-id' }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: 'group-id',
+        description: "Optional initial group. If provided, a StudentGroup link is created with `monthlyFee` (or 0 by default).",
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateStudentDto.prototype, "groupId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: 500000 }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: 500000,
+        description: "Monthly fee for the initial group link. Ignored if `groupId` isn't set.",
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),

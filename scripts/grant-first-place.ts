@@ -18,7 +18,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { getTitleForStudent } from '../src/gamification/achievements.config';
 
-const TARGET_EMAIL = 'student@math.com';
+const TARGET_PHONE = '+998900000010';
 
 async function main() {
   const month = Number(process.argv[2] ?? new Date().getMonth() + 1);
@@ -35,19 +35,19 @@ async function main() {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { email: TARGET_EMAIL },
+      where: { phone: TARGET_PHONE },
       select: {
         id: true,
-        email: true,
+        phone: true,
         student: {
           select: { id: true, fullName: true, gender: true },
         },
       },
     });
 
-    if (!user) throw new Error(`User not found: ${TARGET_EMAIL}`);
+    if (!user) throw new Error(`User not found: ${TARGET_PHONE}`);
     if (!user.student)
-      throw new Error(`User ${TARGET_EMAIL} has no linked student profile`);
+      throw new Error(`User ${TARGET_PHONE} has no linked student profile`);
 
     const gender: 'MALE' | 'FEMALE' =
       user.student.gender === Gender.FEMALE ? 'FEMALE' : 'MALE';
@@ -126,7 +126,7 @@ async function main() {
     const verb = existing ? 'Updated' : 'Granted';
     console.log(
       `${verb} ${month}/${year} medal "${titleData.title}" ${titleData.icon} ` +
-        `(1st place, ${gender}) to ${user.student.fullName} <${TARGET_EMAIL}>.`,
+        `(1st place, ${gender}) to ${user.student.fullName} <${TARGET_PHONE}>.`,
     );
     console.log(
       'Open the student panel — the celebration should fire automatically.',

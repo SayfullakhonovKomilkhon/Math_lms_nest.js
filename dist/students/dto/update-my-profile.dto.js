@@ -24,22 +24,22 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateMyProfileDto.prototype, "fullName", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: '+998901234567' }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: '+998901234567',
+        description: 'Phone number — also used as the login identifier. Changing it requires currentPassword.',
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MaxLength)(32),
+    (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
+        message: 'phone must be a valid phone number',
+    }),
     __metadata("design:type", String)
 ], UpdateMyProfileDto.prototype, "phone", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false, example: 'student@mathcenter.uz' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEmail)(),
-    __metadata("design:type", String)
-], UpdateMyProfileDto.prototype, "email", void 0);
-__decorate([
     (0, swagger_1.ApiProperty)({
         required: false,
-        description: 'Required when changing email or password',
+        description: 'Required when changing phone or password',
     }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

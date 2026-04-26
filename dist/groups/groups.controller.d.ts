@@ -6,6 +6,7 @@ export declare class GroupsController {
     private groupsService;
     constructor(groupsService: GroupsService);
     create(dto: CreateGroupDto, actorId: string): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;
@@ -27,6 +28,7 @@ export declare class GroupsController {
         id: string;
         role: Role;
     }): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;
@@ -48,6 +50,7 @@ export declare class GroupsController {
         id: string;
         role: Role;
     }): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;
@@ -69,18 +72,20 @@ export declare class GroupsController {
         id: string;
         role: Role;
     }): Promise<{
+        monthlyFee: number;
+        joinedAt: Date;
         hasPaidThisMonth: boolean;
         user: {
-            email: string;
+            phone: string;
         };
+        phone: string | null;
         id: string;
         isActive: boolean;
         fullName: string;
-        phone: string | null;
         gender: import(".prisma/client").$Enums.Gender;
-        monthlyFee: import("@prisma/client/runtime/library").Decimal;
     }[]>;
     update(id: string, dto: UpdateGroupDto, actorId: string): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;
@@ -99,6 +104,7 @@ export declare class GroupsController {
         archivedAt: Date | null;
     }>;
     archive(id: string, actorId: string): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;
@@ -120,6 +126,7 @@ export declare class GroupsController {
         id: string;
         role: Role;
     }): Promise<{
+        defaultMonthlyFee: number;
         teacher: {
             id: string;
             fullName: string;

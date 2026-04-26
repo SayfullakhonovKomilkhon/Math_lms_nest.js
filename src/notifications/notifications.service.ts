@@ -60,11 +60,15 @@ export class NotificationsService {
       include: {
         user: true,
         parents: { include: { parent: { include: { user: true } } } },
+        groups: { select: { monthlyFee: true } },
       },
     });
     if (!student) return;
 
-    const amount = Number(student.monthlyFee);
+    const amount = student.groups.reduce(
+      (acc, link) => acc + Number(link.monthlyFee),
+      0,
+    );
     const message =
       daysLeft > 0
         ? `💳 До оплаты осталось ${daysLeft} дней. Сумма: ${amount.toLocaleString('ru-RU')} сум`
@@ -160,7 +164,10 @@ export class NotificationsService {
     if (!homework) return;
 
     const students = await this.prisma.student.findMany({
-      where: { groupId, isActive: true },
+      where: {
+        isActive: true,
+        groups: { some: { groupId } },
+      },
       select: { userId: true },
     });
 

@@ -29,11 +29,53 @@ const paymentSelect = {
         select: {
             id: true,
             fullName: true,
-            monthlyFee: true,
-            group: { select: { id: true, name: true } },
+            groups: {
+                select: {
+                    monthlyFee: true,
+                    group: { select: { id: true, name: true } },
+                },
+                orderBy: { joinedAt: 'asc' },
+            },
         },
     },
 };
+function shapePayment(p) {
+    const groups = p.student.groups.map((link) => ({
+        id: link.group.id,
+        name: link.group.name,
+        monthlyFee: Number(link.monthlyFee),
+    }));
+    const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+    const primaryGroup = groups[0] ?? null;
+    return {
+        id: p.id,
+        amount: p.amount,
+        status: p.status,
+        receiptUrl: p.receiptUrl,
+        nextPaymentDate: p.nextPaymentDate,
+        confirmedAt: p.confirmedAt,
+        rejectedAt: p.rejectedAt,
+        rejectReason: p.rejectReason,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        student: {
+            id: p.student.id,
+            fullName: p.student.fullName,
+            monthlyFee,
+            group: primaryGroup
+                ? { id: primaryGroup.id, name: primaryGroup.name }
+                : null,
+            groups,
+        },
+    };
+}
+async function totalMonthlyFeeForStudent(prisma, studentId) {
+    const links = await prisma.studentGroup.findMany({
+        where: { studentId },
+        select: { monthlyFee: true },
+    });
+    return links.reduce((acc, l) => acc + Number(l.monthlyFee), 0);
+}
 let PaymentsService = class PaymentsService {
     constructor(prisma, s3) {
         this.prisma = prisma;
@@ -68,7 +110,51 @@ let PaymentsService = class PaymentsService {
                 },
             },
         });
-        return payment;
+        return shapePayment(payment);
+    }
+    async createManual(dto, file, actorId) {
+        const student = await this.prisma.student.findUnique({
+            where: { id: dto.studentId },
+        });
+        if (!student)
+            throw new common_1.NotFoundException('Student not found');
+        const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+        if (Number.isNaN(paidAt.getTime())) {
+            throw new common_1.BadRequestException('Invalid paidAt');
+        }
+        let receiptUrl = null;
+        if (file) {
+            receiptUrl = await this.s3.uploadFile(file, 'receipts');
+        }
+        const payment = await this.prisma.payment.create({
+            data: {
+                studentId: dto.studentId,
+                amount: dto.amount,
+                status: client_1.PaymentStatus.CONFIRMED,
+                receiptUrl,
+                createdAt: paidAt,
+                confirmedAt: paidAt,
+                nextPaymentDate: dto.nextPaymentDate
+                    ? new Date(dto.nextPaymentDate)
+                    : null,
+            },
+            select: paymentSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'CREATE_MANUAL_PAYMENT',
+                entity: 'Payment',
+                entityId: payment.id,
+                details: {
+                    amount: dto.amount,
+                    studentId: dto.studentId,
+                    paidAt: paidAt.toISOString(),
+                    receiptAttached: Boolean(receiptUrl),
+                },
+            },
+        });
+        return shapePayment(payment);
     }
     async findAll(query) {
         const where = {};
@@ -84,13 +170,14 @@ let PaymentsService = class PaymentsService {
                 where.createdAt.lte = new Date(query.to);
         }
         if (query.groupId) {
-            where.student = { groupId: query.groupId };
+            where.student = { groups: { some: { groupId: query.groupId } } };
         }
-        return this.prisma.payment.findMany({
+        const rows = await this.prisma.payment.findMany({
             where,
             select: paymentSelect,
             orderBy: { createdAt: 'desc' },
         });
+        return rows.map(shapePayment);
     }
     async findByStudent(studentId, user) {
         if (user.role === client_1.Role.STUDENT) {
@@ -108,21 +195,24 @@ let PaymentsService = class PaymentsService {
             if (!link)
                 throw new common_1.ForbiddenException("You can only view your child's payments");
         }
-        return this.prisma.payment.findMany({
+        const rows = await this.prisma.payment.findMany({
             where: { studentId },
             select: paymentSelect,
             orderBy: { createdAt: 'desc' },
         });
+        return rows.map(shapePayment);
     }
     async findMy(userId) {
         const student = await this.prisma.student.findUnique({ where: { userId } });
         if (!student)
             throw new common_1.NotFoundException('Student profile not found');
-        const history = await this.prisma.payment.findMany({
+        const monthlyFee = await totalMonthlyFeeForStudent(this.prisma, student.id);
+        const rawHistory = await this.prisma.payment.findMany({
             where: { studentId: student.id },
             select: paymentSelect,
             orderBy: { createdAt: 'desc' },
         });
+        const history = rawHistory.map(shapePayment);
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const thisMonthPayments = history.filter((p) => new Date(p.createdAt) >= startOfMonth);
@@ -144,7 +234,7 @@ let PaymentsService = class PaymentsService {
         return {
             currentMonth: {
                 status: currentStatus,
-                amount: Number(student.monthlyFee),
+                amount: monthlyFee,
                 nextPaymentDate,
                 daysUntilPayment,
             },
@@ -159,11 +249,12 @@ let PaymentsService = class PaymentsService {
         });
         if (!student)
             throw new common_1.NotFoundException('Student not found');
+        const monthlyFee = await totalMonthlyFeeForStudent(this.prisma, studentId);
         const receiptUrl = await this.s3.uploadFile(file, 'receipts');
         const payment = await this.prisma.payment.create({
             data: {
                 studentId,
-                amount: student.monthlyFee,
+                amount: monthlyFee,
                 status: client_1.PaymentStatus.PENDING,
                 receiptUrl,
             },
@@ -178,7 +269,7 @@ let PaymentsService = class PaymentsService {
                 details: { receiptUrl },
             },
         });
-        return payment;
+        return shapePayment(payment);
     }
     async confirm(id, actorId) {
         const payment = await this.prisma.payment.findUnique({ where: { id } });
@@ -200,7 +291,7 @@ let PaymentsService = class PaymentsService {
                 entityId: id,
             },
         });
-        return updated;
+        return shapePayment(updated);
     }
     async reject(id, dto, actorId) {
         const payment = await this.prisma.payment.findUnique({ where: { id } });
@@ -224,7 +315,7 @@ let PaymentsService = class PaymentsService {
                 details: { rejectReason: dto.rejectReason },
             },
         });
-        return updated;
+        return shapePayment(updated);
     }
     async getReceiptUrl(id) {
         const payment = await this.prisma.payment.findUnique({
@@ -254,8 +345,13 @@ let PaymentsService = class PaymentsService {
             select: {
                 id: true,
                 fullName: true,
-                monthlyFee: true,
-                group: { select: { id: true, name: true } },
+                groups: {
+                    select: {
+                        monthlyFee: true,
+                        group: { select: { id: true, name: true } },
+                    },
+                    orderBy: { joinedAt: 'asc' },
+                },
                 payments: {
                     where: { status: client_1.PaymentStatus.CONFIRMED },
                     orderBy: { confirmedAt: 'desc' },
@@ -266,13 +362,26 @@ let PaymentsService = class PaymentsService {
         });
         return allStudents
             .filter((s) => !paidStudentIds.has(s.id))
-            .map((s) => ({
-            studentId: s.id,
-            fullName: s.fullName,
-            groupName: s.group?.name ?? '—',
-            monthlyFee: s.monthlyFee,
-            lastPaymentDate: s.payments[0]?.confirmedAt ?? null,
-        }));
+            .map((s) => {
+            const groups = s.groups.map((link) => ({
+                id: link.group.id,
+                name: link.group.name,
+                monthlyFee: Number(link.monthlyFee),
+            }));
+            const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+            return {
+                studentId: s.id,
+                fullName: s.fullName,
+                groupName: groups.length === 0
+                    ? '—'
+                    : groups.length === 1
+                        ? groups[0].name
+                        : groups.map((g) => g.name).join(', '),
+                monthlyFee,
+                groups,
+                lastPaymentDate: s.payments[0]?.confirmedAt ?? null,
+            };
+        });
     }
 };
 exports.PaymentsService = PaymentsService;

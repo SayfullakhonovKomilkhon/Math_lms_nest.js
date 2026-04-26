@@ -53,14 +53,14 @@ let UsersService = class UsersService {
     }
     async create(dto) {
         const exists = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { phone: dto.phone },
         });
         if (exists)
-            throw new common_1.ConflictException('Email already in use');
+            throw new common_1.ConflictException('Phone already in use');
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.user.create({
             data: {
-                email: dto.email,
+                phone: dto.phone,
                 passwordHash,
                 role: dto.role,
                 telegramChatId: dto.telegramChatId,
@@ -74,7 +74,7 @@ let UsersService = class UsersService {
             where: role ? { role: role } : undefined,
             select: {
                 id: true,
-                email: true,
+                phone: true,
                 role: true,
                 isActive: true,
                 telegramChatId: true,
@@ -96,7 +96,7 @@ let UsersService = class UsersService {
             where: { id },
             select: {
                 id: true,
-                email: true,
+                phone: true,
                 role: true,
                 isActive: true,
                 telegramChatId: true,
@@ -113,12 +113,16 @@ let UsersService = class UsersService {
             this.prisma.teacher.findMany({
                 include: {
                     user: {
-                        select: { id: true, email: true, isActive: true, createdAt: true },
+                        select: { id: true, phone: true, isActive: true, createdAt: true },
                     },
                     groups: {
                         where: { isActive: true },
                         include: {
-                            _count: { select: { students: { where: { isActive: true } } } },
+                            _count: {
+                                select: {
+                                    students: { where: { student: { isActive: true } } },
+                                },
+                            },
                         },
                     },
                 },
@@ -126,7 +130,7 @@ let UsersService = class UsersService {
             }),
             this.prisma.user.findMany({
                 where: { role: client_1.Role.ADMIN },
-                select: { id: true, email: true, isActive: true, createdAt: true },
+                select: { id: true, phone: true, isActive: true, createdAt: true },
                 orderBy: { createdAt: 'desc' },
             }),
         ]);
@@ -135,8 +139,7 @@ let UsersService = class UsersService {
                 id: t.id,
                 userId: t.userId,
                 fullName: t.fullName,
-                phone: t.phone,
-                email: t.user.email,
+                phone: t.phone ?? t.user.phone,
                 isActive: t.isActive,
                 ratePerStudent: Number(t.ratePerStudent),
                 studentsCount: t.groups.reduce((s, g) => s + g._count.students, 0),
@@ -145,7 +148,7 @@ let UsersService = class UsersService {
             admins: admins.map((a) => ({
                 id: a.id,
                 fullName: null,
-                email: a.email,
+                phone: a.phone,
                 isActive: a.isActive,
                 createdAt: a.createdAt,
             })),
@@ -153,15 +156,15 @@ let UsersService = class UsersService {
     }
     async createStaff(dto) {
         const exists = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { phone: dto.phone },
         });
         if (exists)
-            throw new common_1.ConflictException('Email already in use');
+            throw new common_1.ConflictException('Phone already in use');
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: {
-                    email: dto.email,
+                    phone: dto.phone,
                     passwordHash,
                     role: dto.role,
                 },
@@ -170,8 +173,8 @@ let UsersService = class UsersService {
                 await tx.teacher.create({
                     data: {
                         userId: newUser.id,
-                        fullName: dto.fullName ?? dto.email,
-                        phone: dto.phone ?? null,
+                        fullName: dto.fullName ?? dto.phone,
+                        phone: dto.phone,
                     },
                 });
             }
@@ -185,14 +188,14 @@ let UsersService = class UsersService {
         if (!user)
             throw new common_1.NotFoundException('User not found');
         const data = {};
-        if (dto.email && dto.email !== user.email) {
+        if (dto.phone && dto.phone !== user.phone) {
             const exists = await this.prisma.user.findUnique({
-                where: { email: dto.email },
+                where: { phone: dto.phone },
             });
             if (exists && exists.id !== id) {
-                throw new common_1.ConflictException('Email already in use');
+                throw new common_1.ConflictException('Phone already in use');
             }
-            data.email = dto.email;
+            data.phone = dto.phone;
         }
         if (dto.password) {
             data.passwordHash = await bcrypt.hash(dto.password, 10);
@@ -201,17 +204,34 @@ let UsersService = class UsersService {
             const { passwordHash: _, ...rest } = user;
             return rest;
         }
-        const updated = await this.prisma.user.update({
-            where: { id },
-            data,
-            select: {
-                id: true,
-                email: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-                updatedAt: true,
-            },
+        const updated = await this.prisma.$transaction(async (tx) => {
+            const u = await tx.user.update({
+                where: { id },
+                data,
+                select: {
+                    id: true,
+                    phone: true,
+                    role: true,
+                    isActive: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            });
+            if (data.phone) {
+                await tx.teacher.updateMany({
+                    where: { userId: id },
+                    data: { phone: data.phone },
+                });
+                await tx.student.updateMany({
+                    where: { userId: id },
+                    data: { phone: data.phone },
+                });
+                await tx.parent.updateMany({
+                    where: { userId: id },
+                    data: { phone: data.phone },
+                });
+            }
+            return u;
         });
         await this.prisma.auditLog.create({
             data: {
@@ -220,7 +240,7 @@ let UsersService = class UsersService {
                 entity: 'User',
                 entityId: id,
                 details: {
-                    emailChanged: Boolean(data.email),
+                    phoneChanged: Boolean(data.phone),
                     passwordChanged: Boolean(data.passwordHash),
                 },
             },
@@ -234,7 +254,7 @@ let UsersService = class UsersService {
         const updated = await this.prisma.user.update({
             where: { id },
             data: { isActive: false },
-            select: { id: true, email: true, role: true, isActive: true },
+            select: { id: true, phone: true, role: true, isActive: true },
         });
         await this.prisma.auditLog.create({
             data: {
@@ -266,7 +286,7 @@ let UsersService = class UsersService {
                 take: params.limit,
                 skip: params.offset,
                 orderBy: { createdAt: 'desc' },
-                include: { user: { select: { email: true, role: true } } },
+                include: { user: { select: { phone: true, role: true } } },
             }),
         ]);
         return { total, records };

@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Delete,
   Param,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { AssignGroupDto } from './dto/assign-group.dto';
+import { UpdateGroupFeeDto } from './dto/update-group-fee.dto';
 import { UpdateCredentialsDto } from './dto/update-credentials.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -51,7 +53,7 @@ export class StudentsController {
   @Patch('me')
   @Roles(Role.STUDENT)
   @ApiOperation({
-    summary: 'Update own account data (name, phone, email, password)',
+    summary: 'Update own account data (name, phone, password)',
   })
   updateMyProfile(
     @CurrentUser('id') userId: string,
@@ -81,23 +83,78 @@ export class StudentsController {
     return this.studentsService.update(id, dto, actorId);
   }
 
+  // ----- Group memberships ---------------------------------------------------
+
+  @Post(':id/groups')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Add student to a group with a per-link monthlyFee',
+  })
+  addGroup(
+    @Param('id') id: string,
+    @Body() dto: AssignGroupDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.studentsService.addGroup(id, dto, actorId);
+  }
+
+  @Patch(':id/groups/:groupId')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Update the per-link monthlyFee for one group' })
+  updateGroupFee(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateGroupFeeDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.studentsService.updateGroupFee(
+      id,
+      groupId,
+      dto.monthlyFee,
+      actorId,
+    );
+  }
+
+  @Delete(':id/groups/:groupId')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Remove student from a single group' })
+  removeGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.studentsService.removeGroup(id, groupId, actorId);
+  }
+
+  // Legacy endpoints kept for backwards compatibility with existing UI.
+  // `PATCH :id/group` now *adds* a link (idempotent upsert) instead of
+  // replacing the previous one — the request body is the same, but
+  // semantics widened from 1:N to N:M.
   @Patch(':id/group')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Assign student to group' })
+  @ApiOperation({
+    summary:
+      '[Legacy] Add student to a group. Prefer POST /students/:id/groups.',
+  })
   assignGroup(
     @Param('id') id: string,
     @Body() dto: AssignGroupDto,
     @CurrentUser('id') actorId: string,
   ) {
-    return this.studentsService.assignGroup(id, dto.groupId, actorId);
+    return this.studentsService.addGroup(id, dto, actorId);
   }
 
   @Patch(':id/remove-group')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Remove student from group' })
+  @ApiOperation({
+    summary:
+      '[Legacy] Remove student from ALL groups. Prefer DELETE /students/:id/groups/:groupId.',
+  })
   removeFromGroup(@Param('id') id: string, @CurrentUser('id') actorId: string) {
-    return this.studentsService.removeFromGroup(id, actorId);
+    return this.studentsService.removeFromAllGroups(id, actorId);
   }
+
+  // ---------------------------------------------------------------------------
 
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
@@ -109,7 +166,7 @@ export class StudentsController {
   @Patch(':id/credentials')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({
-    summary: 'Reset student email and/or password (no old password required)',
+    summary: 'Reset student phone and/or password (no old password required)',
   })
   updateCredentials(
     @Param('id') id: string,

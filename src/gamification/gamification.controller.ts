@@ -77,11 +77,17 @@ export class GamificationController {
       const teacher = await this.prisma.teacher.findUnique({
         where: { userId: req.user.id },
       });
+      // Teacher may view a student if any of the student's groups is theirs.
       const student = await this.prisma.student.findUnique({
         where: { id },
-        select: { group: { select: { teacherId: true } } },
+        select: {
+          groups: { select: { group: { select: { teacherId: true } } } },
+        },
       });
-      if (!teacher || student?.group?.teacherId !== teacher.id) return null;
+      const teachesAny = student?.groups.some(
+        (g) => g.group.teacherId === teacher?.id,
+      );
+      if (!teacher || !teachesAny) return null;
     }
     return this.gamificationService.computeStudentProgress(id);
   }

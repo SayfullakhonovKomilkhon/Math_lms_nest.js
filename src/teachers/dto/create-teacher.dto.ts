@@ -1,18 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateTeacherDto {
-  @ApiProperty({ example: 'teacher@mathcenter.uz' })
-  @IsEmail()
-  email: string;
+  @ApiProperty({
+    example: '+998901234567',
+    description: 'Phone number used as the login identifier',
+  })
+  @IsString()
+  @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
+    message: 'phone must be a valid phone number',
+  })
+  phone: string;
 
   @ApiProperty({ example: 'Teacher123!' })
   @IsString()
@@ -22,11 +28,6 @@ export class CreateTeacherDto {
   @ApiProperty({ example: 'Bobur Toshmatov' })
   @IsString()
   fullName: string;
-
-  @ApiProperty({ required: false, example: '+998901234567' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
 
   @ApiProperty({ required: false, example: 50000 })
   @IsOptional()

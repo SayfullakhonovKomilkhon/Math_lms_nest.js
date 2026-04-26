@@ -7,9 +7,17 @@ import {
 import { PaymentStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../common/services/s3.service';
-import { CreatePaymentDto, RejectPaymentDto } from './dto/create-payment.dto';
+import {
+  CreateManualPaymentDto,
+  CreatePaymentDto,
+  RejectPaymentDto,
+} from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 
+// Note: with the multi-group model, "the student's monthly fee" is the
+// SUM of monthlyFee across all of their StudentGroup links. We keep
+// returning a `monthlyFee` field on student summaries for backwards
+// compatibility, computed at read time.
 const paymentSelect = {
   id: true,
   amount: true,
@@ -25,11 +33,60 @@ const paymentSelect = {
     select: {
       id: true,
       fullName: true,
-      monthlyFee: true,
-      group: { select: { id: true, name: true } },
+      groups: {
+        select: {
+          monthlyFee: true,
+          group: { select: { id: true, name: true } },
+        },
+        orderBy: { joinedAt: 'asc' as const },
+      },
     },
   },
-};
+} satisfies Prisma.PaymentSelect;
+
+type RawPayment = Prisma.PaymentGetPayload<{ select: typeof paymentSelect }>;
+
+function shapePayment(p: RawPayment) {
+  const groups = p.student.groups.map((link) => ({
+    id: link.group.id,
+    name: link.group.name,
+    monthlyFee: Number(link.monthlyFee),
+  }));
+  const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+  const primaryGroup = groups[0] ?? null;
+  return {
+    id: p.id,
+    amount: p.amount,
+    status: p.status,
+    receiptUrl: p.receiptUrl,
+    nextPaymentDate: p.nextPaymentDate,
+    confirmedAt: p.confirmedAt,
+    rejectedAt: p.rejectedAt,
+    rejectReason: p.rejectReason,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+    student: {
+      id: p.student.id,
+      fullName: p.student.fullName,
+      monthlyFee,
+      group: primaryGroup
+        ? { id: primaryGroup.id, name: primaryGroup.name }
+        : null,
+      groups,
+    },
+  };
+}
+
+async function totalMonthlyFeeForStudent(
+  prisma: PrismaService,
+  studentId: string,
+) {
+  const links = await prisma.studentGroup.findMany({
+    where: { studentId },
+    select: { monthlyFee: true },
+  });
+  return links.reduce((acc, l) => acc + Number(l.monthlyFee), 0);
+}
 
 @Injectable()
 export class PaymentsService {
@@ -69,7 +126,68 @@ export class PaymentsService {
       },
     });
 
-    return payment;
+    return shapePayment(payment);
+  }
+
+  /**
+   * Admin-entered (cash/transfer) payment. Stored as CONFIRMED right away —
+   * the parent isn't involved. A receipt file is optional and, when provided,
+   * uploaded to S3 and attached to the same payment record.
+   */
+  async createManual(
+    dto: CreateManualPaymentDto,
+    file: Express.Multer.File | undefined,
+    actorId: string,
+  ) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: dto.studentId },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+
+    const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+    if (Number.isNaN(paidAt.getTime())) {
+      throw new BadRequestException('Invalid paidAt');
+    }
+
+    let receiptUrl: string | null = null;
+    if (file) {
+      receiptUrl = await this.s3.uploadFile(file, 'receipts');
+    }
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        studentId: dto.studentId,
+        amount: dto.amount,
+        status: PaymentStatus.CONFIRMED,
+        receiptUrl,
+        // The chosen paidAt drives both the "когда оплатил" timeline and the
+        // confirmation timestamp so reports/debt calculations treat it as a
+        // payment for that month.
+        createdAt: paidAt,
+        confirmedAt: paidAt,
+        nextPaymentDate: dto.nextPaymentDate
+          ? new Date(dto.nextPaymentDate)
+          : null,
+      },
+      select: paymentSelect,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'CREATE_MANUAL_PAYMENT',
+        entity: 'Payment',
+        entityId: payment.id,
+        details: {
+          amount: dto.amount,
+          studentId: dto.studentId,
+          paidAt: paidAt.toISOString(),
+          receiptAttached: Boolean(receiptUrl),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return shapePayment(payment);
   }
 
   async findAll(query: QueryPaymentsDto) {
@@ -82,14 +200,17 @@ export class PaymentsService {
       if (query.to) (where.createdAt as any).lte = new Date(query.to);
     }
     if (query.groupId) {
-      where.student = { groupId: query.groupId };
+      // Filter to students enrolled in the requested group via the
+      // many-to-many StudentGroup link.
+      where.student = { groups: { some: { groupId: query.groupId } } };
     }
 
-    return this.prisma.payment.findMany({
+    const rows = await this.prisma.payment.findMany({
       where,
       select: paymentSelect,
       orderBy: { createdAt: 'desc' },
     });
+    return rows.map(shapePayment);
   }
 
   async findByStudent(studentId: string, user: { id: string; role: Role }) {
@@ -110,22 +231,26 @@ export class PaymentsService {
         throw new ForbiddenException("You can only view your child's payments");
     }
 
-    return this.prisma.payment.findMany({
+    const rows = await this.prisma.payment.findMany({
       where: { studentId },
       select: paymentSelect,
       orderBy: { createdAt: 'desc' },
     });
+    return rows.map(shapePayment);
   }
 
   async findMy(userId: string) {
     const student = await this.prisma.student.findUnique({ where: { userId } });
     if (!student) throw new NotFoundException('Student profile not found');
 
-    const history = await this.prisma.payment.findMany({
+    const monthlyFee = await totalMonthlyFeeForStudent(this.prisma, student.id);
+
+    const rawHistory = await this.prisma.payment.findMany({
       where: { studentId: student.id },
       select: paymentSelect,
       orderBy: { createdAt: 'desc' },
     });
+    const history = rawHistory.map(shapePayment);
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -159,7 +284,7 @@ export class PaymentsService {
     return {
       currentMonth: {
         status: currentStatus,
-        amount: Number(student.monthlyFee),
+        amount: monthlyFee,
         nextPaymentDate,
         daysUntilPayment,
       },
@@ -179,12 +304,14 @@ export class PaymentsService {
     });
     if (!student) throw new NotFoundException('Student not found');
 
+    const monthlyFee = await totalMonthlyFeeForStudent(this.prisma, studentId);
+
     const receiptUrl = await this.s3.uploadFile(file, 'receipts');
 
     const payment = await this.prisma.payment.create({
       data: {
         studentId,
-        amount: student.monthlyFee,
+        amount: monthlyFee,
         status: PaymentStatus.PENDING,
         receiptUrl,
       },
@@ -201,7 +328,7 @@ export class PaymentsService {
       },
     });
 
-    return payment;
+    return shapePayment(payment);
   }
 
   async confirm(id: string, actorId: string) {
@@ -226,7 +353,7 @@ export class PaymentsService {
       },
     });
 
-    return updated;
+    return shapePayment(updated);
   }
 
   async reject(id: string, dto: RejectPaymentDto, actorId: string) {
@@ -253,7 +380,7 @@ export class PaymentsService {
       },
     });
 
-    return updated;
+    return shapePayment(updated);
   }
 
   async getReceiptUrl(id: string) {
@@ -271,7 +398,6 @@ export class PaymentsService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Students without a CONFIRMED payment this month
     const confirmedThisMonth = await this.prisma.payment.findMany({
       where: {
         status: PaymentStatus.CONFIRMED,
@@ -287,8 +413,13 @@ export class PaymentsService {
       select: {
         id: true,
         fullName: true,
-        monthlyFee: true,
-        group: { select: { id: true, name: true } },
+        groups: {
+          select: {
+            monthlyFee: true,
+            group: { select: { id: true, name: true } },
+          },
+          orderBy: { joinedAt: 'asc' },
+        },
         payments: {
           where: { status: PaymentStatus.CONFIRMED },
           orderBy: { confirmedAt: 'desc' },
@@ -300,12 +431,26 @@ export class PaymentsService {
 
     return allStudents
       .filter((s) => !paidStudentIds.has(s.id))
-      .map((s) => ({
-        studentId: s.id,
-        fullName: s.fullName,
-        groupName: s.group?.name ?? '—',
-        monthlyFee: s.monthlyFee,
-        lastPaymentDate: s.payments[0]?.confirmedAt ?? null,
-      }));
+      .map((s) => {
+        const groups = s.groups.map((link) => ({
+          id: link.group.id,
+          name: link.group.name,
+          monthlyFee: Number(link.monthlyFee),
+        }));
+        const monthlyFee = groups.reduce((acc, g) => acc + g.monthlyFee, 0);
+        return {
+          studentId: s.id,
+          fullName: s.fullName,
+          groupName:
+            groups.length === 0
+              ? '—'
+              : groups.length === 1
+                ? groups[0].name
+                : groups.map((g) => g.name).join(', '),
+          monthlyFee,
+          groups,
+          lastPaymentDate: s.payments[0]?.confirmedAt ?? null,
+        };
+      });
   }
 }

@@ -25,8 +25,8 @@ export declare class GradesController {
         createdAt: Date;
         updatedAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
@@ -47,8 +47,8 @@ export declare class GradesController {
         createdAt: Date;
         updatedAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;
@@ -124,8 +124,8 @@ export declare class GradesController {
         createdAt: Date;
         updatedAt: Date;
         groupId: string;
-        date: Date;
         studentId: string;
+        date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
         score: import("@prisma/client/runtime/library").Decimal;
         comment: string | null;

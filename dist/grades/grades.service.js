@@ -334,7 +334,12 @@ let GradesService = class GradesService {
         });
         if (!student)
             throw new common_1.NotFoundException('Student profile not found');
-        if (!student.groupId) {
+        const link = await this.prisma.studentGroup.findFirst({
+            where: { studentId: student.id },
+            orderBy: { joinedAt: 'asc' },
+            select: { groupId: true },
+        });
+        if (!link) {
             return {
                 myPlace: 0,
                 totalStudents: 0,
@@ -344,7 +349,7 @@ let GradesService = class GradesService {
             };
         }
         const group = await this.prisma.group.findUnique({
-            where: { id: student.groupId },
+            where: { id: link.groupId },
         });
         if (!group) {
             return {
@@ -355,7 +360,7 @@ let GradesService = class GradesService {
                 rating: [],
             };
         }
-        const ratingList = await this.getRating(student.groupId, { period: query.period }, { id: userId, role: client_1.Role.STUDENT });
+        const ratingList = await this.getRating(link.groupId, { period: query.period }, { id: userId, role: client_1.Role.STUDENT });
         const myEntry = ratingList.find((r) => r.studentId === student.id);
         return {
             myPlace: myEntry ? myEntry.place : 0,

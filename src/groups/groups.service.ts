@@ -13,6 +13,7 @@ const groupSelect = {
   name: true,
   maxStudents: true,
   schedule: true,
+  defaultMonthlyFee: true,
   isActive: true,
   isRatingVisible: true,
   archivedAt: true,
@@ -21,6 +22,17 @@ const groupSelect = {
   teacher: { select: { id: true, fullName: true } },
   _count: { select: { students: true } },
 } satisfies Prisma.GroupSelect;
+
+type RawGroup = Prisma.GroupGetPayload<{ select: typeof groupSelect }>;
+
+// Decimal -> number so the API consumers don't need to deal with serialised
+// Prisma Decimal strings.
+function shapeGroup(g: RawGroup) {
+  return {
+    ...g,
+    defaultMonthlyFee: Number(g.defaultMonthlyFee),
+  };
+}
 
 @Injectable()
 export class GroupsService {
@@ -40,6 +52,7 @@ export class GroupsService {
         teacherId: dto.teacherId,
         maxStudents: dto.maxStudents ?? 20,
         schedule: dto.schedule as Prisma.InputJsonValue,
+        defaultMonthlyFee: dto.defaultMonthlyFee ?? 0,
       },
       select: groupSelect,
     });
@@ -54,7 +67,7 @@ export class GroupsService {
       },
     });
 
-    return group;
+    return shapeGroup(group);
   }
 
   async findAll(user: { id: string; role: Role }) {
@@ -63,13 +76,15 @@ export class GroupsService {
         where: { userId: user.id },
       });
       if (!teacher) return [];
-      return this.prisma.group.findMany({
+      const rows = await this.prisma.group.findMany({
         where: { teacherId: teacher.id },
         select: groupSelect,
       });
+      return rows.map(shapeGroup);
     }
 
-    return this.prisma.group.findMany({ select: groupSelect });
+    const rows = await this.prisma.group.findMany({ select: groupSelect });
+    return rows.map(shapeGroup);
   }
 
   async findOne(id: string, user: { id: string; role: Role }) {
@@ -90,41 +105,56 @@ export class GroupsService {
       }
     }
 
-    return group;
+    return shapeGroup(group);
   }
 
   async findStudents(groupId: string, user: { id: string; role: Role }) {
     await this.findOne(groupId, user);
 
-    const students = await this.prisma.student.findMany({
+    // Pull each StudentGroup link and the per-link fee, then expose the
+    // student row + that fee so the UI shows "the price the student pays
+    // *for this group*" — independent of any other groups they're in.
+    const links = await this.prisma.studentGroup.findMany({
       where: { groupId },
       select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        gender: true,
-        isActive: true,
         monthlyFee: true,
-        user: { select: { email: true } },
+        joinedAt: true,
+        student: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            gender: true,
+            isActive: true,
+            user: { select: { phone: true } },
+          },
+        },
       },
+      orderBy: { joinedAt: 'asc' },
     });
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const studentIds = links.map((l) => l.student.id);
 
-    const paidThisMonth = await this.prisma.payment.findMany({
-      where: {
-        studentId: { in: students.map((s) => s.id) },
-        status: PaymentStatus.CONFIRMED,
-        confirmedAt: { gte: startOfMonth },
-      },
-      select: { studentId: true },
-    });
+    const paidThisMonth =
+      studentIds.length > 0
+        ? await this.prisma.payment.findMany({
+            where: {
+              studentId: { in: studentIds },
+              status: PaymentStatus.CONFIRMED,
+              confirmedAt: { gte: startOfMonth },
+            },
+            select: { studentId: true },
+          })
+        : [];
     const paidSet = new Set(paidThisMonth.map((p) => p.studentId));
 
-    return students.map((s) => ({
-      ...s,
-      hasPaidThisMonth: paidSet.has(s.id),
+    return links.map((link) => ({
+      ...link.student,
+      monthlyFee: Number(link.monthlyFee),
+      joinedAt: link.joinedAt,
+      hasPaidThisMonth: paidSet.has(link.student.id),
     }));
   }
 
@@ -156,7 +186,7 @@ export class GroupsService {
       },
     });
 
-    return updated;
+    return shapeGroup(updated);
   }
 
   async archive(id: string, actorId: string) {
@@ -165,7 +195,7 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    const updated = await this.prisma.group.update({
+    const archived = await this.prisma.group.update({
       where: { id },
       data: { isActive: false, archivedAt: new Date() },
       select: groupSelect,
@@ -180,7 +210,7 @@ export class GroupsService {
       },
     });
 
-    return updated;
+    return shapeGroup(archived);
   }
   async updateRatingVisibility(
     id: string,
@@ -189,7 +219,7 @@ export class GroupsService {
   ) {
     const group = await this.findOne(id, user);
 
-    const updated = await this.prisma.group.update({
+    const visibilityUpdated = await this.prisma.group.update({
       where: { id: group.id },
       data: { isRatingVisible },
       select: groupSelect,
@@ -205,6 +235,6 @@ export class GroupsService {
       },
     });
 
-    return updated;
+    return shapeGroup(visibilityUpdated);
   }
 }

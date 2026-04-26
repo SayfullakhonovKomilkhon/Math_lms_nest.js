@@ -56,7 +56,7 @@ const teacherSelect = {
     isActive: true,
     createdAt: true,
     updatedAt: true,
-    user: { select: { id: true, email: true, role: true, isActive: true } },
+    user: { select: { id: true, phone: true, role: true, isActive: true } },
 };
 let TeachersService = class TeachersService {
     constructor(prisma, settings) {
@@ -71,10 +71,16 @@ let TeachersService = class TeachersService {
             const parsed = def ? Number(def) : NaN;
             ratePerStudent = Number.isFinite(parsed) ? parsed : 0;
         }
+        const phoneClash = await this.prisma.user.findUnique({
+            where: { phone: dto.phone },
+        });
+        if (phoneClash) {
+            throw new common_1.ConflictException('Phone is already in use');
+        }
         const teacher = await this.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
-                    email: dto.email,
+                    phone: dto.phone,
                     passwordHash,
                     role: client_1.Role.TEACHER,
                 },
@@ -95,7 +101,7 @@ let TeachersService = class TeachersService {
                 action: 'CREATE',
                 entity: 'Teacher',
                 entityId: teacher.id,
-                details: { email: dto.email, fullName: dto.fullName },
+                details: { phone: dto.phone, fullName: dto.fullName },
             },
         });
         return teacher;
