@@ -343,3 +343,22 @@ model Setting {
   updatedBy String?
   updatedAt DateTime @updatedAt
 }
+
+// Operating expenses recorded by admins/super-admins (paper, water,
+// utilities, supplies, etc.). Kept independent from the per-student
+// `Payment` flow so it doesn't pollute revenue analytics — surfaced on a
+// dedicated /admin/expenses page only.
+model Expense {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  category    String
+  description String?
+  receiptUrl  String?
+  spentAt     DateTime
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([spentAt])
+  @@index([category])
+}

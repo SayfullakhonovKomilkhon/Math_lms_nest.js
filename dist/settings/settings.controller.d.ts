@@ -4,10 +4,10 @@ export declare class SettingsController {
     private service;
     constructor(service: SettingsService);
     findAll(): Promise<{
+        value: string;
         id: string;
         updatedAt: Date;
         key: string;
-        value: string;
         label: string | null;
         updatedBy: string | null;
     }[]>;
@@ -17,10 +17,10 @@ export declare class SettingsController {
         centerAddress: string;
     }>;
     updateMany(dto: UpdateSettingsDto, actorId: string): Promise<{
+        value: string;
         id: string;
         updatedAt: Date;
         key: string;
-        value: string;
         label: string | null;
         updatedBy: string | null;
     }[]>;

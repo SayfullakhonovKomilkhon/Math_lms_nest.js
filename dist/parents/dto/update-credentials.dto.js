@@ -11,7 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateParentCredentialsDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const phone_1 = require("../../common/utils/phone");
 class UpdateParentCredentialsDto {
 }
 exports.UpdateParentCredentialsDto = UpdateParentCredentialsDto;
@@ -22,6 +24,7 @@ __decorate([
     }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? (0, phone_1.normalizePhone)(value) : value),
     (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
         message: 'phone must be a valid phone number',
     }),

@@ -17,6 +17,7 @@ import { GradesModule } from './grades/grades.module';
 import { HomeworkModule } from './homework/homework.module';
 import { LessonTopicsModule } from './lesson-topics/lesson-topics.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ExpensesModule } from './expenses/expenses.module';
 import { SalaryModule } from './salary/salary.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
@@ -59,6 +60,7 @@ import { HealthModule } from './health/health.module';
     HomeworkModule,
     LessonTopicsModule,
     PaymentsModule,
+    ExpensesModule,
     SalaryModule,
     ScheduleModule,
     AnnouncementsModule,

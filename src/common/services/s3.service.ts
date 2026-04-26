@@ -47,7 +47,7 @@ export class S3Service {
 
   async uploadFile(
     file: Express.Multer.File,
-    folder: 'receipts' | 'homework' | 'avatars',
+    folder: 'receipts' | 'homework' | 'avatars' | 'expenses',
   ): Promise<string> {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(

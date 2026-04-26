@@ -29,6 +29,7 @@ const grades_module_1 = require("./grades/grades.module");
 const homework_module_1 = require("./homework/homework.module");
 const lesson_topics_module_1 = require("./lesson-topics/lesson-topics.module");
 const payments_module_1 = require("./payments/payments.module");
+const expenses_module_1 = require("./expenses/expenses.module");
 const salary_module_1 = require("./salary/salary.module");
 const schedule_module_1 = require("./schedule/schedule.module");
 const announcements_module_1 = require("./announcements/announcements.module");
@@ -74,6 +75,7 @@ exports.AppModule = AppModule = __decorate([
             homework_module_1.HomeworkModule,
             lesson_topics_module_1.LessonTopicsModule,
             payments_module_1.PaymentsModule,
+            expenses_module_1.ExpensesModule,
             salary_module_1.SalaryModule,
             schedule_module_1.ScheduleModule,
             announcements_module_1.AnnouncementsModule,

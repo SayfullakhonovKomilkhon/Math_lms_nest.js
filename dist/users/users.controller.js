@@ -16,6 +16,7 @@ exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const client_1 = require("@prisma/client");
 const users_service_1 = require("./users.service");
 const create_user_dto_1 = require("./dto/create-user.dto");
@@ -23,11 +24,14 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const phone_1 = require("../common/utils/phone");
 const PHONE_REGEX = /^\+?[0-9\s\-()]{6,20}$/;
+const normalizePhoneTransform = ({ value }) => typeof value === 'string' ? (0, phone_1.normalizePhone)(value) : value;
 class CreateStaffDto {
 }
 __decorate([
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(normalizePhoneTransform),
     (0, class_validator_1.Matches)(PHONE_REGEX, { message: 'phone must be a valid phone number' }),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "phone", void 0);
@@ -50,6 +54,7 @@ class UpdateUserDto {
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(normalizePhoneTransform),
     (0, class_validator_1.Matches)(PHONE_REGEX, { message: 'phone must be a valid phone number' }),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "phone", void 0);

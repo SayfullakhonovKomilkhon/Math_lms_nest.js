@@ -11,16 +11,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoginDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const phone_1 = require("../../common/utils/phone");
 class LoginDto {
 }
 exports.LoginDto = LoginDto;
 __decorate([
     (0, swagger_1.ApiProperty)({
         example: '+998901234567',
-        description: 'Phone number used as the login identifier',
+        description: 'Phone number used as the login identifier. The "+998" prefix is optional — bare 9-digit Uzbek numbers (e.g. "901234567") are accepted and normalised server-side.',
     }),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? (0, phone_1.normalizePhone)(value) : value),
     (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
         message: 'phone must be a valid phone number',
     }),

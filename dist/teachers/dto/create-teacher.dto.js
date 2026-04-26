@@ -13,6 +13,7 @@ exports.CreateTeacherDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+const phone_1 = require("../../common/utils/phone");
 class CreateTeacherDto {
 }
 exports.CreateTeacherDto = CreateTeacherDto;
@@ -22,6 +23,7 @@ __decorate([
         description: 'Phone number used as the login identifier',
     }),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? (0, phone_1.normalizePhone)(value) : value),
     (0, class_validator_1.Matches)(/^\+?[0-9\s\-()]{6,20}$/, {
         message: 'phone must be a valid phone number',
     }),
