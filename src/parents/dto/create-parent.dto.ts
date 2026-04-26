@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   ArrayUnique,
   IsArray,
@@ -7,6 +8,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { normalizePhone } from '../../common/utils/phone';
 
 export class CreateParentDto {
   @ApiProperty({
@@ -14,6 +16,9 @@ export class CreateParentDto {
     description: 'Phone number used as the login identifier',
   })
   @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? normalizePhone(value) : value,
+  )
   @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
     message: 'phone must be a valid phone number',
   })

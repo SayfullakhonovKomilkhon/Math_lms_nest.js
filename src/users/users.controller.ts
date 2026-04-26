@@ -16,6 +16,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -23,11 +24,15 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { normalizePhone } from '../common/utils/phone';
 
 const PHONE_REGEX = /^\+?[0-9\s\-()]{6,20}$/;
+const normalizePhoneTransform = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? normalizePhone(value) : value;
 
 class CreateStaffDto {
   @IsString()
+  @Transform(normalizePhoneTransform)
   @Matches(PHONE_REGEX, { message: 'phone must be a valid phone number' })
   phone: string;
 
@@ -46,6 +51,7 @@ class CreateStaffDto {
 class UpdateUserDto {
   @IsOptional()
   @IsString()
+  @Transform(normalizePhoneTransform)
   @Matches(PHONE_REGEX, { message: 'phone must be a valid phone number' })
   phone?: string;
 

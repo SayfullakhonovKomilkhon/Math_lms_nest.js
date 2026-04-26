@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -6,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { normalizePhone } from '../../common/utils/phone';
 
 export class UpdateMyProfileDto {
   @ApiProperty({ required: false, example: 'Alijon Valiyev' })
@@ -23,6 +25,9 @@ export class UpdateMyProfileDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? normalizePhone(value) : value,
+  )
   @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
     message: 'phone must be a valid phone number',
   })

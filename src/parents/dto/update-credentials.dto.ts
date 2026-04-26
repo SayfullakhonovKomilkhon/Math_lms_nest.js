@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { normalizePhone } from '../../common/utils/phone';
 
 export class UpdateParentCredentialsDto {
   @ApiPropertyOptional({
@@ -8,6 +10,9 @@ export class UpdateParentCredentialsDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? normalizePhone(value) : value,
+  )
   @Matches(/^\+?[0-9\s\-()]{6,20}$/, {
     message: 'phone must be a valid phone number',
   })
