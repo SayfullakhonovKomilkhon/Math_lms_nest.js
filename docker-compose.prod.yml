@@ -33,7 +33,9 @@ services:
     image: redis:7-alpine
     container_name: mathcenter-redis
     restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    # noeviction: BullMQ требует, чтобы Redis НИКОГДА не удалял данные при переполнении —
+    # иначе фоновые задачи (очереди) могут потеряться. Это правильное значение для очередей.
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction --appendonly yes
     volumes:
       - redis_data:/data
     healthcheck:
