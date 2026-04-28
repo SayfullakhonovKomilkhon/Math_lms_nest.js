@@ -6,7 +6,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { NotificationsService } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentStatus } from '@prisma/client';
+import { AttendanceStatus, PaymentStatus } from '@prisma/client';
 
 @Processor('notifications')
 export class NotificationsProcessor extends WorkerHost {
@@ -20,8 +20,11 @@ export class NotificationsProcessor extends WorkerHost {
     super();
   }
 
-  // Every day at 09:00
-  @Cron('0 9 * * *')
+  // Every day at 09:00 (Asia/Tashkent → 04:00 UTC). NestSchedule uses the
+  // server local time; in the Docker image we run with TZ=UTC, so 09:00 UTC
+  // would land at 14:00 Tashkent. Use a fixed UTC slot that maps to morning
+  // in Tashkent.
+  @Cron('0 4 * * *')
   async checkPaymentReminders() {
     this.logger.log('Checking payment reminders...');
     await this.notificationsQueue.add('check-payment-reminders', {});
@@ -32,15 +35,35 @@ export class NotificationsProcessor extends WorkerHost {
       switch (job.name) {
         case 'check-payment-reminders':
           return await this.processPaymentReminders();
+        // Legacy job name — preserved for backward compat with any pending
+        // jobs that survived a deploy. New code uses
+        // `send-attendance-to-parents`.
         case 'send-absence-alert':
           return await this.notificationsService.sendAbsenceAlert(
             job.data.studentId,
+            job.data.date,
+          );
+        case 'send-attendance-to-parents':
+          return await this.notificationsService.sendAttendanceToParents(
+            job.data.studentId,
+            job.data.groupId,
+            job.data.status as AttendanceStatus,
             job.data.date,
           );
         case 'send-homework-notification':
           return await this.notificationsService.sendHomeworkNotification(
             job.data.groupId,
             job.data.homeworkId,
+          );
+        case 'send-grade-notification':
+          return await this.notificationsService.sendGradeNotification(
+            job.data.gradeId,
+          );
+        case 'send-salary-notification':
+          return await this.notificationsService.sendSalaryNotification(
+            job.data.teacherId,
+            job.data.oldRate,
+            job.data.newRate,
           );
       }
     } catch (err) {

@@ -3,9 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { NotificationType, Role } from '@prisma/client';
+import { NotificationChannel, NotificationType, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { announcement as announcementTpl } from '../notifications/templates';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { QueryAnnouncementDto } from './dto/query-announcement.dto';
 
@@ -68,6 +69,7 @@ export class AnnouncementsService {
       announcement.id,
       announcement.groupId,
       announcement.title,
+      announcement.message,
     );
 
     return this.shapeAnnouncement(announcement, false, null);
@@ -427,13 +429,25 @@ export class AnnouncementsService {
     announcementId: string,
     groupId: string | null,
     title: string,
+    message: string,
   ) {
     const userIds = await this.collectRecipientIds(groupId);
     if (userIds.size === 0) return;
+    const ids = Array.from(userIds);
 
-    await this.notifications.sendToMany(Array.from(userIds), {
+    // IN_APP — короткий заголовок (нужен для bell-icon dropdown).
+    await this.notifications.sendToMany(ids, {
       type: NotificationType.ANNOUNCEMENT,
       message: `Новое объявление: ${title}`,
+    });
+
+    // Telegram — полный HTML-формат с заголовком и телом, чтобы получатель
+    // не должен был открывать приложение.
+    const tgScope: 'group' | 'center' = groupId ? 'group' : 'center';
+    await this.notifications.sendToMany(ids, {
+      type: NotificationType.ANNOUNCEMENT,
+      message: announcementTpl(title, message, tgScope),
+      channel: NotificationChannel.TELEGRAM,
     });
 
     // suppress unused var lint (announcementId is kept for future deep-linking)

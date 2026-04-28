@@ -21,7 +21,7 @@ class LinkDto {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.STUDENT, Role.PARENT, Role.TEACHER)
+@Roles(Role.STUDENT, Role.PARENT, Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('telegram')
 export class TelegramController {
   constructor(

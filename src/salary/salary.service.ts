@@ -3,11 +3,16 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SalaryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('notifications') private notificationsQueue: Queue,
+  ) {}
 
   async getMySalary(userId: string) {
     // `Group.students` is now the StudentGroup join table; counting active
@@ -175,6 +180,8 @@ export class SalaryService {
     });
     if (!teacher) throw new NotFoundException('Teacher not found');
 
+    const oldRate = Number(teacher.ratePerStudent);
+
     const updated = await this.prisma.teacher.update({
       where: { id: teacherId },
       data: { ratePerStudent: rate },
@@ -189,11 +196,20 @@ export class SalaryService {
         entityId: teacherId,
         details: {
           field: 'ratePerStudent',
-          oldValue: Number(teacher.ratePerStudent),
+          oldValue: oldRate,
           newValue: rate,
         } as any,
       },
     });
+
+    // Notify the teacher only if the rate actually changed.
+    if (oldRate !== rate) {
+      await this.notificationsQueue.add('send-salary-notification', {
+        teacherId,
+        oldRate,
+        newRate: rate,
+      });
+    }
 
     return updated;
   }

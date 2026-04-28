@@ -4,6 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AttendanceStatus, Prisma, Role } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkGradesDto } from './dto/bulk-grades.dto';
 import { EditGradeDto } from './dto/edit-grade.dto';
@@ -11,7 +13,10 @@ import { QueryGradesDto, RatingQueryDto } from './dto/query-grades.dto';
 
 @Injectable()
 export class GradesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('notifications') private notificationsQueue: Queue,
+  ) {}
 
   private async getTeacherOrThrow(userId: string) {
     const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
@@ -46,6 +51,7 @@ export class GradesService {
     dayEnd.setDate(dayEnd.getDate() + 1);
 
     let written = 0;
+    const createdGradeIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
       for (const r of dto.records) {
@@ -58,7 +64,7 @@ export class GradesService {
           },
         });
         if (r.score == null) continue; // absent / cleared — skip create
-        await tx.grade.create({
+        const created = await tx.grade.create({
           data: {
             studentId: r.studentId,
             groupId: dto.groupId,
@@ -69,10 +75,20 @@ export class GradesService {
             comment: r.comment,
             gradedAt: new Date(),
           },
+          select: { id: true },
         });
+        createdGradeIds.push(created.id);
         written += 1;
       }
     });
+
+    // Fanout AFTER the transaction commits — otherwise queue worker may try
+    // to read a grade that's still inside the open tx.
+    for (const gradeId of createdGradeIds) {
+      await this.notificationsQueue.add('send-grade-notification', {
+        gradeId,
+      });
+    }
 
     return { created: written };
   }
@@ -224,19 +240,25 @@ export class GradesService {
         fullName: s.fullName,
         // totalPoints — primary metric (raw points earned).
         totalPoints: Math.round(s.totalScore * 100) / 100,
-        // averageScore — kept for backwards compatibility / charts (percentage).
+        // totalMax — sum of `maxScore` across all graded works in the
+        // selected period, so the client can render "X / Y" and rank
+        // students fairly when exams have different ceilings.
+        totalMax: Math.round(s.totalMax * 100) / 100,
+        // averageScore — percentage = totalScore / totalMax * 100.
         averageScore:
-          s.count > 0
+          s.count > 0 && s.totalMax > 0
             ? Math.round((s.totalScore / s.totalMax) * 100 * 100) / 100
             : 0,
         totalWorks: s.count,
         attendancePercent:
           s.totalDays > 0 ? Math.round((s.presentDays / s.totalDays) * 100) : 0,
       }))
-      // Sort by total points (raw), tiebreak by averageScore then by name.
+      // Sort by averageScore (fair across variable max scores), tiebreak
+      // by raw totalPoints, then by name. This ensures a student who
+      // scored 50/50 ranks above one who scored 60/100.
       .sort((a, b) => {
-        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
         if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore;
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
         return a.fullName.localeCompare(b.fullName);
       })
       .map((s, i) => ({ place: i + 1, ...s }));
@@ -454,6 +476,7 @@ export class GradesService {
       totalStudents: ratingList.length,
       myAverageScore: myEntry ? myEntry.averageScore : 0,
       myTotalPoints: myEntry ? myEntry.totalPoints : 0,
+      myTotalMax: myEntry ? myEntry.totalMax : 0,
       isVisible: group.isRatingVisible,
       rating: group.isRatingVisible ? ratingList : [],
     };

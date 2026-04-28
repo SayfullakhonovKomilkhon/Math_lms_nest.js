@@ -51,6 +51,9 @@ enum NotificationType {
   ATTENDANCE
   ACHIEVEMENT
   ANNOUNCEMENT
+  LESSON_REMINDER
+  GRADE
+  SALARY
 }
 
 enum AchievementType {
