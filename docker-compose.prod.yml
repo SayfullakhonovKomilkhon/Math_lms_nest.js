@@ -17,7 +17,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-mathcenter}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18+ требует монтировать том на родительскую папку, а не на data —
+      # внутри неё образ кладёт данные в версионную подпапку (18/docker/), что
+      # позволяет в будущем безопасно делать pg_upgrade --link.
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test:
         [
