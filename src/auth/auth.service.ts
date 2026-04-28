@@ -38,7 +38,12 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: { id: user.id, phone: user.phone, role: user.role },
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+        telegramChatId: user.telegramChatId,
+      },
     };
   }
 
@@ -73,6 +78,7 @@ export class AuthService {
         role: true,
         isActive: true,
         createdAt: true,
+        telegramChatId: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');

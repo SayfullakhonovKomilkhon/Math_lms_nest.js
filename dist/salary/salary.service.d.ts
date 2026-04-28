@@ -1,7 +1,9 @@
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 export declare class SalaryService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private notificationsQueue;
+    constructor(prisma: PrismaService, notificationsQueue: Queue);
     getMySalary(userId: string): Promise<{
         teacherId: string;
         fullName: string;

@@ -1,5 +1,6 @@
-import { NotificationChannel, NotificationType } from '@prisma/client';
+import { AttendanceStatus, NotificationChannel, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 interface SendPayload {
     type: NotificationType;
     message: string;
@@ -7,12 +8,19 @@ interface SendPayload {
 }
 export declare class NotificationsService {
     private prisma;
+    private telegram;
     private readonly logger;
-    constructor(prisma: PrismaService);
+    constructor(prisma: PrismaService, telegram: TelegramService);
     sendToUser(userId: string, payload: SendPayload): Promise<void>;
     sendToMany(userIds: string[], payload: SendPayload): Promise<void>;
+    private pushTelegram;
+    private sendBoth;
     sendPaymentReminder(studentId: string, daysLeft: number): Promise<void>;
+    sendAttendanceToParents(studentId: string, groupId: string, status: AttendanceStatus, date: string): Promise<void>;
     sendAbsenceAlert(studentId: string, date: string): Promise<void>;
+    sendGradeNotification(gradeId: string): Promise<void>;
+    sendSalaryNotification(teacherId: string, oldRate: number, newRate: number): Promise<void>;
+    sendLessonReminder(userIds: string[], groupName: string, startTime: string, minutesUntil: number): Promise<void>;
     sendAchievementNotification(studentId: string, achievement: {
         title: string;
         icon: string;
@@ -32,8 +40,8 @@ export declare class NotificationsService {
             id: string;
             createdAt: Date;
             userId: string;
-            isRead: boolean;
             channel: import(".prisma/client").$Enums.NotificationChannel;
+            isRead: boolean;
         }[];
     }>;
     getUnreadCount(userId: string): Promise<number>;

@@ -61,10 +61,11 @@ let AttendanceService = class AttendanceService {
                 lessonType: dto.lessonType,
             },
         })));
-        const absentRecords = dto.records.filter((r) => r.status === client_1.AttendanceStatus.ABSENT);
-        for (const r of absentRecords) {
-            await this.notificationsQueue.add('send-absence-alert', {
+        for (const r of dto.records) {
+            await this.notificationsQueue.add('send-attendance-to-parents', {
                 studentId: r.studentId,
+                groupId: dto.groupId,
+                status: r.status,
                 date: dto.date,
             });
         }

@@ -41,8 +41,14 @@ let NotificationsProcessor = NotificationsProcessor_1 = class NotificationsProce
                     return await this.processPaymentReminders();
                 case 'send-absence-alert':
                     return await this.notificationsService.sendAbsenceAlert(job.data.studentId, job.data.date);
+                case 'send-attendance-to-parents':
+                    return await this.notificationsService.sendAttendanceToParents(job.data.studentId, job.data.groupId, job.data.status, job.data.date);
                 case 'send-homework-notification':
                     return await this.notificationsService.sendHomeworkNotification(job.data.groupId, job.data.homeworkId);
+                case 'send-grade-notification':
+                    return await this.notificationsService.sendGradeNotification(job.data.gradeId);
+                case 'send-salary-notification':
+                    return await this.notificationsService.sendSalaryNotification(job.data.teacherId, job.data.oldRate, job.data.newRate);
             }
         }
         catch (err) {
@@ -94,7 +100,7 @@ let NotificationsProcessor = NotificationsProcessor_1 = class NotificationsProce
 };
 exports.NotificationsProcessor = NotificationsProcessor;
 __decorate([
-    (0, schedule_1.Cron)('0 9 * * *'),
+    (0, schedule_1.Cron)('0 4 * * *'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

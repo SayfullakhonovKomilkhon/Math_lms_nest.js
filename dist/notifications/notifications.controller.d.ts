@@ -17,8 +17,8 @@ export declare class NotificationsController {
             id: string;
             createdAt: Date;
             userId: string;
-            isRead: boolean;
             channel: import(".prisma/client").$Enums.NotificationChannel;
+            isRead: boolean;
         }[];
     }>;
     getUnreadCount(req: any): Promise<{

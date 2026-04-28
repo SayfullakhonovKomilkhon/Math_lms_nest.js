@@ -1,11 +1,13 @@
 import { Prisma, Role } from '@prisma/client';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkGradesDto } from './dto/bulk-grades.dto';
 import { EditGradeDto } from './dto/edit-grade.dto';
 import { QueryGradesDto, RatingQueryDto } from './dto/query-grades.dto';
 export declare class GradesService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private notificationsQueue;
+    constructor(prisma: PrismaService, notificationsQueue: Queue);
     private getTeacherOrThrow;
     private assertTeacherOwnsGroup;
     bulkCreate(dto: BulkGradesDto, user: {
@@ -58,6 +60,7 @@ export declare class GradesService {
         studentId: string;
         fullName: string;
         totalPoints: number;
+        totalMax: number;
         averageScore: number;
         totalWorks: number;
         attendancePercent: number;
@@ -119,16 +122,19 @@ export declare class GradesService {
         isVisible: boolean;
         rating: never[];
         myTotalPoints?: undefined;
+        myTotalMax?: undefined;
     } | {
         myPlace: number;
         totalStudents: number;
         myAverageScore: number;
         myTotalPoints: number;
+        myTotalMax: number;
         isVisible: boolean;
         rating: {
             studentId: string;
             fullName: string;
             totalPoints: number;
+            totalMax: number;
             averageScore: number;
             totalWorks: number;
             attendancePercent: number;

@@ -352,6 +352,7 @@ export declare class ParentsService {
             studentId: string;
             fullName: string;
             totalPoints: number;
+            totalMax: number;
             averageScore: number;
             totalWorks: number;
             attendancePercent: number;

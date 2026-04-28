@@ -8,14 +8,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GradesService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const bullmq_1 = require("@nestjs/bullmq");
+const bullmq_2 = require("bullmq");
 const prisma_service_1 = require("../prisma/prisma.service");
 let GradesService = class GradesService {
-    constructor(prisma) {
+    constructor(prisma, notificationsQueue) {
         this.prisma = prisma;
+        this.notificationsQueue = notificationsQueue;
     }
     async getTeacherOrThrow(userId) {
         const teacher = await this.prisma.teacher.findUnique({ where: { userId } });
@@ -45,6 +51,7 @@ let GradesService = class GradesService {
         const dayEnd = new Date(dayStart);
         dayEnd.setDate(dayEnd.getDate() + 1);
         let written = 0;
+        const createdGradeIds = [];
         await this.prisma.$transaction(async (tx) => {
             for (const r of dto.records) {
                 await tx.grade.deleteMany({
@@ -57,7 +64,7 @@ let GradesService = class GradesService {
                 });
                 if (r.score == null)
                     continue;
-                await tx.grade.create({
+                const created = await tx.grade.create({
                     data: {
                         studentId: r.studentId,
                         groupId: dto.groupId,
@@ -68,10 +75,17 @@ let GradesService = class GradesService {
                         comment: r.comment,
                         gradedAt: new Date(),
                     },
+                    select: { id: true },
                 });
+                createdGradeIds.push(created.id);
                 written += 1;
             }
         });
+        for (const gradeId of createdGradeIds) {
+            await this.notificationsQueue.add('send-grade-notification', {
+                gradeId,
+            });
+        }
         return { created: written };
     }
     async findAll(query, user) {
@@ -190,17 +204,18 @@ let GradesService = class GradesService {
             studentId: s.studentId,
             fullName: s.fullName,
             totalPoints: Math.round(s.totalScore * 100) / 100,
-            averageScore: s.count > 0
+            totalMax: Math.round(s.totalMax * 100) / 100,
+            averageScore: s.count > 0 && s.totalMax > 0
                 ? Math.round((s.totalScore / s.totalMax) * 100 * 100) / 100
                 : 0,
             totalWorks: s.count,
             attendancePercent: s.totalDays > 0 ? Math.round((s.presentDays / s.totalDays) * 100) : 0,
         }))
             .sort((a, b) => {
-            if (b.totalPoints !== a.totalPoints)
-                return b.totalPoints - a.totalPoints;
             if (b.averageScore !== a.averageScore)
                 return b.averageScore - a.averageScore;
+            if (b.totalPoints !== a.totalPoints)
+                return b.totalPoints - a.totalPoints;
             return a.fullName.localeCompare(b.fullName);
         })
             .map((s, i) => ({ place: i + 1, ...s }));
@@ -367,6 +382,7 @@ let GradesService = class GradesService {
             totalStudents: ratingList.length,
             myAverageScore: myEntry ? myEntry.averageScore : 0,
             myTotalPoints: myEntry ? myEntry.totalPoints : 0,
+            myTotalMax: myEntry ? myEntry.totalMax : 0,
             isVisible: group.isRatingVisible,
             rating: group.isRatingVisible ? ratingList : [],
         };
@@ -375,6 +391,8 @@ let GradesService = class GradesService {
 exports.GradesService = GradesService;
 exports.GradesService = GradesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, bullmq_1.InjectQueue)('notifications')),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        bullmq_2.Queue])
 ], GradesService);
 //# sourceMappingURL=grades.service.js.map

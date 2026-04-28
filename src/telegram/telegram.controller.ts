@@ -1,24 +1,10 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Request,
-  BadRequestException,
-} from '@nestjs/common';
-import { IsString, Length } from 'class-validator';
+import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-
-class LinkDto {
-  @IsString()
-  @Length(6, 6)
-  linkCode: string;
-}
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.STUDENT, Role.PARENT, Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
@@ -30,27 +16,29 @@ export class TelegramController {
   ) {}
 
   @Post('generate-code')
-  generateCode() {
-    const code = this.telegramService.generateCode();
+  generateCode(@Request() req) {
+    const code = this.telegramService.generateCode(req.user.id);
     return {
       code,
       botUsername: process.env.TELEGRAM_BOT_USERNAME ?? 'mathcenter_bot',
     };
   }
 
-  @Post('link')
-  async link(@Body() dto: LinkDto, @Request() req) {
-    const chatId = this.telegramService.getChatIdForCode(dto.linkCode);
-    if (!chatId) {
-      throw new BadRequestException('Invalid or expired link code');
-    }
+  @Get('status')
+  async status(@Request() req) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { telegramChatId: true },
+    });
+    return { linked: Boolean(user?.telegramChatId) };
+  }
 
+  @Post('unlink')
+  async unlink(@Request() req) {
     await this.prisma.user.update({
       where: { id: req.user.id },
-      data: { telegramChatId: chatId },
+      data: { telegramChatId: null },
     });
-
-    this.telegramService.consumeCode(dto.linkCode);
     return { success: true };
   }
 }

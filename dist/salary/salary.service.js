@@ -8,13 +8,19 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalaryService = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
+const bullmq_2 = require("bullmq");
 const prisma_service_1 = require("../prisma/prisma.service");
 let SalaryService = class SalaryService {
-    constructor(prisma) {
+    constructor(prisma, notificationsQueue) {
         this.prisma = prisma;
+        this.notificationsQueue = notificationsQueue;
     }
     async getMySalary(userId) {
         const teacher = await this.prisma.teacher.findUnique({
@@ -147,6 +153,7 @@ let SalaryService = class SalaryService {
         });
         if (!teacher)
             throw new common_1.NotFoundException('Teacher not found');
+        const oldRate = Number(teacher.ratePerStudent);
         const updated = await this.prisma.teacher.update({
             where: { id: teacherId },
             data: { ratePerStudent: rate },
@@ -160,17 +167,26 @@ let SalaryService = class SalaryService {
                 entityId: teacherId,
                 details: {
                     field: 'ratePerStudent',
-                    oldValue: Number(teacher.ratePerStudent),
+                    oldValue: oldRate,
                     newValue: rate,
                 },
             },
         });
+        if (oldRate !== rate) {
+            await this.notificationsQueue.add('send-salary-notification', {
+                teacherId,
+                oldRate,
+                newRate: rate,
+            });
+        }
         return updated;
     }
 };
 exports.SalaryService = SalaryService;
 exports.SalaryService = SalaryService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, bullmq_1.InjectQueue)('notifications')),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        bullmq_2.Queue])
 ], SalaryService);
 //# sourceMappingURL=salary.service.js.map

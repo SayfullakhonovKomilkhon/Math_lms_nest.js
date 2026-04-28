@@ -54,6 +54,7 @@ let TelegramService = TelegramService_1 = class TelegramService {
         this.logger = new common_1.Logger(TelegramService_1.name);
         this.bot = null;
         this.pendingCodes = new Map();
+        this.CODE_TTL_MS = 10 * 60 * 1000;
         const token = process.env.TELEGRAM_BOT_TOKEN;
         if (!token) {
             this.logger.warn('TELEGRAM_BOT_TOKEN not set — Telegram bot disabled');
@@ -71,33 +72,43 @@ let TelegramService = TelegramService_1 = class TelegramService {
             return;
         this.bot.start(async (ctx) => {
             const chatId = String(ctx.chat.id);
+            const payload = ctx.startPayload;
+            if (payload) {
+                const linked = await this.tryLinkByCode(payload, chatId);
+                if (linked === 'ok') {
+                    await ctx.reply('✅ Аккаунт привязан! Теперь вы будете получать уведомления здесь.');
+                    return;
+                }
+                if (linked === 'expired') {
+                    await ctx.reply('❌ Код привязки устарел. Сгенерируйте новый в личном кабинете.');
+                    return;
+                }
+            }
             const user = await this.prisma.user.findFirst({
                 where: { telegramChatId: chatId },
             });
             if (user) {
-                await ctx.reply(`✅ Ваш аккаунт уже привязан!\n\nДоступные команды:\n/pay — статус оплаты\n/homework — последнее ДЗ`);
+                await ctx.reply('✅ Ваш аккаунт уже привязан!\n\nДоступные команды:\n/pay — статус оплаты\n/homework — последнее ДЗ');
             }
             else {
-                await ctx.reply(`👋 Добро пожаловать в MathCenter Bot!\n\nДля привязки аккаунта:\n1. Войдите в систему на сайте\n2. Перейдите в настройки профиля\n3. Нажмите "Привязать Telegram"\n4. Введите полученный код здесь: /link <КОД>`);
+                await ctx.reply('👋 Добро пожаловать в MathCenter Bot!\n\nЧтобы получать уведомления, откройте Личный кабинет → Настройки → Telegram и нажмите «Подключить».');
             }
         });
         this.bot.command('link', async (ctx) => {
             const chatId = String(ctx.chat.id);
-            const parts = ctx.message.text.split(' ');
+            const parts = ctx.message.text.split(/\s+/);
             const code = parts[1];
             if (!code) {
                 await ctx.reply('Укажите код: /link 123456');
                 return;
             }
-            const pending = this.pendingCodes.get(code);
-            if (!pending || Date.now() > pending.expiresAt) {
-                await ctx.reply('❌ Неверный или устаревший код. Получите новый код в приложении.');
-                this.pendingCodes.delete(code);
-                return;
+            const result = await this.tryLinkByCode(code, chatId);
+            if (result === 'ok') {
+                await ctx.reply('✅ Аккаунт привязан! Теперь вы будете получать уведомления здесь.');
             }
-            pending.chatId = chatId;
-            this.pendingCodes.set(code, pending);
-            await ctx.reply('✅ Код подтверждён! Вернитесь в приложение для завершения привязки.');
+            else {
+                await ctx.reply('❌ Неверный или устаревший код. Получите новый в личном кабинете.');
+            }
         });
         this.bot.command('pay', async (ctx) => {
             const chatId = String(ctx.chat.id);
@@ -161,24 +172,38 @@ let TelegramService = TelegramService_1 = class TelegramService {
             }
         });
     }
-    generateCode() {
+    async tryLinkByCode(code, chatId) {
+        const pending = this.pendingCodes.get(code);
+        if (!pending)
+            return 'unknown';
+        if (Date.now() > pending.expiresAt) {
+            this.pendingCodes.delete(code);
+            return 'expired';
+        }
+        try {
+            await this.prisma.user.update({
+                where: { id: pending.userId },
+                data: { telegramChatId: chatId },
+            });
+            this.pendingCodes.delete(code);
+            return 'ok';
+        }
+        catch (err) {
+            this.logger.error(`Failed to persist telegramChatId for user=${pending.userId}`, err);
+            return 'unknown';
+        }
+    }
+    generateCode(userId) {
+        for (const [code, p] of this.pendingCodes) {
+            if (p.userId === userId)
+                this.pendingCodes.delete(code);
+        }
         const code = crypto.randomInt(100000, 999999).toString();
         this.pendingCodes.set(code, {
-            chatId: '',
-            expiresAt: Date.now() + 10 * 60 * 1000,
+            userId,
+            expiresAt: Date.now() + this.CODE_TTL_MS,
         });
         return code;
-    }
-    getChatIdForCode(code) {
-        const pending = this.pendingCodes.get(code);
-        if (!pending || Date.now() > pending.expiresAt) {
-            this.pendingCodes.delete(code);
-            return null;
-        }
-        return pending.chatId || null;
-    }
-    consumeCode(code) {
-        this.pendingCodes.delete(code);
     }
     async sendMessage(chatId, message) {
         if (!this.bot)

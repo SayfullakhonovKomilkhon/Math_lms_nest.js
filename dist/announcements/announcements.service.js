@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const notifications_service_1 = require("../notifications/notifications.service");
+const templates_1 = require("../notifications/templates");
 let AnnouncementsService = class AnnouncementsService {
     constructor(prisma, notifications) {
         this.prisma = prisma;
@@ -58,7 +59,7 @@ let AnnouncementsService = class AnnouncementsService {
                 group: { select: { id: true, name: true } },
             },
         });
-        await this.sendNotifications(announcement.id, announcement.groupId, announcement.title);
+        await this.sendNotifications(announcement.id, announcement.groupId, announcement.title, announcement.message);
         return this.shapeAnnouncement(announcement, false, null);
     }
     async getMy(actor, query) {
@@ -351,13 +352,20 @@ let AnnouncementsService = class AnnouncementsService {
             return 'Супер-администрация';
         return 'Администрация';
     }
-    async sendNotifications(announcementId, groupId, title) {
+    async sendNotifications(announcementId, groupId, title, message) {
         const userIds = await this.collectRecipientIds(groupId);
         if (userIds.size === 0)
             return;
-        await this.notifications.sendToMany(Array.from(userIds), {
+        const ids = Array.from(userIds);
+        await this.notifications.sendToMany(ids, {
             type: client_1.NotificationType.ANNOUNCEMENT,
             message: `Новое объявление: ${title}`,
+        });
+        const tgScope = groupId ? 'group' : 'center';
+        await this.notifications.sendToMany(ids, {
+            type: client_1.NotificationType.ANNOUNCEMENT,
+            message: (0, templates_1.announcement)(title, message, tgScope),
+            channel: client_1.NotificationChannel.TELEGRAM,
         });
         void announcementId;
     }

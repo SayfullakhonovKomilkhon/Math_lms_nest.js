@@ -69,7 +69,12 @@ let AuthService = class AuthService {
         await this.saveRefreshToken(user.id, tokens.refreshToken);
         return {
             ...tokens,
-            user: { id: user.id, phone: user.phone, role: user.role },
+            user: {
+                id: user.id,
+                phone: user.phone,
+                role: user.role,
+                telegramChatId: user.telegramChatId,
+            },
         };
     }
     async refresh(userId, refreshToken) {
@@ -97,6 +102,7 @@ let AuthService = class AuthService {
                 role: true,
                 isActive: true,
                 createdAt: true,
+                telegramChatId: true,
             },
         });
         if (!user)

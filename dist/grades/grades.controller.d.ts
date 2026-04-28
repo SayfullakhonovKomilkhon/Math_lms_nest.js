@@ -77,16 +77,19 @@ export declare class GradesController {
         isVisible: boolean;
         rating: never[];
         myTotalPoints?: undefined;
+        myTotalMax?: undefined;
     } | {
         myPlace: number;
         totalStudents: number;
         myAverageScore: number;
         myTotalPoints: number;
+        myTotalMax: number;
         isVisible: boolean;
         rating: {
             studentId: string;
             fullName: string;
             totalPoints: number;
+            totalMax: number;
             averageScore: number;
             totalWorks: number;
             attendancePercent: number;
@@ -100,6 +103,7 @@ export declare class GradesController {
         studentId: string;
         fullName: string;
         totalPoints: number;
+        totalMax: number;
         averageScore: number;
         totalWorks: number;
         attendancePercent: number;

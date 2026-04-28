@@ -5,11 +5,11 @@ export declare class TelegramService implements OnModuleDestroy {
     private readonly logger;
     private bot;
     private pendingCodes;
+    private readonly CODE_TTL_MS;
     constructor(prisma: PrismaService);
     private setupCommands;
-    generateCode(): string;
-    getChatIdForCode(code: string): string | null;
-    consumeCode(code: string): void;
+    private tryLinkByCode;
+    generateCode(userId: string): string;
     sendMessage(chatId: string, message: string): Promise<void>;
     onModuleDestroy(): void;
 }

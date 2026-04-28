@@ -14,63 +14,64 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TelegramController = void 0;
 const common_1 = require("@nestjs/common");
-const class_validator_1 = require("class-validator");
 const telegram_service_1 = require("./telegram.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
-class LinkDto {
-}
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.Length)(6, 6),
-    __metadata("design:type", String)
-], LinkDto.prototype, "linkCode", void 0);
 let TelegramController = class TelegramController {
     constructor(telegramService, prisma) {
         this.telegramService = telegramService;
         this.prisma = prisma;
     }
-    generateCode() {
-        const code = this.telegramService.generateCode();
+    generateCode(req) {
+        const code = this.telegramService.generateCode(req.user.id);
         return {
             code,
             botUsername: process.env.TELEGRAM_BOT_USERNAME ?? 'mathcenter_bot',
         };
     }
-    async link(dto, req) {
-        const chatId = this.telegramService.getChatIdForCode(dto.linkCode);
-        if (!chatId) {
-            throw new common_1.BadRequestException('Invalid or expired link code');
-        }
+    async status(req) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { telegramChatId: true },
+        });
+        return { linked: Boolean(user?.telegramChatId) };
+    }
+    async unlink(req) {
         await this.prisma.user.update({
             where: { id: req.user.id },
-            data: { telegramChatId: chatId },
+            data: { telegramChatId: null },
         });
-        this.telegramService.consumeCode(dto.linkCode);
         return { success: true };
     }
 };
 exports.TelegramController = TelegramController;
 __decorate([
     (0, common_1.Post)('generate-code'),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], TelegramController.prototype, "generateCode", null);
 __decorate([
-    (0, common_1.Post)('link'),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Request)()),
+    (0, common_1.Get)('status'),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [LinkDto, Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], TelegramController.prototype, "link", null);
+], TelegramController.prototype, "status", null);
+__decorate([
+    (0, common_1.Post)('unlink'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], TelegramController.prototype, "unlink", null);
 exports.TelegramController = TelegramController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT, client_1.Role.PARENT, client_1.Role.TEACHER),
+    (0, roles_decorator_1.Roles)(client_1.Role.STUDENT, client_1.Role.PARENT, client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
     (0, common_1.Controller)('telegram'),
     __metadata("design:paramtypes", [telegram_service_1.TelegramService,
         prisma_service_1.PrismaService])

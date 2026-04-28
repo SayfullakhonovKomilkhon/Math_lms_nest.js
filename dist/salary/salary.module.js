@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalaryModule = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
 const salary_service_1 = require("./salary.service");
 const salary_controller_1 = require("./salary.controller");
 let SalaryModule = class SalaryModule {
@@ -15,6 +16,7 @@ let SalaryModule = class SalaryModule {
 exports.SalaryModule = SalaryModule;
 exports.SalaryModule = SalaryModule = __decorate([
     (0, common_1.Module)({
+        imports: [bullmq_1.BullModule.registerQueue({ name: 'notifications' })],
         controllers: [salary_controller_1.SalaryController],
         providers: [salary_service_1.SalaryService],
         exports: [salary_service_1.SalaryService],

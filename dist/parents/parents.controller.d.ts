@@ -209,6 +209,7 @@ export declare class ParentsController {
             studentId: string;
             fullName: string;
             totalPoints: number;
+            totalMax: number;
             averageScore: number;
             totalWorks: number;
             attendancePercent: number;
