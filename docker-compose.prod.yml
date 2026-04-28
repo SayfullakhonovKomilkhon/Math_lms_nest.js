@@ -1,0 +1,106 @@
+# Production stack: Postgres + Redis + NestJS API + Caddy (auto HTTPS).
+# Запуск: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# Каждый сервис изолирован в bridge-сети `backend`. Caddy — единственный
+# контейнер, открывающий порты наружу (80/443). Postgres/Redis/API недоступны
+# из публичного интернета — только через Caddy reverse-proxy.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mathcenter-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mathcenter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-mathcenter}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-mathcenter} -d ${POSTGRES_DB:-mathcenter}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: mathcenter-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mathcenter-api:latest
+    container_name: mathcenter-api
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mathcenter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mathcenter}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mathcenter-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required, e.g. api.khanovmathacademy.uz}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@khanovmathacademy.uz}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+    name: mathcenter_postgres_data
+  redis_data:
+    name: mathcenter_redis_data
+  caddy_data:
+    name: mathcenter_caddy_data
+  caddy_config:
+    name: mathcenter_caddy_config
+
+networks:
+  backend:
+    driver: bridge

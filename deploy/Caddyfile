@@ -1,0 +1,39 @@
+# Caddy reverse-proxy с автоматическим HTTPS (Let's Encrypt).
+# {$DOMAIN} и {$ACME_EMAIL} читаются из docker-compose.prod.yml -> environment.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	# Блокируем большие запросы на корень / неизвестные пути:
+	# фронтенд (Vercel) обращается только к /api/*, /auth/*, /health и т.п.
+
+	# Health-check без логов (чтобы не засорять access.log).
+	@health path /health
+	handle @health {
+		reverse_proxy api:3000
+	}
+
+	reverse_proxy api:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		# Длительные таймауты для загрузки больших файлов (10MB лимит в S3Service).
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 5
+			roll_keep_for 30d
+		}
+		format json
+	}
+}
