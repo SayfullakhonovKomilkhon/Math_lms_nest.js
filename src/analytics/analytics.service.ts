@@ -479,15 +479,39 @@ export class AnalyticsService {
 
   // ─── DEBTORS ─────────────────────────────────────────────────────────────────
 
-  async getDebtors() {
+  async getDebtors(params?: { month?: string; year?: string }) {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Parse selected period. Accepts either `month=YYYY-MM` or separate
+    // `month` (1-12) and `year` values. Falls back to current month.
+    let targetYear = now.getFullYear();
+    let targetMonth = now.getMonth(); // 0-based
+    if (params?.month) {
+      const isoMatch = /^(\d{4})-(\d{1,2})$/.exec(params.month);
+      if (isoMatch) {
+        targetYear = Number(isoMatch[1]);
+        targetMonth = Number(isoMatch[2]) - 1;
+      } else {
+        const m = Number(params.month);
+        if (Number.isFinite(m) && m >= 1 && m <= 12) targetMonth = m - 1;
+        if (params.year) {
+          const y = Number(params.year);
+          if (Number.isFinite(y)) targetYear = y;
+        }
+      }
+    } else if (params?.year) {
+      const y = Number(params.year);
+      if (Number.isFinite(y)) targetYear = y;
+    }
+
+    const startOfMonth = new Date(targetYear, targetMonth, 1);
+    const endOfMonth = new Date(targetYear, targetMonth + 1, 1);
 
     const [confirmedThisMonth, allActiveStudents] = await Promise.all([
       this.prisma.payment.findMany({
         where: {
           status: PaymentStatus.CONFIRMED,
-          confirmedAt: { gte: startOfMonth },
+          confirmedAt: { gte: startOfMonth, lt: endOfMonth },
         },
         select: { studentId: true },
       }),
@@ -514,7 +538,10 @@ export class AnalyticsService {
             select: { parent: { select: { phone: true } } },
           },
           payments: {
-            where: { status: PaymentStatus.CONFIRMED },
+            where: {
+              status: PaymentStatus.CONFIRMED,
+              confirmedAt: { lt: endOfMonth },
+            },
             orderBy: { confirmedAt: 'desc' },
             take: 1,
             select: { confirmedAt: true },
@@ -524,14 +551,22 @@ export class AnalyticsService {
     ]);
 
     const paidIds = new Set(confirmedThisMonth.map((p) => p.studentId));
+    // For a historical view, anchor "days since" to the end of the selected
+    // month rather than today, so the value reflects the situation at the
+    // time of that period. For the current month we keep using "now".
+    const reference = endOfMonth.getTime() <= now.getTime() ? endOfMonth : now;
 
     return allActiveStudents
       .filter((s) => !paidIds.has(s.id))
       .map((s) => {
         const lastDate = s.payments[0]?.confirmedAt ?? null;
         const daysSince = lastDate
-          ? Math.floor(
-              (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+          ? Math.max(
+              0,
+              Math.floor(
+                (reference.getTime() - lastDate.getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
             )
           : null;
         // Aggregate every group enrollment into the row the debtor table

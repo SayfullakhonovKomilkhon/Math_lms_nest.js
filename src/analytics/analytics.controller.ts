@@ -56,8 +56,8 @@ export class AnalyticsController {
   @Get('debtors')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Students without confirmed payment this month' })
-  getDebtors() {
-    return this.service.getDebtors();
+  getDebtors(@Query('month') month?: string, @Query('year') year?: string) {
+    return this.service.getDebtors({ month, year });
   }
 
   @Get('teachers-load')
