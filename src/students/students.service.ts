@@ -9,6 +9,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { S3Service } from '../common/services/s3.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
@@ -96,7 +97,10 @@ function shapeStudent(s: RawStudent): StudentDto {
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private s3: S3Service,
+  ) {}
 
   async create(dto: CreateStudentDto, actorId: string) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -622,6 +626,107 @@ export class StudentsService {
     });
 
     return shapeStudent(updated);
+  }
+
+  async activate(id: string, actorId: string) {
+    const existing = await this.prisma.student.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Reactivate both the student row and the underlying user account so
+    // they can log in again. Auth uses User.isActive to gate /auth/login.
+    await this.prisma.$transaction([
+      this.prisma.student.update({
+        where: { id },
+        data: { isActive: true },
+      }),
+      this.prisma.user.update({
+        where: { id: existing.userId },
+        data: { isActive: true },
+      }),
+    ]);
+
+    const refreshed = await this.prisma.student.findUniqueOrThrow({
+      where: { id },
+      include: studentInclude,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'ACTIVATE',
+        entity: 'Student',
+        entityId: id,
+      },
+    });
+
+    return shapeStudent(refreshed);
+  }
+
+  /**
+   * Hard-delete a student and everything they own. The related models
+   * (Attendance, Grade, Payment, Achievement) do NOT have ON DELETE CASCADE
+   * on their FK to Student, so we wipe them manually inside a transaction.
+   * StudentGroup and ParentStudent links cascade via the schema. Receipts
+   * stored in S3 are best-effort cleaned up before the row goes away.
+   *
+   * The User row is deleted last; that cascade-deletes the Student via
+   * User → Student `onDelete: Cascade`, which in turn would also clean up
+   * any rows we haven't already, so the explicit child deletes act mainly
+   * as receipt-aware preludes and as protection if the cascade rule is
+   * ever changed.
+   */
+  async remove(id: string, actorId: string) {
+    const existing = await this.prisma.student.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        fullName: true,
+        payments: { select: { receiptUrl: true } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // S3 cleanup — outside the DB transaction since it's a network call
+    // and we don't want it to roll back the deletion if MinIO is flaky.
+    for (const p of existing.payments) {
+      if (p.receiptUrl) {
+        await this.s3.deleteFile(p.receiptUrl);
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.achievement.deleteMany({ where: { studentId: id } }),
+      this.prisma.payment.deleteMany({ where: { studentId: id } }),
+      this.prisma.grade.deleteMany({ where: { studentId: id } }),
+      this.prisma.attendance.deleteMany({ where: { studentId: id } }),
+      // Deleting the user cascades down to Student (and thus StudentGroup,
+      // ParentStudent), removing the auth account in one step.
+      this.prisma.user.delete({ where: { id: existing.userId } }),
+    ]);
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'DELETE_STUDENT',
+        entity: 'Student',
+        entityId: id,
+        details: {
+          fullName: existing.fullName,
+          paymentReceiptsCleaned: existing.payments.filter((p) => p.receiptUrl)
+            .length,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return { success: true };
   }
 
   async updateCredentials(

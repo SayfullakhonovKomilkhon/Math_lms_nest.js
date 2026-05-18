@@ -163,6 +163,25 @@ export class StudentsController {
     return this.studentsService.deactivate(id, actorId);
   }
 
+  @Patch(':id/activate')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Reactivate a previously deactivated student (and their account)',
+  })
+  activate(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.studentsService.activate(id, actorId);
+  }
+
+  @Delete(':id')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Hard-delete a student and their related records (attendance/grades/payments/achievements). Receipts in S3 are removed too.',
+  })
+  remove(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.studentsService.remove(id, actorId);
+  }
+
   @Patch(':id/credentials')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({
