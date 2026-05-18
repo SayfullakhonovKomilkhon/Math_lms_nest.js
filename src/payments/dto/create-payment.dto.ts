@@ -60,3 +60,30 @@ export class RejectPaymentDto {
   @IsString()
   rejectReason: string;
 }
+
+/**
+ * Admin patch for an existing payment record. Every field is optional —
+ * only the ones provided are updated. Status changes go through the
+ * dedicated /confirm and /reject endpoints to keep the audit trail clean.
+ */
+export class UpdatePaymentDto {
+  @ApiPropertyOptional({ example: 500000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  amount?: number;
+
+  @ApiPropertyOptional({
+    example: '2026-04-15',
+    description: 'Дата оплаты (для уже подтверждённых — двигает confirmedAt и createdAt)',
+  })
+  @IsOptional()
+  @IsDateString()
+  paidAt?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-15' })
+  @IsOptional()
+  @IsDateString()
+  nextPaymentDate?: string;
+}

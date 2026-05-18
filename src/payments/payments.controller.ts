@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -25,6 +26,7 @@ import {
   CreateManualPaymentDto,
   CreatePaymentDto,
   RejectPaymentDto,
+  UpdatePaymentDto,
 } from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -161,5 +163,28 @@ export class PaymentsController {
     @CurrentUser('id') actorId: string,
   ) {
     return this.service.reject(id, dto, actorId);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({
+    summary:
+      'Update payment fields (amount / paidAt / nextPaymentDate). Status changes still go through /confirm and /reject.',
+  })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePaymentDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.service.update(id, dto, actorId);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Delete payment record (also removes its receipt from storage)',
+  })
+  remove(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.service.remove(id, actorId);
   }
 }

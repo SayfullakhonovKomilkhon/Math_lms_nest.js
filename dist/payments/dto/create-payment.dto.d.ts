@@ -12,3 +12,8 @@ export declare class CreateManualPaymentDto {
 export declare class RejectPaymentDto {
     rejectReason: string;
 }
+export declare class UpdatePaymentDto {
+    amount?: number;
+    paidAt?: string;
+    nextPaymentDate?: string;
+}

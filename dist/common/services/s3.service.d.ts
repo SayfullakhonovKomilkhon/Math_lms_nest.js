@@ -7,4 +7,5 @@ export declare class S3Service {
     constructor(config: ConfigService);
     uploadFile(file: Express.Multer.File, folder: 'receipts' | 'homework' | 'avatars' | 'expenses'): Promise<string>;
     getPresignedUrl(fileUrl: string, expiresIn?: number): Promise<string>;
+    deleteFile(fileUrl: string): Promise<void>;
 }

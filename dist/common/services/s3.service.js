@@ -69,6 +69,17 @@ let S3Service = class S3Service {
         const command = new client_s3_1.GetObjectCommand({ Bucket: this.bucket, Key: key });
         return (0, s3_request_presigner_1.getSignedUrl)(this.client, command, { expiresIn });
     }
+    async deleteFile(fileUrl) {
+        const prefix = `${this.endpoint}/${this.bucket}/`;
+        const key = fileUrl.startsWith(prefix)
+            ? fileUrl.slice(prefix.length)
+            : fileUrl;
+        try {
+            await this.client.send(new client_s3_1.DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+        }
+        catch {
+        }
+    }
 };
 exports.S3Service = S3Service;
 exports.S3Service = S3Service = __decorate([

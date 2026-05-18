@@ -1,7 +1,7 @@
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../common/services/s3.service';
-import { CreateManualPaymentDto, CreatePaymentDto, RejectPaymentDto } from './dto/create-payment.dto';
+import { CreateManualPaymentDto, CreatePaymentDto, RejectPaymentDto, UpdatePaymentDto } from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 export declare class PaymentsService {
     private prisma;
@@ -225,6 +225,35 @@ export declare class PaymentsService {
                 monthlyFee: number;
             }[];
         };
+    }>;
+    update(id: string, dto: UpdatePaymentDto, actorId: string): Promise<{
+        id: string;
+        amount: Prisma.Decimal;
+        status: import(".prisma/client").$Enums.PaymentStatus;
+        receiptUrl: string | null;
+        nextPaymentDate: Date | null;
+        confirmedAt: Date | null;
+        rejectedAt: Date | null;
+        rejectReason: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        student: {
+            id: string;
+            fullName: string;
+            monthlyFee: number;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            groups: {
+                id: string;
+                name: string;
+                monthlyFee: number;
+            }[];
+        };
+    }>;
+    remove(id: string, actorId: string): Promise<{
+        success: boolean;
     }>;
     getReceiptUrl(id: string): Promise<{
         url: string;

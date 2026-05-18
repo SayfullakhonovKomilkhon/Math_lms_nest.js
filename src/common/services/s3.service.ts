@@ -4,6 +4,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
@@ -85,5 +86,24 @@ export class S3Service {
 
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
     return getSignedUrl(this.client, command, { expiresIn });
+  }
+
+  /**
+   * Best-effort deletion of a stored object. Errors are swallowed because
+   * the calling business logic (e.g. removing a payment) shouldn't fail
+   * just because S3 is temporarily unhappy or the file is already gone.
+   */
+  async deleteFile(fileUrl: string): Promise<void> {
+    const prefix = `${this.endpoint}/${this.bucket}/`;
+    const key = fileUrl.startsWith(prefix)
+      ? fileUrl.slice(prefix.length)
+      : fileUrl;
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+    } catch {
+      // intentionally ignored
+    }
   }
 }

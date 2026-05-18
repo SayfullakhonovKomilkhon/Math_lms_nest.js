@@ -62,6 +62,12 @@ let PaymentsController = class PaymentsController {
     reject(id, dto, actorId) {
         return this.service.reject(id, dto, actorId);
     }
+    update(id, dto, actorId) {
+        return this.service.update(id, dto, actorId);
+    }
+    remove(id, actorId) {
+        return this.service.remove(id, actorId);
+    }
 };
 exports.PaymentsController = PaymentsController;
 __decorate([
@@ -199,6 +205,31 @@ __decorate([
     __metadata("design:paramtypes", [String, create_payment_dto_1.RejectPaymentDto, String]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "reject", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update payment fields (amount / paidAt / nextPaymentDate). Status changes still go through /confirm and /reject.',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, create_payment_dto_1.UpdatePaymentDto, String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Delete payment record (also removes its receipt from storage)',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "remove", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, swagger_1.ApiTags)('payments'),
     (0, swagger_1.ApiBearerAuth)(),

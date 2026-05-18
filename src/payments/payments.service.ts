@@ -11,6 +11,7 @@ import {
   CreateManualPaymentDto,
   CreatePaymentDto,
   RejectPaymentDto,
+  UpdatePaymentDto,
 } from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 
@@ -381,6 +382,114 @@ export class PaymentsService {
     });
 
     return shapePayment(updated);
+  }
+
+  /**
+   * Admin-only patch. Lets the admin correct a payment's amount and dates
+   * after the fact (e.g. if they typed the wrong sum or backdated it
+   * incorrectly). Status changes still flow through /confirm and /reject.
+   * For CONFIRMED payments, paidAt also moves confirmedAt and createdAt
+   * so debt calculations and the timeline stay coherent.
+   */
+  async update(id: string, dto: UpdatePaymentDto, actorId: string) {
+    const existing = await this.prisma.payment.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Payment not found');
+
+    const data: Prisma.PaymentUpdateInput = {};
+
+    if (dto.amount !== undefined) data.amount = dto.amount;
+
+    if (dto.nextPaymentDate !== undefined) {
+      data.nextPaymentDate = dto.nextPaymentDate
+        ? new Date(dto.nextPaymentDate)
+        : null;
+    }
+
+    if (dto.paidAt !== undefined) {
+      const paidAt = new Date(dto.paidAt);
+      if (Number.isNaN(paidAt.getTime())) {
+        throw new BadRequestException('Invalid paidAt');
+      }
+      data.createdAt = paidAt;
+      // Only realign confirmedAt for already-confirmed entries; keeping the
+      // value untouched for PENDING/REJECTED preserves their semantics.
+      if (existing.status === PaymentStatus.CONFIRMED) {
+        data.confirmedAt = paidAt;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      // Nothing to do — return current shape rather than throwing.
+      const current = await this.prisma.payment.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+      return shapePayment(current as RawPayment);
+    }
+
+    const updated = await this.prisma.payment.update({
+      where: { id },
+      data,
+      select: paymentSelect,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'UPDATE_PAYMENT',
+        entity: 'Payment',
+        entityId: id,
+        details: {
+          before: {
+            amount: Number(existing.amount),
+            createdAt: existing.createdAt.toISOString(),
+            confirmedAt: existing.confirmedAt?.toISOString() ?? null,
+            nextPaymentDate: existing.nextPaymentDate?.toISOString() ?? null,
+          },
+          after: {
+            amount: dto.amount ?? Number(existing.amount),
+            paidAt: dto.paidAt ?? null,
+            nextPaymentDate: dto.nextPaymentDate ?? null,
+          },
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return shapePayment(updated);
+  }
+
+  /**
+   * Admin-only delete. Removes the receipt from S3 (best-effort) before
+   * deleting the DB row so we don't leak storage. Audit-logged so the
+   * deletion is recoverable in spirit, even though the row is gone.
+   */
+  async remove(id: string, actorId: string) {
+    const existing = await this.prisma.payment.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Payment not found');
+
+    if (existing.receiptUrl) {
+      await this.s3.deleteFile(existing.receiptUrl);
+    }
+
+    await this.prisma.payment.delete({ where: { id } });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'DELETE_PAYMENT',
+        entity: 'Payment',
+        entityId: id,
+        details: {
+          studentId: existing.studentId,
+          amount: Number(existing.amount),
+          status: existing.status,
+          createdAt: existing.createdAt.toISOString(),
+          hadReceipt: Boolean(existing.receiptUrl),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return { success: true };
   }
 
   async getReceiptUrl(id: string) {

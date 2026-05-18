@@ -1,6 +1,6 @@
 import { Role } from '@prisma/client';
 import { PaymentsService } from './payments.service';
-import { CreateManualPaymentDto, CreatePaymentDto, RejectPaymentDto } from './dto/create-payment.dto';
+import { CreateManualPaymentDto, CreatePaymentDto, RejectPaymentDto, UpdatePaymentDto } from './dto/create-payment.dto';
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 export declare class PaymentsController {
     private service;
@@ -238,5 +238,34 @@ export declare class PaymentsController {
                 monthlyFee: number;
             }[];
         };
+    }>;
+    update(id: string, dto: UpdatePaymentDto, actorId: string): Promise<{
+        id: string;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        status: import(".prisma/client").$Enums.PaymentStatus;
+        receiptUrl: string | null;
+        nextPaymentDate: Date | null;
+        confirmedAt: Date | null;
+        rejectedAt: Date | null;
+        rejectReason: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        student: {
+            id: string;
+            fullName: string;
+            monthlyFee: number;
+            group: {
+                id: string;
+                name: string;
+            } | null;
+            groups: {
+                id: string;
+                name: string;
+                monthlyFee: number;
+            }[];
+        };
+    }>;
+    remove(id: string, actorId: string): Promise<{
+        success: boolean;
     }>;
 }
