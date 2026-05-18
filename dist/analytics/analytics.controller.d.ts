@@ -71,7 +71,7 @@ export declare class AnalyticsController {
             averageScore: number;
         }[];
     }>;
-    getDebtors(): Promise<{
+    getDebtors(month?: string, year?: string): Promise<{
         studentId: string;
         fullName: string;
         groupName: string;

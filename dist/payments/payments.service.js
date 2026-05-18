@@ -329,19 +329,29 @@ let PaymentsService = class PaymentsService {
         const url = await this.s3.getPresignedUrl(payment.receiptUrl);
         return { url };
     }
-    async getDebtors() {
+    async getDebtors(year, month) {
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const targetYear = typeof year === 'number' && Number.isFinite(year)
+            ? year
+            : now.getFullYear();
+        const targetMonthIdx = typeof month === 'number' && Number.isFinite(month) && month >= 1 && month <= 12
+            ? month - 1
+            : now.getMonth();
+        const startOfMonth = new Date(targetYear, targetMonthIdx, 1);
+        const endOfMonth = new Date(targetYear, targetMonthIdx + 1, 1);
         const confirmedThisMonth = await this.prisma.payment.findMany({
             where: {
                 status: client_1.PaymentStatus.CONFIRMED,
-                confirmedAt: { gte: startOfMonth },
+                confirmedAt: { gte: startOfMonth, lt: endOfMonth },
             },
             select: { studentId: true },
         });
         const paidStudentIds = new Set(confirmedThisMonth.map((p) => p.studentId));
         const allStudents = await this.prisma.student.findMany({
-            where: { isActive: true },
+            where: {
+                isActive: true,
+                enrolledAt: { lt: endOfMonth },
+            },
             select: {
                 id: true,
                 fullName: true,

@@ -57,7 +57,7 @@ export declare class PaymentsController {
             }[];
         };
     }[]>;
-    getDebtors(): Promise<{
+    getDebtors(year?: string, month?: string): Promise<{
         studentId: string;
         fullName: string;
         groupName: string;

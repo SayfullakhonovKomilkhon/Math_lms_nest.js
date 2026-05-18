@@ -36,8 +36,10 @@ let PaymentsController = class PaymentsController {
     findAll(query) {
         return this.service.findAll(query);
     }
-    getDebtors() {
-        return this.service.getDebtors();
+    getDebtors(year, month) {
+        const y = year !== undefined ? Number(year) : undefined;
+        const m = month !== undefined ? Number(month) : undefined;
+        return this.service.getDebtors(y, m);
     }
     findMy(userId) {
         return this.service.findMy(userId);
@@ -85,10 +87,12 @@ __decorate([
     (0, common_1.Get)('debtors'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
     (0, swagger_1.ApiOperation)({
-        summary: 'Get students with no confirmed payment this month',
+        summary: 'Get students with no confirmed payment for a given month (defaults to current). Pass ?year=YYYY&month=1-12 to inspect past months.',
     }),
+    __param(0, (0, common_1.Query)('year')),
+    __param(1, (0, common_1.Query)('month')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "getDebtors", null);
 __decorate([

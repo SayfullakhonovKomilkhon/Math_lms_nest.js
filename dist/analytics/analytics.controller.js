@@ -40,8 +40,8 @@ let AnalyticsController = class AnalyticsController {
     getGradesCenter(query) {
         return this.service.getGradesCenter(query);
     }
-    getDebtors() {
-        return this.service.getDebtors();
+    getDebtors(month, year) {
+        return this.service.getDebtors({ month, year });
     }
     getTeachersLoad() {
         return this.service.getTeachersLoad();
@@ -96,8 +96,10 @@ __decorate([
     (0, common_1.Get)('debtors'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Students without confirmed payment this month' }),
+    __param(0, (0, common_1.Query)('month')),
+    __param(1, (0, common_1.Query)('year')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], AnalyticsController.prototype, "getDebtors", null);
 __decorate([

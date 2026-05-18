@@ -394,14 +394,31 @@ export class PaymentsService {
     return { url };
   }
 
-  async getDebtors() {
+  /**
+   * Returns active students who have no CONFIRMED payment in the given month.
+   * Month is 1-12; both year and month default to "current". For past months
+   * we additionally exclude students whose `enrolledAt` is after the end of
+   * that month — they couldn't have owed anything for periods predating their
+   * enrolment.
+   */
+  async getDebtors(year?: number, month?: number) {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const targetYear =
+      typeof year === 'number' && Number.isFinite(year)
+        ? year
+        : now.getFullYear();
+    const targetMonthIdx =
+      typeof month === 'number' && Number.isFinite(month) && month >= 1 && month <= 12
+        ? month - 1
+        : now.getMonth();
+
+    const startOfMonth = new Date(targetYear, targetMonthIdx, 1);
+    const endOfMonth = new Date(targetYear, targetMonthIdx + 1, 1);
 
     const confirmedThisMonth = await this.prisma.payment.findMany({
       where: {
         status: PaymentStatus.CONFIRMED,
-        confirmedAt: { gte: startOfMonth },
+        confirmedAt: { gte: startOfMonth, lt: endOfMonth },
       },
       select: { studentId: true },
     });
@@ -409,7 +426,10 @@ export class PaymentsService {
     const paidStudentIds = new Set(confirmedThisMonth.map((p) => p.studentId));
 
     const allStudents = await this.prisma.student.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        enrolledAt: { lt: endOfMonth },
+      },
       select: {
         id: true,
         fullName: true,

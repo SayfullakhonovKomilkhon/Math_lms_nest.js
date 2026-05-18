@@ -57,10 +57,13 @@ export class PaymentsController {
   @Get('debtors')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Get students with no confirmed payment this month',
+    summary:
+      'Get students with no confirmed payment for a given month (defaults to current). Pass ?year=YYYY&month=1-12 to inspect past months.',
   })
-  getDebtors() {
-    return this.service.getDebtors();
+  getDebtors(@Query('year') year?: string, @Query('month') month?: string) {
+    const y = year !== undefined ? Number(year) : undefined;
+    const m = month !== undefined ? Number(month) : undefined;
+    return this.service.getDebtors(y, m);
   }
 
   @Get('my')

@@ -369,14 +369,39 @@ let AnalyticsService = class AnalyticsService {
             byMonth,
         };
     }
-    async getDebtors() {
+    async getDebtors(params) {
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        let targetYear = now.getFullYear();
+        let targetMonth = now.getMonth();
+        if (params?.month) {
+            const isoMatch = /^(\d{4})-(\d{1,2})$/.exec(params.month);
+            if (isoMatch) {
+                targetYear = Number(isoMatch[1]);
+                targetMonth = Number(isoMatch[2]) - 1;
+            }
+            else {
+                const m = Number(params.month);
+                if (Number.isFinite(m) && m >= 1 && m <= 12)
+                    targetMonth = m - 1;
+                if (params.year) {
+                    const y = Number(params.year);
+                    if (Number.isFinite(y))
+                        targetYear = y;
+                }
+            }
+        }
+        else if (params?.year) {
+            const y = Number(params.year);
+            if (Number.isFinite(y))
+                targetYear = y;
+        }
+        const startOfMonth = new Date(targetYear, targetMonth, 1);
+        const endOfMonth = new Date(targetYear, targetMonth + 1, 1);
         const [confirmedThisMonth, allActiveStudents] = await Promise.all([
             this.prisma.payment.findMany({
                 where: {
                     status: client_1.PaymentStatus.CONFIRMED,
-                    confirmedAt: { gte: startOfMonth },
+                    confirmedAt: { gte: startOfMonth, lt: endOfMonth },
                 },
                 select: { studentId: true },
             }),
@@ -403,7 +428,10 @@ let AnalyticsService = class AnalyticsService {
                         select: { parent: { select: { phone: true } } },
                     },
                     payments: {
-                        where: { status: client_1.PaymentStatus.CONFIRMED },
+                        where: {
+                            status: client_1.PaymentStatus.CONFIRMED,
+                            confirmedAt: { lt: endOfMonth },
+                        },
                         orderBy: { confirmedAt: 'desc' },
                         take: 1,
                         select: { confirmedAt: true },
@@ -412,12 +440,14 @@ let AnalyticsService = class AnalyticsService {
             }),
         ]);
         const paidIds = new Set(confirmedThisMonth.map((p) => p.studentId));
+        const reference = endOfMonth.getTime() <= now.getTime() ? endOfMonth : now;
         return allActiveStudents
             .filter((s) => !paidIds.has(s.id))
             .map((s) => {
             const lastDate = s.payments[0]?.confirmedAt ?? null;
             const daysSince = lastDate
-                ? Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+                ? Math.max(0, Math.floor((reference.getTime() - lastDate.getTime()) /
+                    (1000 * 60 * 60 * 24)))
                 : null;
             const groups = s.groups.map((link) => ({
                 name: link.group.name,

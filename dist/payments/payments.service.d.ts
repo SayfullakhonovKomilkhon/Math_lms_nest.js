@@ -229,7 +229,7 @@ export declare class PaymentsService {
     getReceiptUrl(id: string): Promise<{
         url: string;
     }>;
-    getDebtors(): Promise<{
+    getDebtors(year?: number, month?: number): Promise<{
         studentId: string;
         fullName: string;
         groupName: string;
