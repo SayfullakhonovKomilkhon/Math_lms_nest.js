@@ -76,13 +76,17 @@ export class GroupsService {
         where: { userId: user.id },
       });
       if (!teacher) return [];
+      // Teachers should only see groups they actively run — archived groups
+      // are an admin/super-admin concern.
       const rows = await this.prisma.group.findMany({
-        where: { teacherId: teacher.id },
+        where: { teacherId: teacher.id, isActive: true },
         select: groupSelect,
       });
       return rows.map(shapeGroup);
     }
 
+    // Admins and super-admins see everything (active + archived) so the
+    // archive section in /admin/groups stays populated.
     const rows = await this.prisma.group.findMany({ select: groupSelect });
     return rows.map(shapeGroup);
   }
