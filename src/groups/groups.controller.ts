@@ -76,6 +76,13 @@ export class GroupsController {
     return this.groupsService.archive(id, actorId);
   }
 
+  @Patch(':id/restore')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Restore an archived group' })
+  restore(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.groupsService.restore(id, actorId);
+  }
+
   @Patch(':id/rating-visibility')
   @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle rating visibility for students' })

@@ -212,6 +212,30 @@ export class GroupsService {
 
     return shapeGroup(archived);
   }
+
+  async restore(id: string, actorId: string) {
+    const existing = await this.prisma.group.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const restored = await this.prisma.group.update({
+      where: { id },
+      data: { isActive: true, archivedAt: null },
+      select: groupSelect,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'RESTORE',
+        entity: 'Group',
+        entityId: id,
+      },
+    });
+
+    return shapeGroup(restored);
+  }
   async updateRatingVisibility(
     id: string,
     isRatingVisible: boolean,
