@@ -36,9 +36,13 @@ import { HealthModule } from './health/health.module';
       load: [configuration],
     }),
     ThrottlerModule.forRoot([
+      // 10 req/min was a footgun for authenticated UIs (one click = one
+      // request — e.g. attendance/grade cells). 300/min still throttles
+      // abuse but lets a teacher rapidly mark a class without hitting 429.
+      // Endpoints with stricter needs override via @Throttle.
       {
         ttl: 60000,
-        limit: 10,
+        limit: 300,
       },
     ]),
     NestScheduleModule.forRoot(),

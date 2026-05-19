@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { AttendanceService } from './attendance.service';
 import { BulkAttendanceDto } from './dto/bulk-attendance.dto';
@@ -29,6 +30,10 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class AttendanceController {
   constructor(private service: AttendanceService) {}
 
+  // The teacher journal sends one request per cell tap. With 30 students × a
+  // few date cells the legit burst easily exceeds the global limit, so allow
+  // a generous per-minute window here.
+  @Throttle({ default: { limit: 1000, ttl: 60_000 } })
   @Post('bulk')
   @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Bulk mark attendance for a group lesson' })

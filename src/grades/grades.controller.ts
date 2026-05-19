@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { GradesService } from './grades.service';
 import { BulkGradesDto } from './dto/bulk-grades.dto';
@@ -26,6 +27,9 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class GradesController {
   constructor(private service: GradesService) {}
 
+  // Same rationale as attendance/bulk: the journal sends one request per
+  // edited cell, so bursts can be large.
+  @Throttle({ default: { limit: 1000, ttl: 60_000 } })
   @Post('bulk')
   @Roles(Role.TEACHER)
   @ApiOperation({ summary: 'Bulk create grades for a group' })
