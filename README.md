@@ -1,99 +1,190 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+<div align="center">
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<img src="https://img.shields.io/badge/NestJS-11.x-E0234E?style=for-the-badge&logo=nestjs&logoColor=white"/>
+<img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white"/>
+<img src="https://img.shields.io/badge/Prisma-5.x-2D3748?style=for-the-badge&logo=prisma&logoColor=white"/>
+<img src="https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white"/>
+<img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white"/>
+<img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white"/>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+# 🎓 MathCenter Backend
 
-## Description
+### REST API для платформы онлайн-обучения математике
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+*Масштабируемый бэкенд с JWT-аутентификацией, очередями задач, генерацией PDF/Excel и Telegram-ботом*
 
-## Project setup
+[Документация API (Swagger)](#) • [Сообщить об ошибке](https://github.com/SayfullakhonovKomilkhon/Math_lms_nest.js/issues)
 
-```bash
-$ npm install
-```
+</div>
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## ✨ Возможности
 
-# watch mode
-$ npm run start:dev
+| Функция | Описание |
+|---|---|
+| 🔐 **JWT Auth** | Аутентификация через Passport.js + JWT с refresh-токенами |
+| 📚 **Курсы и уроки** | Полное управление учебным контентом |
+| 📊 **Отчёты** | Генерация Excel-отчётов через ExcelJS и PDF через PDFKit |
+| 📬 **Очереди задач** | Асинхронная обработка через BullMQ + Redis |
+| 🤖 **Telegram-бот** | Уведомления и управление через Telegraf |
+| ☁️ **S3-хранилище** | Загрузка файлов через AWS SDK |
+| 🛡️ **Rate Limiting** | Защита API от перегрузок через @nestjs/throttler |
+| 📖 **Swagger UI** | Автодокументация всех эндпоинтов |
+| ⏰ **Планировщик** | Крон-задачи через @nestjs/schedule |
 
-# production mode
-$ npm run start:prod
-```
+---
 
-## Run tests
+## 🚀 Быстрый старт
 
-```bash
-# unit tests
-$ npm run test
+### Требования
 
-# e2e tests
-$ npm run test:e2e
+- Node.js >= 18
+- Docker & Docker Compose
+- PostgreSQL 15
+- Redis 7
 
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Установка
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 1. Клонируйте репозиторий
+git clone https://github.com/SayfullakhonovKomilkhon/Math_lms_nest.js.git
+cd Math_lms_nest.js
+
+# 2. Установите зависимости
+npm install
+
+# 3. Настройте окружение
+cp .env.example .env
+# Отредактируйте .env, указав параметры БД и Redis
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Запуск через Docker
 
-## Resources
+```bash
+# Запустить PostgreSQL + Redis в контейнерах
+npm run db:docker
 
-Check out a few resources that may come in handy when working with NestJS:
+# Применить миграции и сидировать БД
+npm run db:push
+npm run db:seed
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Запуск сервера
 
-## Support
+```bash
+# Режим разработки (hot-reload)
+npm run start:dev
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Продакшн
+npm run build && npm run start:prod
+```
 
-## Stay in touch
+API будет доступен на: `http://localhost:3000`  
+Swagger UI: `http://localhost:3000/api`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 🛠️ Технологический стек
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-# Math_lms_nest.js
+| Слой | Технология |
+|---|---|
+| **Фреймворк** | NestJS 11.x |
+| **Язык** | TypeScript 5.x |
+| **ORM** | Prisma 5.x |
+| **База данных** | PostgreSQL 15 |
+| **Кэш / Очереди** | Redis + BullMQ |
+| **Аутентификация** | Passport.js + JWT |
+| **Файловое хранилище** | AWS S3 |
+| **Документация** | Swagger / OpenAPI |
+| **Бот** | Telegraf (Telegram) |
+| **Отчёты** | ExcelJS + PDFKit |
+| **Контейнеризация** | Docker + Docker Compose |
+
+---
+
+## 🏗️ Архитектура проекта
+
+```
+src/
+├── auth/           # JWT аутентификация и авторизация
+├── users/          # Управление пользователями
+├── courses/        # Курсы и учебные материалы
+├── lessons/        # Уроки и задания
+├── payments/       # Платёжная логика
+├── reports/        # Генерация PDF/Excel отчётов
+├── notifications/  # Telegram-бот + уведомления
+├── queue/          # BullMQ очереди задач
+├── storage/        # Загрузка файлов в S3
+└── common/         # Общие утилиты, Guards, Pipes
+
+prisma/
+├── schema.prisma   # Схема базы данных
+├── migrations/     # История миграций
+└── seed.ts         # Начальные данные
+
+scripts/
+├── db-prepare.js       # Подготовка БД
+├── railway-start.js    # Старт на Railway
+└── prisma-generate.js  # Генерация Prisma Client
+```
+
+---
+
+## 🔑 Переменные окружения
+
+| Переменная | Описание |
+|---|---|
+| `DATABASE_URL` | Строка подключения к PostgreSQL |
+| `REDIS_URL` | Строка подключения к Redis |
+| `JWT_SECRET` | Секретный ключ для JWT |
+| `JWT_REFRESH_SECRET` | Секрет для refresh-токенов |
+| `AWS_ACCESS_KEY_ID` | Ключ доступа AWS S3 |
+| `AWS_SECRET_ACCESS_KEY` | Секретный ключ AWS S3 |
+| `AWS_S3_BUCKET` | Имя S3-бакета |
+| `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота |
+
+---
+
+## 🧪 Тестирование
+
+```bash
+# Unit-тесты
+npm run test
+
+# E2E тесты
+npm run test:e2e
+
+# Покрытие кода
+npm run test:cov
+```
+
+---
+
+## 🐳 Docker Деплой
+
+```bash
+# Продакшн сборка
+docker compose -f docker-compose.prod.yml up -d
+
+# Применить миграции в продакшне
+npm run db:migrate:deploy
+```
+
+---
+
+## 🤝 Вклад в проект
+
+1. Fork репозитория
+2. Создайте ветку: `git checkout -b feature/your-feature`
+3. Сделайте коммит: `git commit -m 'feat: add your feature'`
+4. Запушьте: `git push origin feature/your-feature`
+5. Откройте Pull Request
+
+---
+
+<div align="center">
+
+Часть проекта **MathCenter LMS** · Backend API · Powered by [NestJS](https://nestjs.com/)
+
+</div>
