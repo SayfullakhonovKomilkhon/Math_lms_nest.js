@@ -13,8 +13,8 @@ exports.SettingsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const DEFAULT_SETTINGS = [
-    { key: 'center_name', value: 'MathCenter', label: 'Название центра' },
-    { key: 'centerName', value: 'MathCenter', label: 'Название центра (legacy)' },
+    { key: 'center_name', value: 'KhanovMath Academy', label: 'Название центра' },
+    { key: 'centerName', value: 'KhanovMath Academy', label: 'Название центра (legacy)' },
     { key: 'centerPhone', value: '', label: 'Телефон центра' },
     { key: 'centerAddress', value: '', label: 'Адрес центра' },
     { key: 'currency', value: 'UZS', label: 'Валюта' },
@@ -73,7 +73,7 @@ let SettingsService = class SettingsService {
         });
         const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
         return {
-            centerName: map['center_name'] || map['centerName'] || 'MathCenter',
+            centerName: map['center_name'] || map['centerName'] || 'KhanovMath Academy',
             centerPhone: map['centerPhone'] ?? '',
             centerAddress: map['centerAddress'] ?? '',
         };

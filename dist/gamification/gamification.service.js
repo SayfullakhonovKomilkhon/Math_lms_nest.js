@@ -556,7 +556,7 @@ exports.GamificationService = GamificationService = GamificationService_1 = __de
 ], GamificationService);
 function computeProgressionTitle(level) {
     if (level >= 20)
-        return { title: 'Гений MathCenter', emoji: '👑' };
+        return { title: 'Гений KhanovMath Academy', emoji: '👑' };
     if (level >= 15)
         return { title: 'Легенда', emoji: '🏆' };
     if (level >= 10)

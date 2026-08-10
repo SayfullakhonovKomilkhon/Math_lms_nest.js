@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { Role } from '@prisma/client';
+import { ApplicationStatus, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -17,6 +17,16 @@ export class UsersService {
       where: { phone: dto.phone },
     });
     if (exists) throw new ConflictException('Phone already in use');
+
+    if (dto.role === 'SALES_MANAGER') {
+      const activeManager = await this.prisma.user.findFirst({
+        where: { role: Role.SALES_MANAGER, isActive: true },
+        select: { id: true },
+      });
+      if (activeManager) {
+        throw new ConflictException('Active sales manager already exists');
+      }
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
@@ -38,6 +48,7 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
+        fullName: true,
         role: true,
         isActive: true,
         telegramChatId: true,
@@ -61,6 +72,7 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
+        fullName: true,
         role: true,
         isActive: true,
         telegramChatId: true,
@@ -75,7 +87,7 @@ export class UsersService {
   // ── Staff ────────────────────────────────────────────────────────────────
 
   async getStaff() {
-    const [teachers, admins] = await Promise.all([
+    const [teachers, admins, salesManagers] = await Promise.all([
       this.prisma.teacher.findMany({
         include: {
           user: {
@@ -96,7 +108,24 @@ export class UsersService {
       }),
       this.prisma.user.findMany({
         where: { role: Role.ADMIN },
-        select: { id: true, phone: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.findMany({
+        where: { role: Role.SALES_MANAGER },
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          isActive: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
       }),
     ]);
@@ -114,10 +143,17 @@ export class UsersService {
       })),
       admins: admins.map((a) => ({
         id: a.id,
-        fullName: null,
+        fullName: a.fullName,
         phone: a.phone,
         isActive: a.isActive,
         createdAt: a.createdAt,
+      })),
+      salesManagers: salesManagers.map((manager) => ({
+        id: manager.id,
+        fullName: manager.fullName,
+        phone: manager.phone,
+        isActive: manager.isActive,
+        createdAt: manager.createdAt,
       })),
     };
   }
@@ -125,7 +161,7 @@ export class UsersService {
   async createStaff(dto: {
     phone: string;
     password: string;
-    role: 'TEACHER' | 'ADMIN';
+    role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER';
     fullName?: string;
   }) {
     const exists = await this.prisma.user.findUnique({
@@ -133,12 +169,23 @@ export class UsersService {
     });
     if (exists) throw new ConflictException('Phone already in use');
 
+    if (dto.role === 'SALES_MANAGER') {
+      const activeManager = await this.prisma.user.findFirst({
+        where: { role: Role.SALES_MANAGER, isActive: true },
+        select: { id: true },
+      });
+      if (activeManager) {
+        throw new ConflictException('Active sales manager already exists');
+      }
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
           phone: dto.phone,
+          fullName: dto.fullName?.trim() || null,
           passwordHash,
           role: dto.role as Role,
         },
@@ -152,6 +199,34 @@ export class UsersService {
             phone: dto.phone,
           },
         });
+      }
+
+      if (dto.role === 'SALES_MANAGER') {
+        const unassigned = await tx.admissionApplication.findMany({
+          where: {
+            assignedToId: null,
+            status: {
+              notIn: [ApplicationStatus.ENROLLED, ApplicationStatus.REJECTED],
+            },
+          },
+          select: { id: true },
+        });
+        if (unassigned.length > 0) {
+          await tx.admissionApplication.updateMany({
+            where: {
+              id: { in: unassigned.map((application) => application.id) },
+            },
+            data: { assignedToId: newUser.id },
+          });
+          await tx.applicationActivity.createMany({
+            data: unassigned.map((application) => ({
+              applicationId: application.id,
+              actorId: newUser.id,
+              type: 'ASSIGNMENT',
+              note: 'Заявка автоматически назначена менеджеру',
+            })),
+          });
+        }
       }
 
       return newUser;
@@ -251,6 +326,18 @@ export class UsersService {
       data: { isActive: false },
       select: { id: true, phone: true, role: true, isActive: true },
     });
+
+    if (user.role === Role.SALES_MANAGER) {
+      await this.prisma.admissionApplication.updateMany({
+        where: {
+          assignedToId: id,
+          status: {
+            notIn: [ApplicationStatus.ENROLLED, ApplicationStatus.REJECTED],
+          },
+        },
+        data: { assignedToId: null },
+      });
+    }
 
     await this.prisma.auditLog.create({
       data: {

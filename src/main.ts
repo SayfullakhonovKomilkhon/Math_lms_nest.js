@@ -35,7 +35,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MathCenter CRM API')
+    .setTitle('KhanovMath Academy CRM API')
     .setDescription('API для системы управления учебным центром по математике')
     .setVersion('1.0')
     .addBearerAuth()

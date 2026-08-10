@@ -30,11 +30,11 @@ export declare class AttendanceService {
     } & {
         id: string;
         createdAt: Date;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         groupId: string;
         studentId: string;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
         editReason: string | null;
     })[]>;
@@ -50,11 +50,11 @@ export declare class AttendanceService {
     } & {
         id: string;
         createdAt: Date;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         groupId: string;
         studentId: string;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
         editReason: string | null;
     })[]>;
@@ -64,11 +64,11 @@ export declare class AttendanceService {
     }): Promise<{
         id: string;
         createdAt: Date;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         groupId: string;
         studentId: string;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
         editReason: string | null;
     }>;

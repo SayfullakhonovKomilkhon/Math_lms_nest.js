@@ -94,6 +94,10 @@ export declare class StudentsController {
     assignGroup(id: string, dto: AssignGroupDto, actorId: string): Promise<import("./students.service").StudentDto>;
     removeFromGroup(id: string, actorId: string): Promise<import("./students.service").StudentDto>;
     deactivate(id: string, actorId: string): Promise<import("./students.service").StudentDto>;
+    activate(id: string, actorId: string): Promise<import("./students.service").StudentDto>;
+    remove(id: string, actorId: string): Promise<{
+        success: boolean;
+    }>;
     updateCredentials(id: string, dto: UpdateCredentialsDto, actorId: string): Promise<{
         ok: boolean;
         phoneChanged?: undefined;

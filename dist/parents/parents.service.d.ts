@@ -34,9 +34,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     findAll(query?: {
         search?: string;
@@ -60,9 +60,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }[]>;
     findOne(id: string): Promise<{
         students: {
@@ -85,9 +85,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     update(id: string, dto: UpdateParentDto, actorId: string): Promise<{
         students: {
@@ -110,9 +110,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     updateCredentials(parentId: string, payload: UpdateParentCredentialsDto, actorId: string): Promise<{
         ok: boolean;
@@ -142,9 +142,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     unlinkStudent(parentId: string, studentId: string, actorId: string): Promise<{
         students: {
@@ -167,9 +167,9 @@ export declare class ParentsService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     findMyProfile(userId: string): Promise<{
         id: string;
@@ -177,8 +177,8 @@ export declare class ParentsService {
         phone: string;
         children: (Omit<{
             id: string;
-            isActive: boolean;
             fullName: string;
+            isActive: boolean;
             groups: {
                 group: {
                     teacher: {
@@ -229,11 +229,11 @@ export declare class ParentsService {
     } & {
         id: string;
         createdAt: Date;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         groupId: string;
         studentId: string;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
         editReason: string | null;
     })[]>;

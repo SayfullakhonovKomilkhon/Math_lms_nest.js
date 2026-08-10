@@ -67,6 +67,12 @@ let StudentsController = class StudentsController {
     deactivate(id, actorId) {
         return this.studentsService.deactivate(id, actorId);
     }
+    activate(id, actorId) {
+        return this.studentsService.activate(id, actorId);
+    }
+    remove(id, actorId) {
+        return this.studentsService.remove(id, actorId);
+    }
     updateCredentials(id, dto, actorId) {
         return this.studentsService.updateCredentials(id, dto, actorId);
     }
@@ -203,6 +209,30 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], StudentsController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Patch)(':id/activate'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Reactivate a previously deactivated student (and their account)',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], StudentsController.prototype, "activate", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Hard-delete a student and their related records (attendance/grades/payments/achievements). Receipts in S3 are removed too.',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], StudentsController.prototype, "remove", null);
 __decorate([
     (0, common_1.Patch)(':id/credentials'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN, client_1.Role.ADMIN),

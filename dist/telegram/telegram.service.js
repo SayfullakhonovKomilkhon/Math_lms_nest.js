@@ -91,7 +91,7 @@ let TelegramService = TelegramService_1 = class TelegramService {
                 await ctx.reply('✅ Ваш аккаунт уже привязан!\n\nДоступные команды:\n/pay — статус оплаты\n/homework — последнее ДЗ');
             }
             else {
-                await ctx.reply('👋 Добро пожаловать в MathCenter Bot!\n\nЧтобы получать уведомления, откройте Личный кабинет → Настройки → Telegram и нажмите «Подключить».');
+                await ctx.reply('👋 Добро пожаловать в KhanovMath Academy Bot!\n\nЧтобы получать уведомления, откройте Личный кабинет → Настройки → Telegram и нажмите «Подключить».');
             }
         });
         this.bot.command('link', async (ctx) => {

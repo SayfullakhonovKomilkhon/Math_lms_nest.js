@@ -15,10 +15,10 @@ export declare class TeachersService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
         ratePerStudent: import("@prisma/client/runtime/library").Decimal;
     }>;
     findAll(): Promise<{
@@ -30,10 +30,10 @@ export declare class TeachersService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
         ratePerStudent: import("@prisma/client/runtime/library").Decimal;
     }[]>;
     findOne(id: string): Promise<{
@@ -45,10 +45,10 @@ export declare class TeachersService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
         ratePerStudent: import("@prisma/client/runtime/library").Decimal;
     }>;
     update(id: string, dto: UpdateTeacherDto, actorId: string): Promise<{
@@ -60,10 +60,10 @@ export declare class TeachersService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
         ratePerStudent: import("@prisma/client/runtime/library").Decimal;
     }>;
     deactivate(id: string, actorId: string): Promise<{
@@ -75,10 +75,10 @@ export declare class TeachersService {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
         ratePerStudent: import("@prisma/client/runtime/library").Decimal;
     }>;
 }

@@ -40,6 +40,7 @@ const gamification_module_1 = require("./gamification/gamification.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const telegram_module_1 = require("./telegram/telegram.module");
 const health_module_1 = require("./health/health.module");
+const applications_module_1 = require("./applications/applications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -53,7 +54,7 @@ exports.AppModule = AppModule = __decorate([
             throttler_1.ThrottlerModule.forRoot([
                 {
                     ttl: 60000,
-                    limit: 10,
+                    limit: 300,
                 },
             ]),
             schedule_1.ScheduleModule.forRoot(),
@@ -86,6 +87,7 @@ exports.AppModule = AppModule = __decorate([
             notifications_module_1.NotificationsModule,
             telegram_module_1.TelegramModule,
             health_module_1.HealthModule,
+            applications_module_1.ApplicationsModule,
         ],
         providers: [
             {

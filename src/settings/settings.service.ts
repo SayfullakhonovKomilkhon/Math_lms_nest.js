@@ -4,8 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 const DEFAULT_SETTINGS: { key: string; value: string; label: string }[] = [
-  { key: 'center_name', value: 'MathCenter', label: 'Название центра' },
-  { key: 'centerName', value: 'MathCenter', label: 'Название центра (legacy)' },
+  { key: 'center_name', value: 'KhanovMath Academy', label: 'Название центра' },
+  { key: 'centerName', value: 'KhanovMath Academy', label: 'Название центра (legacy)' },
   { key: 'centerPhone', value: '', label: 'Телефон центра' },
   { key: 'centerAddress', value: '', label: 'Адрес центра' },
   { key: 'currency', value: 'UZS', label: 'Валюта' },
@@ -62,7 +62,7 @@ export class SettingsService {
 
   // Subset of settings that are safe to expose to any authenticated user.
   // Used by frontend layouts (sidebar, login screen) to render the actual
-  // center branding instead of a hardcoded "MathCenter".
+  // center branding instead of a hardcoded name.
   async getPublicBranding() {
     const PUBLIC_KEYS = ['center_name', 'centerName', 'centerPhone', 'centerAddress'];
     const rows = await this.prisma.setting.findMany({
@@ -72,7 +72,7 @@ export class SettingsService {
 
     const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
     return {
-      centerName: map['center_name'] || map['centerName'] || 'MathCenter',
+      centerName: map['center_name'] || map['centerName'] || 'KhanovMath Academy',
       centerPhone: map['centerPhone'] ?? '',
       centerAddress: map['centerAddress'] ?? '',
     };

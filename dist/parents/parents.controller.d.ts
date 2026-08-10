@@ -25,9 +25,9 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }[]>;
     create(dto: CreateParentDto, actorId: string): Promise<{
         students: {
@@ -50,9 +50,9 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     getMyProfile(userId: string): Promise<{
         id: string;
@@ -60,8 +60,8 @@ export declare class ParentsController {
         phone: string;
         children: (Omit<{
             id: string;
-            isActive: boolean;
             fullName: string;
+            isActive: boolean;
             groups: {
                 group: {
                     teacher: {
@@ -112,11 +112,11 @@ export declare class ParentsController {
     } & {
         id: string;
         createdAt: Date;
+        status: import(".prisma/client").$Enums.AttendanceStatus;
         groupId: string;
         studentId: string;
         date: Date;
         lessonType: import(".prisma/client").$Enums.LessonType;
-        status: import(".prisma/client").$Enums.AttendanceStatus;
         editedAt: Date | null;
         editReason: string | null;
     })[]>;
@@ -263,9 +263,9 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     update(id: string, dto: UpdateParentDto, actorId: string): Promise<{
         students: {
@@ -288,9 +288,9 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     updateCredentials(id: string, dto: UpdateParentCredentialsDto, actorId: string): Promise<{
         ok: boolean;
@@ -320,9 +320,9 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
     unlinkStudent(id: string, studentId: string, actorId: string): Promise<{
         students: {
@@ -345,8 +345,8 @@ export declare class ParentsController {
         };
         phone: string | null;
         id: string;
+        fullName: string;
         createdAt: Date;
         updatedAt: Date;
-        fullName: string;
     }>;
 }

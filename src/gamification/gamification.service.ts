@@ -674,7 +674,7 @@ export class GamificationService {
 // panel header uses today. Kept as a free function so the service stays
 // testable without touching prisma.
 function computeProgressionTitle(level: number): { title: string; emoji: string } {
-  if (level >= 20) return { title: 'Гений MathCenter', emoji: '👑' };
+  if (level >= 20) return { title: 'Гений KhanovMath Academy', emoji: '👑' };
   if (level >= 15) return { title: 'Легенда', emoji: '🏆' };
   if (level >= 10) return { title: 'Стратег', emoji: '🎯' };
   if (level >= 5) return { title: 'Умный боец', emoji: '⚡' };

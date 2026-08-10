@@ -47,6 +47,7 @@ const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const s3_service_1 = require("../common/services/s3.service");
 const studentInclude = {
     user: { select: { id: true, phone: true, role: true, isActive: true } },
     groups: {
@@ -91,8 +92,9 @@ function shapeStudent(s) {
     };
 }
 let StudentsService = class StudentsService {
-    constructor(prisma) {
+    constructor(prisma, s3) {
         this.prisma = prisma;
+        this.s3 = s3;
     }
     async create(dto, actorId) {
         const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -513,6 +515,78 @@ let StudentsService = class StudentsService {
         });
         return shapeStudent(updated);
     }
+    async activate(id, actorId) {
+        const existing = await this.prisma.student.findUnique({
+            where: { id },
+            select: { id: true, userId: true },
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        await this.prisma.$transaction([
+            this.prisma.student.update({
+                where: { id },
+                data: { isActive: true },
+            }),
+            this.prisma.user.update({
+                where: { id: existing.userId },
+                data: { isActive: true },
+            }),
+        ]);
+        const refreshed = await this.prisma.student.findUniqueOrThrow({
+            where: { id },
+            include: studentInclude,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'ACTIVATE',
+                entity: 'Student',
+                entityId: id,
+            },
+        });
+        return shapeStudent(refreshed);
+    }
+    async remove(id, actorId) {
+        const existing = await this.prisma.student.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                userId: true,
+                fullName: true,
+                payments: { select: { receiptUrl: true } },
+            },
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException('Student not found');
+        }
+        for (const p of existing.payments) {
+            if (p.receiptUrl) {
+                await this.s3.deleteFile(p.receiptUrl);
+            }
+        }
+        await this.prisma.$transaction([
+            this.prisma.achievement.deleteMany({ where: { studentId: id } }),
+            this.prisma.payment.deleteMany({ where: { studentId: id } }),
+            this.prisma.grade.deleteMany({ where: { studentId: id } }),
+            this.prisma.attendance.deleteMany({ where: { studentId: id } }),
+            this.prisma.user.delete({ where: { id: existing.userId } }),
+        ]);
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'DELETE_STUDENT',
+                entity: 'Student',
+                entityId: id,
+                details: {
+                    fullName: existing.fullName,
+                    paymentReceiptsCleaned: existing.payments.filter((p) => p.receiptUrl)
+                        .length,
+                },
+            },
+        });
+        return { success: true };
+    }
     async updateCredentials(studentId, payload, actorId) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },
@@ -574,6 +648,7 @@ let StudentsService = class StudentsService {
 exports.StudentsService = StudentsService;
 exports.StudentsService = StudentsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        s3_service_1.S3Service])
 ], StudentsService);
 //# sourceMappingURL=students.service.js.map

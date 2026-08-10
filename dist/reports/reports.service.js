@@ -129,7 +129,7 @@ let ReportsService = class ReportsService {
             orderBy: { createdAt: 'desc' },
         });
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const ws = wb.addWorksheet('Платежи');
         ws.columns = [
             { header: '№', key: 'num', width: 6 },
@@ -273,7 +273,7 @@ let ReportsService = class ReportsService {
             Отклонён: 'FFFEE2E2',
         };
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const wsAll = wb.addWorksheet('Все оплаты');
         wsAll.columns = [
             { header: '№', key: 'num', width: 6 },
@@ -447,7 +447,7 @@ let ReportsService = class ReportsService {
             doc
                 .fontSize(16)
                 .font('bold')
-                .text('MathCenter — Финансовый отчёт', { align: 'center' });
+                .text('KhanovMath Academy — Финансовый отчёт', { align: 'center' });
             if (query.from || query.to) {
                 doc
                     .fontSize(10)
@@ -558,7 +558,7 @@ let ReportsService = class ReportsService {
             orderBy: { fullName: 'asc' },
         });
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const ws = wb.addWorksheet('Ученики');
         ws.columns = [
             { header: '№', key: 'num', width: 6 },
@@ -622,7 +622,7 @@ let ReportsService = class ReportsService {
             orderBy: [{ date: 'desc' }, { student: { fullName: 'asc' } }],
         });
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const ws = wb.addWorksheet('Посещаемость');
         ws.columns = [
             { header: '№', key: 'num', width: 6 },
@@ -736,7 +736,7 @@ let ReportsService = class ReportsService {
             orderBy: [{ student: { fullName: 'asc' } }, { createdAt: 'desc' }],
         });
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const wsGrades = wb.addWorksheet('Оценки');
         wsGrades.columns = [
             { header: '№', key: 'num', width: 6 },
@@ -854,7 +854,7 @@ let ReportsService = class ReportsService {
             orderBy: { fullName: 'asc' },
         });
         const wb = new ExcelJS.Workbook();
-        wb.creator = 'MathCenter';
+        wb.creator = 'KhanovMath Academy';
         const ws = wb.addWorksheet('Зарплаты');
         ws.columns = [
             { header: '№', key: 'num', width: 6 },

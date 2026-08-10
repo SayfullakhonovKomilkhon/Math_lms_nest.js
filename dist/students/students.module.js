@@ -10,13 +10,14 @@ exports.StudentsModule = void 0;
 const common_1 = require("@nestjs/common");
 const students_service_1 = require("./students.service");
 const students_controller_1 = require("./students.controller");
+const s3_service_1 = require("../common/services/s3.service");
 let StudentsModule = class StudentsModule {
 };
 exports.StudentsModule = StudentsModule;
 exports.StudentsModule = StudentsModule = __decorate([
     (0, common_1.Module)({
         controllers: [students_controller_1.StudentsController],
-        providers: [students_service_1.StudentsService],
+        providers: [students_service_1.StudentsService, s3_service_1.S3Service],
         exports: [students_service_1.StudentsService],
     })
 ], StudentsModule);

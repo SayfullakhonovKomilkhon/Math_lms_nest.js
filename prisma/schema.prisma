@@ -11,9 +11,27 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   ADMIN
+  SALES_MANAGER
   TEACHER
   STUDENT
   PARENT
+}
+
+enum ApplicationStatus {
+  NEW
+  IN_PROGRESS
+  NO_ANSWER
+  INTERESTED
+  TRIAL_SCHEDULED
+  ENROLLED
+  REJECTED
+}
+
+enum ApplicationActivityType {
+  COMMENT
+  STATUS_CHANGE
+  CALLBACK
+  ASSIGNMENT
 }
 
 enum Gender {
@@ -64,6 +82,7 @@ enum AchievementType {
 model User {
   id             String   @id @default(cuid())
   phone          String   @unique
+  fullName       String?
   passwordHash   String
   role           Role
   isActive       Boolean  @default(true)
@@ -71,14 +90,16 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  student           Student?
-  teacher           Teacher?
-  parent            Parent?
-  notifications     Notification[]
-  auditLogs         AuditLog[]
-  refreshTokens     RefreshToken[]
-  announcements     Announcement[]     @relation("AnnouncementAuthor")
-  announcementReads AnnouncementRead[]
+  student               Student?
+  teacher               Teacher?
+  parent                Parent?
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  refreshTokens         RefreshToken[]
+  announcements         Announcement[]         @relation("AnnouncementAuthor")
+  announcementReads     AnnouncementRead[]
+  assignedApplications  AdmissionApplication[] @relation("ApplicationAssignee")
+  applicationActivities ApplicationActivity[]  @relation("ApplicationActivityActor")
 }
 
 model RefreshToken {
@@ -175,20 +196,20 @@ model Teacher {
 }
 
 model Group {
-  id              String    @id @default(cuid())
-  name            String
-  teacherId       String
-  teacher         Teacher   @relation(fields: [teacherId], references: [id])
-  maxStudents     Int       @default(20)
-  schedule        Json
+  id                String    @id @default(cuid())
+  name              String
+  teacherId         String
+  teacher           Teacher   @relation(fields: [teacherId], references: [id])
+  maxStudents       Int       @default(20)
+  schedule          Json
   // Suggested monthly fee for new students enrolled into this group; admin
   // can still override per-student in the StudentGroup link.
-  defaultMonthlyFee Decimal @default(0) @db.Decimal(10, 2)
-  isActive        Boolean   @default(true)
-  isRatingVisible Boolean   @default(false)
-  archivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  defaultMonthlyFee Decimal   @default(0) @db.Decimal(10, 2)
+  isActive          Boolean   @default(true)
+  isRatingVisible   Boolean   @default(false)
+  archivedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   students      StudentGroup[]
   attendances   Attendance[]
@@ -364,4 +385,44 @@ model Expense {
 
   @@index([spentAt])
   @@index([category])
+}
+
+// Public admission requests submitted from the marketing landing page.
+// Kept separate from Student: an application is only a lead until staff
+// contacts the family and creates the actual account.
+model AdmissionApplication {
+  id            String                @id @default(cuid())
+  fullName      String
+  phone         String
+  childAge      Int
+  status        ApplicationStatus     @default(NEW)
+  assignedToId  String?
+  assignedTo    User?                 @relation("ApplicationAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  nextCallAt    DateTime?
+  lastContactAt DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  activities    ApplicationActivity[]
+
+  @@index([createdAt])
+  @@index([phone])
+  @@index([assignedToId, status])
+  @@index([nextCallAt])
+}
+
+model ApplicationActivity {
+  id            String                  @id @default(cuid())
+  applicationId String
+  application   AdmissionApplication    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actorId       String
+  actor         User                    @relation("ApplicationActivityActor", fields: [actorId], references: [id])
+  type          ApplicationActivityType
+  note          String?
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus?
+  nextCallAt    DateTime?
+  createdAt     DateTime                @default(now())
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
 }

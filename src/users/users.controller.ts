@@ -40,8 +40,8 @@ class CreateStaffDto {
   @MinLength(8)
   password: string;
 
-  @IsEnum(['TEACHER', 'ADMIN'])
-  role: 'TEACHER' | 'ADMIN';
+  @IsEnum(['TEACHER', 'ADMIN', 'SALES_MANAGER'])
+  role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER';
 
   @IsOptional()
   @IsString()
@@ -86,14 +86,16 @@ export class UsersController {
 
   @Get('staff')
   @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get all staff (teachers + admins)' })
+  @ApiOperation({
+    summary: 'Get all staff (teachers, admins and sales managers)',
+  })
   getStaff() {
     return this.usersService.getStaff();
   }
 
   @Post('staff')
   @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Create teacher or admin in a single transaction' })
+  @ApiOperation({ summary: 'Create a staff account in a single transaction' })
   createStaff(@Body() dto: CreateStaffDto) {
     return this.usersService.createStaff(dto);
   }

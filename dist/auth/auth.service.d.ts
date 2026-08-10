@@ -12,6 +12,7 @@ export declare class AuthService {
         user: {
             id: string;
             phone: string;
+            fullName: string | null;
             role: import(".prisma/client").$Enums.Role;
             telegramChatId: string | null;
         };
@@ -25,6 +26,7 @@ export declare class AuthService {
     getMe(userId: string): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;

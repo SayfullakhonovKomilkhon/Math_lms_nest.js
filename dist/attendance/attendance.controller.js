@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const throttler_1 = require("@nestjs/throttler");
 const client_1 = require("@prisma/client");
 const attendance_service_1 = require("./attendance.service");
 const bulk_attendance_dto_1 = require("./dto/bulk-attendance.dto");
@@ -46,6 +47,7 @@ let AttendanceController = class AttendanceController {
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
+    (0, throttler_1.Throttle)({ default: { limit: 1000, ttl: 60_000 } }),
     (0, common_1.Post)('bulk'),
     (0, roles_decorator_1.Roles)(client_1.Role.TEACHER, client_1.Role.ADMIN, client_1.Role.SUPER_ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Bulk mark attendance for a group lesson' }),

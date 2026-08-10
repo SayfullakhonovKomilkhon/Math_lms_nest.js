@@ -73,7 +73,7 @@ let GroupsService = class GroupsService {
             if (!teacher)
                 return [];
             const rows = await this.prisma.group.findMany({
-                where: { teacherId: teacher.id },
+                where: { teacherId: teacher.id, isActive: true },
                 select: groupSelect,
             });
             return rows.map(shapeGroup);
@@ -185,6 +185,26 @@ let GroupsService = class GroupsService {
             },
         });
         return shapeGroup(archived);
+    }
+    async restore(id, actorId) {
+        const existing = await this.prisma.group.findUnique({ where: { id } });
+        if (!existing) {
+            throw new common_1.NotFoundException('Group not found');
+        }
+        const restored = await this.prisma.group.update({
+            where: { id },
+            data: { isActive: true, archivedAt: null },
+            select: groupSelect,
+        });
+        await this.prisma.auditLog.create({
+            data: {
+                userId: actorId,
+                action: 'RESTORE',
+                entity: 'Group',
+                entityId: id,
+            },
+        });
+        return shapeGroup(restored);
     }
     async updateRatingVisibility(id, isRatingVisible, user) {
         const group = await this.findOne(id, user);

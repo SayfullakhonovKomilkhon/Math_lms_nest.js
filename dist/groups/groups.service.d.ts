@@ -80,8 +80,8 @@ export declare class GroupsService {
         };
         phone: string | null;
         id: string;
-        isActive: boolean;
         fullName: string;
+        isActive: boolean;
         gender: import(".prisma/client").$Enums.Gender;
     }[]>;
     update(id: string, dto: UpdateGroupDto, actorId: string): Promise<{
@@ -104,6 +104,25 @@ export declare class GroupsService {
         archivedAt: Date | null;
     }>;
     archive(id: string, actorId: string): Promise<{
+        defaultMonthlyFee: number;
+        teacher: {
+            id: string;
+            fullName: string;
+        };
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        _count: {
+            students: number;
+        };
+        maxStudents: number;
+        schedule: Prisma.JsonValue;
+        isRatingVisible: boolean;
+        archivedAt: Date | null;
+    }>;
+    restore(id: string, actorId: string): Promise<{
         defaultMonthlyFee: number;
         teacher: {
             id: string;

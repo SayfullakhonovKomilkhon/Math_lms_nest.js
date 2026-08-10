@@ -57,6 +57,15 @@ let UsersService = class UsersService {
         });
         if (exists)
             throw new common_1.ConflictException('Phone already in use');
+        if (dto.role === 'SALES_MANAGER') {
+            const activeManager = await this.prisma.user.findFirst({
+                where: { role: client_1.Role.SALES_MANAGER, isActive: true },
+                select: { id: true },
+            });
+            if (activeManager) {
+                throw new common_1.ConflictException('Active sales manager already exists');
+            }
+        }
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.user.create({
             data: {
@@ -75,6 +84,7 @@ let UsersService = class UsersService {
             select: {
                 id: true,
                 phone: true,
+                fullName: true,
                 role: true,
                 isActive: true,
                 telegramChatId: true,
@@ -97,6 +107,7 @@ let UsersService = class UsersService {
             select: {
                 id: true,
                 phone: true,
+                fullName: true,
                 role: true,
                 isActive: true,
                 telegramChatId: true,
@@ -109,7 +120,7 @@ let UsersService = class UsersService {
         return user;
     }
     async getStaff() {
-        const [teachers, admins] = await Promise.all([
+        const [teachers, admins, salesManagers] = await Promise.all([
             this.prisma.teacher.findMany({
                 include: {
                     user: {
@@ -130,7 +141,24 @@ let UsersService = class UsersService {
             }),
             this.prisma.user.findMany({
                 where: { role: client_1.Role.ADMIN },
-                select: { id: true, phone: true, isActive: true, createdAt: true },
+                select: {
+                    id: true,
+                    phone: true,
+                    fullName: true,
+                    isActive: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.user.findMany({
+                where: { role: client_1.Role.SALES_MANAGER },
+                select: {
+                    id: true,
+                    phone: true,
+                    fullName: true,
+                    isActive: true,
+                    createdAt: true,
+                },
                 orderBy: { createdAt: 'desc' },
             }),
         ]);
@@ -147,10 +175,17 @@ let UsersService = class UsersService {
             })),
             admins: admins.map((a) => ({
                 id: a.id,
-                fullName: null,
+                fullName: a.fullName,
                 phone: a.phone,
                 isActive: a.isActive,
                 createdAt: a.createdAt,
+            })),
+            salesManagers: salesManagers.map((manager) => ({
+                id: manager.id,
+                fullName: manager.fullName,
+                phone: manager.phone,
+                isActive: manager.isActive,
+                createdAt: manager.createdAt,
             })),
         };
     }
@@ -160,11 +195,21 @@ let UsersService = class UsersService {
         });
         if (exists)
             throw new common_1.ConflictException('Phone already in use');
+        if (dto.role === 'SALES_MANAGER') {
+            const activeManager = await this.prisma.user.findFirst({
+                where: { role: client_1.Role.SALES_MANAGER, isActive: true },
+                select: { id: true },
+            });
+            if (activeManager) {
+                throw new common_1.ConflictException('Active sales manager already exists');
+            }
+        }
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: {
                     phone: dto.phone,
+                    fullName: dto.fullName?.trim() || null,
                     passwordHash,
                     role: dto.role,
                 },
@@ -177,6 +222,33 @@ let UsersService = class UsersService {
                         phone: dto.phone,
                     },
                 });
+            }
+            if (dto.role === 'SALES_MANAGER') {
+                const unassigned = await tx.admissionApplication.findMany({
+                    where: {
+                        assignedToId: null,
+                        status: {
+                            notIn: [client_1.ApplicationStatus.ENROLLED, client_1.ApplicationStatus.REJECTED],
+                        },
+                    },
+                    select: { id: true },
+                });
+                if (unassigned.length > 0) {
+                    await tx.admissionApplication.updateMany({
+                        where: {
+                            id: { in: unassigned.map((application) => application.id) },
+                        },
+                        data: { assignedToId: newUser.id },
+                    });
+                    await tx.applicationActivity.createMany({
+                        data: unassigned.map((application) => ({
+                            applicationId: application.id,
+                            actorId: newUser.id,
+                            type: 'ASSIGNMENT',
+                            note: 'Заявка автоматически назначена менеджеру',
+                        })),
+                    });
+                }
             }
             return newUser;
         });
@@ -256,6 +328,17 @@ let UsersService = class UsersService {
             data: { isActive: false },
             select: { id: true, phone: true, role: true, isActive: true },
         });
+        if (user.role === client_1.Role.SALES_MANAGER) {
+            await this.prisma.admissionApplication.updateMany({
+                where: {
+                    assignedToId: id,
+                    status: {
+                        notIn: [client_1.ApplicationStatus.ENROLLED, client_1.ApplicationStatus.REJECTED],
+                    },
+                },
+                data: { assignedToId: null },
+            });
+        }
         await this.prisma.auditLog.create({
             data: {
                 userId: actorId,

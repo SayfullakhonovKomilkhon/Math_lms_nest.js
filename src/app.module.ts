@@ -28,6 +28,7 @@ import { GamificationModule } from './gamification/gamification.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { HealthModule } from './health/health.module';
+import { ApplicationsModule } from './applications/applications.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { HealthModule } from './health/health.module';
     NotificationsModule,
     TelegramModule,
     HealthModule,
+    ApplicationsModule,
   ],
   providers: [
     {

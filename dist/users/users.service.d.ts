@@ -6,6 +6,7 @@ export declare class UsersService {
     create(dto: CreateUserDto): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -21,6 +22,7 @@ export declare class UsersService {
         } | null;
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -30,6 +32,7 @@ export declare class UsersService {
     findOne(id: string): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -49,7 +52,14 @@ export declare class UsersService {
         }[];
         admins: {
             id: string;
-            fullName: null;
+            fullName: string | null;
+            phone: string;
+            isActive: boolean;
+            createdAt: Date;
+        }[];
+        salesManagers: {
+            id: string;
+            fullName: string | null;
             phone: string;
             isActive: boolean;
             createdAt: Date;
@@ -58,11 +68,12 @@ export declare class UsersService {
     createStaff(dto: {
         phone: string;
         password: string;
-        role: 'TEACHER' | 'ADMIN';
+        role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER';
         fullName?: string;
     }): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;

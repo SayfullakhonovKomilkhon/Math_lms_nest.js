@@ -41,7 +41,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "password", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(['TEACHER', 'ADMIN']),
+    (0, class_validator_1.IsEnum)(['TEACHER', 'ADMIN', 'SALES_MANAGER']),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "role", void 0);
 __decorate([
@@ -132,7 +132,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('staff'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Get all staff (teachers + admins)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all staff (teachers, admins and sales managers)',
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
@@ -140,7 +142,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('staff'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Create teacher or admin in a single transaction' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a staff account in a single transaction' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [CreateStaffDto]),

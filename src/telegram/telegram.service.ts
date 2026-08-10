@@ -67,7 +67,7 @@ export class TelegramService implements OnModuleDestroy {
         );
       } else {
         await ctx.reply(
-          '👋 Добро пожаловать в MathCenter Bot!\n\nЧтобы получать уведомления, откройте Личный кабинет → Настройки → Telegram и нажмите «Подключить».',
+          '👋 Добро пожаловать в KhanovMath Academy Bot!\n\nЧтобы получать уведомления, откройте Личный кабинет → Настройки → Telegram и нажмите «Подключить».',
         );
       }
     });

@@ -112,7 +112,7 @@ export class ReportsService {
     });
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
     const ws = wb.addWorksheet('Платежи');
 
     ws.columns = [
@@ -269,7 +269,7 @@ export class ReportsService {
     };
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
 
     // Sheet 1 — Все оплаты
     const wsAll = wb.addWorksheet('Все оплаты');
@@ -463,7 +463,7 @@ export class ReportsService {
       doc
         .fontSize(16)
         .font('bold')
-        .text('MathCenter — Финансовый отчёт', { align: 'center' });
+        .text('KhanovMath Academy — Финансовый отчёт', { align: 'center' });
       if (query.from || query.to) {
         doc
           .fontSize(10)
@@ -605,7 +605,7 @@ export class ReportsService {
     });
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
     const ws = wb.addWorksheet('Ученики');
 
     ws.columns = [
@@ -680,7 +680,7 @@ export class ReportsService {
     });
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
 
     // Sheet 1 — detail
     const ws = wb.addWorksheet('Посещаемость');
@@ -812,7 +812,7 @@ export class ReportsService {
     });
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
 
     // Sheet 1 — Оценки
     const wsGrades = wb.addWorksheet('Оценки');
@@ -950,7 +950,7 @@ export class ReportsService {
     });
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'MathCenter';
+    wb.creator = 'KhanovMath Academy';
     const ws = wb.addWorksheet('Зарплаты');
 
     ws.columns = [

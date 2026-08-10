@@ -1,5 +1,6 @@
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { S3Service } from '../common/services/s3.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
@@ -63,7 +64,8 @@ export type StudentDto = {
 };
 export declare class StudentsService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private s3;
+    constructor(prisma: PrismaService, s3: S3Service);
     create(dto: CreateStudentDto, actorId: string): Promise<StudentDto>;
     findAll(): Promise<StudentDto[]>;
     findOne(id: string, requestingUser?: {
@@ -152,6 +154,10 @@ export declare class StudentsService {
     removeGroup(id: string, groupId: string, actorId: string): Promise<StudentDto>;
     removeFromAllGroups(id: string, actorId: string): Promise<StudentDto>;
     deactivate(id: string, actorId: string): Promise<StudentDto>;
+    activate(id: string, actorId: string): Promise<StudentDto>;
+    remove(id: string, actorId: string): Promise<{
+        success: boolean;
+    }>;
     updateCredentials(studentId: string, payload: {
         phone?: string;
         password?: string;

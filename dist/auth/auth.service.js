@@ -72,6 +72,7 @@ let AuthService = class AuthService {
             user: {
                 id: user.id,
                 phone: user.phone,
+                fullName: user.fullName,
                 role: user.role,
                 telegramChatId: user.telegramChatId,
             },
@@ -99,6 +100,7 @@ let AuthService = class AuthService {
             select: {
                 id: true,
                 phone: true,
+                fullName: true,
                 role: true,
                 isActive: true,
                 createdAt: true,

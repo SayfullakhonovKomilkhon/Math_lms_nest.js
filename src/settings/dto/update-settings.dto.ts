@@ -7,7 +7,7 @@ export class SettingEntryDto {
   @IsString()
   key: string;
 
-  @ApiProperty({ example: 'MathCenter' })
+  @ApiProperty({ example: 'KhanovMath Academy' })
   @IsString()
   value: string;
 }

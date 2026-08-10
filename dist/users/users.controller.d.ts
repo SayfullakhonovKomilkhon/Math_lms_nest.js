@@ -3,7 +3,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 declare class CreateStaffDto {
     phone: string;
     password: string;
-    role: 'TEACHER' | 'ADMIN';
+    role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER';
     fullName?: string;
 }
 declare class UpdateUserDto {
@@ -16,6 +16,7 @@ export declare class UsersController {
     create(dto: CreateUserDto): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -31,6 +32,7 @@ export declare class UsersController {
         } | null;
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -50,7 +52,14 @@ export declare class UsersController {
         }[];
         admins: {
             id: string;
-            fullName: null;
+            fullName: string | null;
+            phone: string;
+            isActive: boolean;
+            createdAt: Date;
+        }[];
+        salesManagers: {
+            id: string;
+            fullName: string | null;
             phone: string;
             isActive: boolean;
             createdAt: Date;
@@ -59,6 +68,7 @@ export declare class UsersController {
     createStaff(dto: CreateStaffDto): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
@@ -122,6 +132,7 @@ export declare class UsersController {
     findOne(id: string): Promise<{
         phone: string;
         id: string;
+        fullName: string | null;
         role: import(".prisma/client").$Enums.Role;
         isActive: boolean;
         telegramChatId: string | null;
