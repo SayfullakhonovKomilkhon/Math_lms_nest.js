@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { NotificationsService } from './notifications.service';
 import { NotificationsProcessor } from './notifications.processor';
 import { LessonReminderProcessor } from './lesson-reminder.processor';
+import { AttendanceReminderProcessor } from './attendance-reminder.processor';
 import { NotificationsController } from './notifications.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -17,6 +18,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     NotificationsService,
     NotificationsProcessor,
     LessonReminderProcessor,
+    AttendanceReminderProcessor,
   ],
   controllers: [NotificationsController],
   exports: [NotificationsService],

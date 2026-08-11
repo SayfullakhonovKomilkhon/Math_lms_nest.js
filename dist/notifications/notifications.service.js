@@ -220,6 +220,30 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             }
         }
     }
+    async sendAttendanceReminder(teacherUserId, groupName, phase, markedCount, totalCount) {
+        const teacher = await this.prisma.user.findUnique({
+            where: { id: teacherUserId },
+            select: { telegramChatId: true },
+        });
+        if (!teacher)
+            return;
+        const message = tpl.missingAttendanceReminder(groupName, phase, markedCount, totalCount);
+        const inAppMessage = teacher.telegramChatId
+            ? message
+            : `${message}\n\nПодключите Telegram-бота в настройках профиля, чтобы получать эти напоминания в Telegram.`;
+        await this.prisma.notification.create({
+            data: {
+                userId: teacherUserId,
+                type: client_1.NotificationType.ATTENDANCE,
+                message: inAppMessage,
+                channel: client_1.NotificationChannel.IN_APP,
+                isRead: false,
+            },
+        });
+        if (teacher.telegramChatId) {
+            await this.telegram.sendMessage(teacher.telegramChatId, message);
+        }
+    }
     async sendAchievementNotification(studentId, achievement) {
         const student = await this.prisma.student.findUnique({
             where: { id: studentId },

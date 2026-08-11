@@ -76,6 +76,34 @@ export function lessonReminder(
   );
 }
 
+export function missingAttendanceReminder(
+  groupName: string,
+  phase: 'BEFORE' | 'DURING' | 'AFTER',
+  markedCount: number,
+  totalCount: number,
+): string {
+  const safeGroup = escape(groupName);
+  const progress = `Отмечено <b>${markedCount} из ${totalCount}</b> учеников.`;
+
+  if (phase === 'BEFORE') {
+    return clip(
+      `⚠️ Через 5 минут начнётся урок группы <b>${safeGroup}</b>. ` +
+        `Посещаемость ещё не выставлена всем. ${progress} ` +
+        `Пожалуйста, отметьте каждого ученика.`,
+    );
+  }
+  if (phase === 'DURING') {
+    return clip(
+      `⚠️ Урок группы <b>${safeGroup}</b> уже идёт, но посещаемость ` +
+        `выставлена не всем. ${progress} Пожалуйста, отметьте каждого ученика.`,
+    );
+  }
+  return clip(
+    `⚠️ Урок группы <b>${safeGroup}</b> завершён, но посещаемость ` +
+      `выставлена не всем. ${progress} Пожалуйста, завершите отметку группы.`,
+  );
+}
+
 // ── Посещаемость ───────────────────────────────────────────────────────────
 
 const ATTENDANCE_EMOJI: Record<AttendanceStatus, string> = {
@@ -251,9 +279,7 @@ export function announcement(
 // ── Достижения ─────────────────────────────────────────────────────────────
 
 export function achievementForStudent(title: string, icon: string): string {
-  return clip(
-    `🏆 Новое достижение: <b>${escape(title)}</b> ${escape(icon)}`,
-  );
+  return clip(`🏆 Новое достижение: <b>${escape(title)}</b> ${escape(icon)}`);
 }
 
 export function achievementForParent(

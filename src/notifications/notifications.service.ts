@@ -14,6 +14,8 @@ interface SendPayload {
   channel?: NotificationChannel;
 }
 
+type AttendanceReminderPhase = 'BEFORE' | 'DURING' | 'AFTER';
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -287,6 +289,44 @@ export class NotificationsService {
     }
   }
 
+  async sendAttendanceReminder(
+    teacherUserId: string,
+    groupName: string,
+    phase: AttendanceReminderPhase,
+    markedCount: number,
+    totalCount: number,
+  ): Promise<void> {
+    const teacher = await this.prisma.user.findUnique({
+      where: { id: teacherUserId },
+      select: { telegramChatId: true },
+    });
+    if (!teacher) return;
+
+    const message = tpl.missingAttendanceReminder(
+      groupName,
+      phase,
+      markedCount,
+      totalCount,
+    );
+    const inAppMessage = teacher.telegramChatId
+      ? message
+      : `${message}\n\nПодключите Telegram-бота в настройках профиля, чтобы получать эти напоминания в Telegram.`;
+
+    await this.prisma.notification.create({
+      data: {
+        userId: teacherUserId,
+        type: NotificationType.ATTENDANCE,
+        message: inAppMessage,
+        channel: NotificationChannel.IN_APP,
+        isRead: false,
+      },
+    });
+
+    if (teacher.telegramChatId) {
+      await this.telegram.sendMessage(teacher.telegramChatId, message);
+    }
+  }
+
   async sendAchievementNotification(
     studentId: string,
     achievement: { title: string; icon: string },
@@ -366,11 +406,7 @@ export class NotificationsService {
     );
 
     for (const s of students) {
-      await this.sendBoth(
-        s.userId,
-        NotificationType.HOMEWORK,
-        studentMessage,
-      );
+      await this.sendBoth(s.userId, NotificationType.HOMEWORK, studentMessage);
 
       for (const link of s.parents) {
         await this.sendBoth(

@@ -6,6 +6,7 @@ interface SendPayload {
     message: string;
     channel?: NotificationChannel;
 }
+type AttendanceReminderPhase = 'BEFORE' | 'DURING' | 'AFTER';
 export declare class NotificationsService {
     private prisma;
     private telegram;
@@ -21,6 +22,7 @@ export declare class NotificationsService {
     sendGradeNotification(gradeId: string): Promise<void>;
     sendSalaryNotification(teacherId: string, oldRate: number, newRate: number): Promise<void>;
     sendLessonReminder(userIds: string[], groupName: string, startTime: string, minutesUntil: number): Promise<void>;
+    sendAttendanceReminder(teacherUserId: string, groupName: string, phase: AttendanceReminderPhase, markedCount: number, totalCount: number): Promise<void>;
     sendAchievementNotification(studentId: string, achievement: {
         title: string;
         icon: string;

@@ -211,12 +211,13 @@ model Group {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  students      StudentGroup[]
-  attendances   Attendance[]
-  grades        Grade[]
-  homeworks     Homework[]
-  lessonTopics  LessonTopic[]
-  announcements Announcement[]
+  students                   StudentGroup[]
+  attendances                Attendance[]
+  grades                     Grade[]
+  homeworks                  Homework[]
+  lessonTopics               LessonTopic[]
+  announcements              Announcement[]
+  attendanceReminderSessions AttendanceReminderSession[]
 }
 
 model Attendance {
@@ -233,6 +234,26 @@ model Attendance {
   createdAt  DateTime         @default(now())
 
   @@unique([studentId, groupId, date])
+}
+
+// Persistent state for attendance reminders. The student list is captured
+// when the lesson becomes due, so a reminder cannot be closed by marking only
+// one student (or by later removing an unmarked student from the group).
+model AttendanceReminderSession {
+  id                 String    @id @default(cuid())
+  groupId            String
+  group              Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scheduledStart     DateTime
+  scheduledEnd       DateTime
+  expectedStudentIds String[]
+  nextReminderAt     DateTime
+  lastReminderAt     DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([groupId, scheduledStart])
+  @@index([completedAt, nextReminderAt])
 }
 
 model Grade {
