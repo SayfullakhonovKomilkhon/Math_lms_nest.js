@@ -29,6 +29,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { HealthModule } from './health/health.module';
 import { ApplicationsModule } from './applications/applications.module';
+import { DevicesModule } from './devices/devices.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { ApplicationsModule } from './applications/applications.module';
     TelegramModule,
     HealthModule,
     ApplicationsModule,
+    DevicesModule,
   ],
   providers: [
     {

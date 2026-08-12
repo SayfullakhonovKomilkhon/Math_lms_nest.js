@@ -3,15 +3,19 @@ import {
   AttendanceStatus,
   NotificationChannel,
   NotificationType,
+  Prisma,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import * as tpl from './templates';
+import { ExpoPushService, PushData } from '../devices/expo-push.service';
 
 interface SendPayload {
   type: NotificationType;
   message: string;
   channel?: NotificationChannel;
+  data?: PushData;
 }
 
 type AttendanceReminderPhase = 'BEFORE' | 'DURING' | 'AFTER';
@@ -23,6 +27,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private expoPush: ExpoPushService,
   ) {}
 
   // Public surface: persists IN_APP record + (optionally) pushes to Telegram.
@@ -36,6 +41,7 @@ export class NotificationsService {
         userId,
         type: payload.type,
         message: payload.message,
+        data: payload.data,
         channel,
         isRead: false,
       },
@@ -43,6 +49,13 @@ export class NotificationsService {
 
     if (channel === NotificationChannel.TELEGRAM) {
       await this.pushTelegram(userId, payload.message);
+    } else {
+      await this.expoPush.sendToUser(
+        userId,
+        'KhanovMath Academy',
+        payload.message,
+        payload.data,
+      );
     }
   }
 
@@ -55,6 +68,7 @@ export class NotificationsService {
         userId,
         type: payload.type,
         message: payload.message,
+        data: payload.data,
         channel,
         isRead: false,
       })),
@@ -62,7 +76,11 @@ export class NotificationsService {
 
     if (channel === NotificationChannel.TELEGRAM) {
       const users = await this.prisma.user.findMany({
-        where: { id: { in: userIds }, telegramChatId: { not: null } },
+        where: {
+          id: { in: userIds },
+          role: { not: Role.PARENT },
+          telegramChatId: { not: null },
+        },
         select: { telegramChatId: true },
       });
       for (const u of users) {
@@ -70,6 +88,13 @@ export class NotificationsService {
           await this.telegram.sendMessage(u.telegramChatId, payload.message);
         }
       }
+    } else {
+      await this.expoPush.sendToUsers(
+        userIds,
+        'KhanovMath Academy',
+        payload.message,
+        payload.data,
+      );
     }
   }
 
@@ -89,17 +114,40 @@ export class NotificationsService {
     userId: string,
     type: NotificationType,
     message: string,
+    data?: PushData,
   ): Promise<void> {
     await this.prisma.notification.create({
       data: {
         userId,
         type,
         message,
+        data,
         channel: NotificationChannel.IN_APP,
         isRead: false,
       },
     });
     await this.pushTelegram(userId, message);
+    await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
+  }
+
+  /** Parent mobile channel: notification center + smartphone push, no Telegram. */
+  private async sendToParentMobile(
+    userId: string,
+    type: NotificationType,
+    message: string,
+    data?: PushData,
+  ): Promise<void> {
+    await this.prisma.notification.create({
+      data: {
+        userId,
+        type,
+        message,
+        data,
+        channel: NotificationChannel.IN_APP,
+        isRead: false,
+      },
+    });
+    await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
   }
 
   // ── Domain methods ──────────────────────────────────────────────────────
@@ -127,13 +175,15 @@ export class NotificationsService {
       student.userId,
       NotificationType.PAYMENT,
       tpl.paymentForStudent(daysLeft, amount),
+      { screen: 'payment', studentId },
     );
 
     for (const link of student.parents) {
-      await this.sendBoth(
+      await this.sendToParentMobile(
         link.parent.userId,
         NotificationType.PAYMENT,
         tpl.paymentForParent(student.fullName, daysLeft, amount),
+        { screen: 'payment', studentId },
       );
     }
   }
@@ -170,14 +220,16 @@ export class NotificationsService {
         student.userId,
         NotificationType.ATTENDANCE,
         tpl.attendanceForStudent(status, groupName, date),
+        { screen: 'attendance', studentId, groupId },
       );
     }
 
     for (const link of student.parents) {
-      await this.sendBoth(
+      await this.sendToParentMobile(
         link.parent.userId,
         NotificationType.ATTENDANCE,
         tpl.attendanceForParent(student.fullName, status, groupName, date),
+        { screen: 'attendance', studentId, groupId },
       );
     }
   }
@@ -223,10 +275,11 @@ export class NotificationsService {
       grade.student.userId,
       NotificationType.GRADE,
       tpl.gradeForStudent(score, maxScore, groupName, grade.lessonType),
+      { screen: 'grades', studentId: grade.studentId, gradeId },
     );
 
     for (const link of grade.student.parents) {
-      await this.sendBoth(
+      await this.sendToParentMobile(
         link.parent.userId,
         NotificationType.GRADE,
         tpl.gradeForParent(
@@ -236,6 +289,7 @@ export class NotificationsService {
           groupName,
           grade.lessonType,
         ),
+        { screen: 'grades', studentId: grade.studentId, gradeId },
       );
     }
   }
@@ -255,6 +309,7 @@ export class NotificationsService {
       teacher.userId,
       NotificationType.SALARY,
       tpl.salaryRateUpdated(oldRate, newRate),
+      { screen: 'salary', teacherId },
     );
   }
 
@@ -273,6 +328,7 @@ export class NotificationsService {
         userId,
         type: NotificationType.LESSON_REMINDER,
         message,
+        data: { screen: 'schedule' },
         channel: NotificationChannel.IN_APP,
         isRead: false,
       })),
@@ -287,6 +343,9 @@ export class NotificationsService {
         await this.telegram.sendMessage(u.telegramChatId, message);
       }
     }
+    await this.expoPush.sendToUsers(userIds, 'Скоро занятие', message, {
+      screen: 'schedule',
+    });
   }
 
   async sendAttendanceReminder(
@@ -343,10 +402,11 @@ export class NotificationsService {
       student.userId,
       NotificationType.ACHIEVEMENT,
       tpl.achievementForStudent(achievement.title, achievement.icon),
+      { screen: 'achievements', studentId },
     );
 
     for (const link of student.parents) {
-      await this.sendBoth(
+      await this.sendToParentMobile(
         link.parent.userId,
         NotificationType.ACHIEVEMENT,
         tpl.achievementForParent(
@@ -354,6 +414,7 @@ export class NotificationsService {
           achievement.title,
           achievement.icon,
         ),
+        { screen: 'achievements', studentId },
       );
     }
   }
@@ -365,7 +426,14 @@ export class NotificationsService {
   ): Promise<void> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { student: { include: { user: true } } },
+      include: {
+        student: {
+          include: {
+            user: true,
+            parents: { include: { parent: { include: { user: true } } } },
+          },
+        },
+      },
     });
     if (!payment) return;
 
@@ -373,7 +441,16 @@ export class NotificationsService {
       payment.student.userId,
       NotificationType.PAYMENT,
       tpl.paymentReceiptStatus(status, reason),
+      { screen: 'payment', studentId: payment.studentId, paymentId },
     );
+    for (const link of payment.student.parents) {
+      await this.sendToParentMobile(
+        link.parent.userId,
+        NotificationType.PAYMENT,
+        tpl.paymentReceiptStatus(status, reason),
+        { screen: 'payment', studentId: payment.studentId, paymentId },
+      );
+    }
   }
 
   async sendHomeworkNotification(
@@ -393,6 +470,7 @@ export class NotificationsService {
         groups: { some: { groupId } },
       },
       select: {
+        id: true,
         userId: true,
         fullName: true,
         parents: { select: { parent: { select: { userId: true } } } },
@@ -406,10 +484,15 @@ export class NotificationsService {
     );
 
     for (const s of students) {
-      await this.sendBoth(s.userId, NotificationType.HOMEWORK, studentMessage);
+      await this.sendBoth(s.userId, NotificationType.HOMEWORK, studentMessage, {
+        screen: 'homework',
+        studentId: s.id,
+        homeworkId,
+        groupId,
+      });
 
       for (const link of s.parents) {
-        await this.sendBoth(
+        await this.sendToParentMobile(
           link.parent.userId,
           NotificationType.HOMEWORK,
           tpl.homeworkForParent(
@@ -418,6 +501,7 @@ export class NotificationsService {
             homework.group.name,
             homework.dueDate ?? null,
           ),
+          { screen: 'homework', studentId: s.id, homeworkId, groupId },
         );
       }
     }
@@ -436,7 +520,7 @@ export class NotificationsService {
   ) {
     const limit = params.limit ?? 20;
     const page = params.page ?? 0;
-    const where: any = { userId };
+    const where: Prisma.NotificationWhereInput = { userId };
     if (params.isRead !== undefined) where.isRead = params.isRead;
     if (params.type) where.type = params.type;
 

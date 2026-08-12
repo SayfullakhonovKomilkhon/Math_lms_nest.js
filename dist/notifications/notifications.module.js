@@ -16,6 +16,7 @@ const attendance_reminder_processor_1 = require("./attendance-reminder.processor
 const notifications_controller_1 = require("./notifications.controller");
 const prisma_module_1 = require("../prisma/prisma.module");
 const telegram_module_1 = require("../telegram/telegram.module");
+const devices_module_1 = require("../devices/devices.module");
 let NotificationsModule = class NotificationsModule {
 };
 exports.NotificationsModule = NotificationsModule;
@@ -24,6 +25,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
         imports: [
             prisma_module_1.PrismaModule,
             telegram_module_1.TelegramModule,
+            devices_module_1.DevicesModule,
             bullmq_1.BullModule.registerQueue({ name: 'notifications' }),
         ],
         providers: [

@@ -439,6 +439,7 @@ export class AnnouncementsService {
     await this.notifications.sendToMany(ids, {
       type: NotificationType.ANNOUNCEMENT,
       message: `Новое объявление: ${title}`,
+      data: { screen: 'announcements', announcementId },
     });
 
     // Telegram — полный HTML-формат с заголовком и телом, чтобы получатель
@@ -449,9 +450,6 @@ export class AnnouncementsService {
       message: announcementTpl(title, message, tgScope),
       channel: NotificationChannel.TELEGRAM,
     });
-
-    // suppress unused var lint (announcementId is kept for future deep-linking)
-    void announcementId;
   }
 
   private async collectRecipientIds(

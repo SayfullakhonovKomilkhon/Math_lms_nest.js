@@ -7,11 +7,13 @@ import { AttendanceReminderProcessor } from './attendance-reminder.processor';
 import { NotificationsController } from './notifications.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { DevicesModule } from '../devices/devices.module';
 
 @Module({
   imports: [
     PrismaModule,
     TelegramModule,
+    DevicesModule,
     BullModule.registerQueue({ name: 'notifications' }),
   ],
   providers: [

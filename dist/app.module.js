@@ -41,6 +41,7 @@ const notifications_module_1 = require("./notifications/notifications.module");
 const telegram_module_1 = require("./telegram/telegram.module");
 const health_module_1 = require("./health/health.module");
 const applications_module_1 = require("./applications/applications.module");
+const devices_module_1 = require("./devices/devices.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -88,6 +89,7 @@ exports.AppModule = AppModule = __decorate([
             telegram_module_1.TelegramModule,
             health_module_1.HealthModule,
             applications_module_1.ApplicationsModule,
+            devices_module_1.DevicesModule,
         ],
         providers: [
             {

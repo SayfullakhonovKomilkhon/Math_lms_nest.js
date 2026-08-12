@@ -49,10 +49,12 @@ const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const telegram_service_1 = require("../telegram/telegram.service");
 const tpl = __importStar(require("./templates"));
+const expo_push_service_1 = require("../devices/expo-push.service");
 let NotificationsService = NotificationsService_1 = class NotificationsService {
-    constructor(prisma, telegram) {
+    constructor(prisma, telegram, expoPush) {
         this.prisma = prisma;
         this.telegram = telegram;
+        this.expoPush = expoPush;
         this.logger = new common_1.Logger(NotificationsService_1.name);
     }
     async sendToUser(userId, payload) {
@@ -62,12 +64,16 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 userId,
                 type: payload.type,
                 message: payload.message,
+                data: payload.data,
                 channel,
                 isRead: false,
             },
         });
         if (channel === client_1.NotificationChannel.TELEGRAM) {
             await this.pushTelegram(userId, payload.message);
+        }
+        else {
+            await this.expoPush.sendToUser(userId, 'KhanovMath Academy', payload.message, payload.data);
         }
     }
     async sendToMany(userIds, payload) {
@@ -79,13 +85,18 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 userId,
                 type: payload.type,
                 message: payload.message,
+                data: payload.data,
                 channel,
                 isRead: false,
             })),
         });
         if (channel === client_1.NotificationChannel.TELEGRAM) {
             const users = await this.prisma.user.findMany({
-                where: { id: { in: userIds }, telegramChatId: { not: null } },
+                where: {
+                    id: { in: userIds },
+                    role: { not: client_1.Role.PARENT },
+                    telegramChatId: { not: null },
+                },
                 select: { telegramChatId: true },
             });
             for (const u of users) {
@@ -93,6 +104,9 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                     await this.telegram.sendMessage(u.telegramChatId, payload.message);
                 }
             }
+        }
+        else {
+            await this.expoPush.sendToUsers(userIds, 'KhanovMath Academy', payload.message, payload.data);
         }
     }
     async pushTelegram(userId, message) {
@@ -104,17 +118,32 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             return;
         await this.telegram.sendMessage(user.telegramChatId, message);
     }
-    async sendBoth(userId, type, message) {
+    async sendBoth(userId, type, message, data) {
         await this.prisma.notification.create({
             data: {
                 userId,
                 type,
                 message,
+                data,
                 channel: client_1.NotificationChannel.IN_APP,
                 isRead: false,
             },
         });
         await this.pushTelegram(userId, message);
+        await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
+    }
+    async sendToParentMobile(userId, type, message, data) {
+        await this.prisma.notification.create({
+            data: {
+                userId,
+                type,
+                message,
+                data,
+                channel: client_1.NotificationChannel.IN_APP,
+                isRead: false,
+            },
+        });
+        await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
     }
     async sendPaymentReminder(studentId, daysLeft) {
         const student = await this.prisma.student.findUnique({
@@ -128,9 +157,9 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         if (!student)
             return;
         const amount = student.groups.reduce((acc, link) => acc + Number(link.monthlyFee), 0);
-        await this.sendBoth(student.userId, client_1.NotificationType.PAYMENT, tpl.paymentForStudent(daysLeft, amount));
+        await this.sendBoth(student.userId, client_1.NotificationType.PAYMENT, tpl.paymentForStudent(daysLeft, amount), { screen: 'payment', studentId });
         for (const link of student.parents) {
-            await this.sendBoth(link.parent.userId, client_1.NotificationType.PAYMENT, tpl.paymentForParent(student.fullName, daysLeft, amount));
+            await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.PAYMENT, tpl.paymentForParent(student.fullName, daysLeft, amount), { screen: 'payment', studentId });
         }
     }
     async sendAttendanceToParents(studentId, groupId, status, date) {
@@ -149,10 +178,10 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         const groupName = group?.name ?? 'Группа';
         if (status === client_1.AttendanceStatus.LATE ||
             status === client_1.AttendanceStatus.ABSENT) {
-            await this.sendBoth(student.userId, client_1.NotificationType.ATTENDANCE, tpl.attendanceForStudent(status, groupName, date));
+            await this.sendBoth(student.userId, client_1.NotificationType.ATTENDANCE, tpl.attendanceForStudent(status, groupName, date), { screen: 'attendance', studentId, groupId });
         }
         for (const link of student.parents) {
-            await this.sendBoth(link.parent.userId, client_1.NotificationType.ATTENDANCE, tpl.attendanceForParent(student.fullName, status, groupName, date));
+            await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.ATTENDANCE, tpl.attendanceForParent(student.fullName, status, groupName, date), { screen: 'attendance', studentId, groupId });
         }
     }
     async sendAbsenceAlert(studentId, date) {
@@ -183,9 +212,9 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         const score = Number(grade.score);
         const maxScore = Number(grade.maxScore);
         const groupName = grade.group.name;
-        await this.sendBoth(grade.student.userId, client_1.NotificationType.GRADE, tpl.gradeForStudent(score, maxScore, groupName, grade.lessonType));
+        await this.sendBoth(grade.student.userId, client_1.NotificationType.GRADE, tpl.gradeForStudent(score, maxScore, groupName, grade.lessonType), { screen: 'grades', studentId: grade.studentId, gradeId });
         for (const link of grade.student.parents) {
-            await this.sendBoth(link.parent.userId, client_1.NotificationType.GRADE, tpl.gradeForParent(grade.student.fullName, score, maxScore, groupName, grade.lessonType));
+            await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.GRADE, tpl.gradeForParent(grade.student.fullName, score, maxScore, groupName, grade.lessonType), { screen: 'grades', studentId: grade.studentId, gradeId });
         }
     }
     async sendSalaryNotification(teacherId, oldRate, newRate) {
@@ -195,7 +224,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         });
         if (!teacher)
             return;
-        await this.sendBoth(teacher.userId, client_1.NotificationType.SALARY, tpl.salaryRateUpdated(oldRate, newRate));
+        await this.sendBoth(teacher.userId, client_1.NotificationType.SALARY, tpl.salaryRateUpdated(oldRate, newRate), { screen: 'salary', teacherId });
     }
     async sendLessonReminder(userIds, groupName, startTime, minutesUntil) {
         if (userIds.length === 0)
@@ -206,6 +235,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 userId,
                 type: client_1.NotificationType.LESSON_REMINDER,
                 message,
+                data: { screen: 'schedule' },
                 channel: client_1.NotificationChannel.IN_APP,
                 isRead: false,
             })),
@@ -219,6 +249,9 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 await this.telegram.sendMessage(u.telegramChatId, message);
             }
         }
+        await this.expoPush.sendToUsers(userIds, 'Скоро занятие', message, {
+            screen: 'schedule',
+        });
     }
     async sendAttendanceReminder(teacherUserId, groupName, phase, markedCount, totalCount) {
         const teacher = await this.prisma.user.findUnique({
@@ -253,19 +286,29 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         });
         if (!student)
             return;
-        await this.sendBoth(student.userId, client_1.NotificationType.ACHIEVEMENT, tpl.achievementForStudent(achievement.title, achievement.icon));
+        await this.sendBoth(student.userId, client_1.NotificationType.ACHIEVEMENT, tpl.achievementForStudent(achievement.title, achievement.icon), { screen: 'achievements', studentId });
         for (const link of student.parents) {
-            await this.sendBoth(link.parent.userId, client_1.NotificationType.ACHIEVEMENT, tpl.achievementForParent(student.fullName, achievement.title, achievement.icon));
+            await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.ACHIEVEMENT, tpl.achievementForParent(student.fullName, achievement.title, achievement.icon), { screen: 'achievements', studentId });
         }
     }
     async sendReceiptStatusNotification(paymentId, status, reason) {
         const payment = await this.prisma.payment.findUnique({
             where: { id: paymentId },
-            include: { student: { include: { user: true } } },
+            include: {
+                student: {
+                    include: {
+                        user: true,
+                        parents: { include: { parent: { include: { user: true } } } },
+                    },
+                },
+            },
         });
         if (!payment)
             return;
-        await this.sendBoth(payment.student.userId, client_1.NotificationType.PAYMENT, tpl.paymentReceiptStatus(status, reason));
+        await this.sendBoth(payment.student.userId, client_1.NotificationType.PAYMENT, tpl.paymentReceiptStatus(status, reason), { screen: 'payment', studentId: payment.studentId, paymentId });
+        for (const link of payment.student.parents) {
+            await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.PAYMENT, tpl.paymentReceiptStatus(status, reason), { screen: 'payment', studentId: payment.studentId, paymentId });
+        }
     }
     async sendHomeworkNotification(groupId, homeworkId) {
         const homework = await this.prisma.homework.findUnique({
@@ -280,6 +323,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 groups: { some: { groupId } },
             },
             select: {
+                id: true,
                 userId: true,
                 fullName: true,
                 parents: { select: { parent: { select: { userId: true } } } },
@@ -287,9 +331,14 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         });
         const studentMessage = tpl.homeworkForStudent(homework.teacher.fullName, homework.group.name, homework.dueDate ?? null);
         for (const s of students) {
-            await this.sendBoth(s.userId, client_1.NotificationType.HOMEWORK, studentMessage);
+            await this.sendBoth(s.userId, client_1.NotificationType.HOMEWORK, studentMessage, {
+                screen: 'homework',
+                studentId: s.id,
+                homeworkId,
+                groupId,
+            });
             for (const link of s.parents) {
-                await this.sendBoth(link.parent.userId, client_1.NotificationType.HOMEWORK, tpl.homeworkForParent(s.fullName, homework.teacher.fullName, homework.group.name, homework.dueDate ?? null));
+                await this.sendToParentMobile(link.parent.userId, client_1.NotificationType.HOMEWORK, tpl.homeworkForParent(s.fullName, homework.teacher.fullName, homework.group.name, homework.dueDate ?? null), { screen: 'homework', studentId: s.id, homeworkId, groupId });
             }
         }
     }
@@ -332,6 +381,7 @@ exports.NotificationsService = NotificationsService;
 exports.NotificationsService = NotificationsService = NotificationsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        telegram_service_1.TelegramService])
+        telegram_service_1.TelegramService,
+        expo_push_service_1.ExpoPushService])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

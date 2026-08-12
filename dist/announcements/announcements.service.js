@@ -360,6 +360,7 @@ let AnnouncementsService = class AnnouncementsService {
         await this.notifications.sendToMany(ids, {
             type: client_1.NotificationType.ANNOUNCEMENT,
             message: `Новое объявление: ${title}`,
+            data: { screen: 'announcements', announcementId },
         });
         const tgScope = groupId ? 'group' : 'center';
         await this.notifications.sendToMany(ids, {
@@ -367,7 +368,6 @@ let AnnouncementsService = class AnnouncementsService {
             message: (0, templates_1.announcement)(title, message, tgScope),
             channel: client_1.NotificationChannel.TELEGRAM,
         });
-        void announcementId;
     }
     async collectRecipientIds(groupId) {
         const userIds = new Set();

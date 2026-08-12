@@ -100,6 +100,7 @@ model User {
   announcementReads     AnnouncementRead[]
   assignedApplications  AdmissionApplication[] @relation("ApplicationAssignee")
   applicationActivities ApplicationActivity[]  @relation("ApplicationActivityActor")
+  devicePushTokens      DevicePushToken[]
 }
 
 model RefreshToken {
@@ -335,9 +336,27 @@ model Notification {
   user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
   message   String
+  data      Json?
   isRead    Boolean             @default(false)
   channel   NotificationChannel @default(IN_APP)
   createdAt DateTime            @default(now())
+}
+
+model DevicePushToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String   @unique
+  deviceId    String
+  platform    String
+  appVersion  String?
+  isActive    Boolean  @default(true)
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, deviceId])
+  @@index([userId, isActive])
 }
 
 model AuditLog {
