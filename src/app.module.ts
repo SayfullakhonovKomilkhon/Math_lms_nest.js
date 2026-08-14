@@ -30,6 +30,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { HealthModule } from './health/health.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { DevicesModule } from './devices/devices.module';
+import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { DevicesModule } from './devices/devices.module';
     HealthModule,
     ApplicationsModule,
     DevicesModule,
+    ContentModule,
   ],
   providers: [
     {

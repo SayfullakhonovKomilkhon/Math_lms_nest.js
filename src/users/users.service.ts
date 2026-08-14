@@ -87,7 +87,8 @@ export class UsersService {
   // ── Staff ────────────────────────────────────────────────────────────────
 
   async getStaff() {
-    const [teachers, admins, salesManagers] = await Promise.all([
+    const [teachers, admins, salesManagers, contentManagers] =
+      await Promise.all([
       this.prisma.teacher.findMany({
         include: {
           user: {
@@ -128,6 +129,17 @@ export class UsersService {
         },
         orderBy: { createdAt: 'desc' },
       }),
+      this.prisma.user.findMany({
+        where: { role: Role.CONTENT_MANAGER },
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     return {
@@ -155,13 +167,20 @@ export class UsersService {
         isActive: manager.isActive,
         createdAt: manager.createdAt,
       })),
+      contentManagers: contentManagers.map((manager) => ({
+        id: manager.id,
+        fullName: manager.fullName,
+        phone: manager.phone,
+        isActive: manager.isActive,
+        createdAt: manager.createdAt,
+      })),
     };
   }
 
   async createStaff(dto: {
     phone: string;
     password: string;
-    role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER';
+    role: 'TEACHER' | 'ADMIN' | 'SALES_MANAGER' | 'CONTENT_MANAGER';
     fullName?: string;
   }) {
     const exists = await this.prisma.user.findUnique({

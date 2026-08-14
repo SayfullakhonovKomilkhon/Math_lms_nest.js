@@ -12,6 +12,7 @@ enum Role {
   SUPER_ADMIN
   ADMIN
   SALES_MANAGER
+  CONTENT_MANAGER
   TEACHER
   STUDENT
   PARENT
@@ -101,6 +102,32 @@ model User {
   assignedApplications  AdmissionApplication[] @relation("ApplicationAssignee")
   applicationActivities ApplicationActivity[]  @relation("ApplicationActivityActor")
   devicePushTokens      DevicePushToken[]
+}
+
+model SiteContent {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  draft         Json
+  published     Json?
+  updatedById   String?
+  publishedById String?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  revisions SiteContentRevision[]
+}
+
+model SiteContentRevision {
+  id        String      @id @default(cuid())
+  contentId String
+  content   SiteContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  snapshot  Json
+  action    String
+  actorId   String
+  createdAt DateTime    @default(now())
+
+  @@index([contentId, createdAt])
 }
 
 model RefreshToken {
