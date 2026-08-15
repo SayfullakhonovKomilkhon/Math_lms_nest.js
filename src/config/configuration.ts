@@ -20,5 +20,6 @@ export default () => ({
     accessKey: process.env.S3_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.S3_SECRET_KEY || 'minioadmin',
     region: process.env.S3_REGION || 'us-east-1',
+    publicUrl: process.env.S3_PUBLIC_URL || '',
   },
 });
