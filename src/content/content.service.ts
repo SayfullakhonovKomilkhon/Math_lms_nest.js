@@ -6,16 +6,32 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-const HOMEPAGE_KEY = 'homepage';
 const MAX_CONTENT_BYTES = 250_000;
+
+export const CONTENT_KEYS = [
+  'homepage',
+  'courses',
+  'founder',
+  'results',
+  'reviews',
+  'news',
+  'schedule',
+  'materials',
+  'mock-exams',
+  'diagnostic',
+  'globals',
+] as const;
+
+export type ContentKey = (typeof CONTENT_KEYS)[number];
 
 @Injectable()
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getPublicHomepage() {
+  async getPublic(key: string) {
+    const contentKey = this.validateKey(key);
     const record = await this.prisma.siteContent.findUnique({
-      where: { key: HOMEPAGE_KEY },
+      where: { key: contentKey },
       select: { published: true, publishedAt: true, updatedAt: true },
     });
 
@@ -26,9 +42,10 @@ export class ContentService {
     };
   }
 
-  async getHomepageEditor() {
+  async getEditor(key: string) {
+    const contentKey = this.validateKey(key);
     const record = await this.prisma.siteContent.findUnique({
-      where: { key: HOMEPAGE_KEY },
+      where: { key: contentKey },
       select: {
         id: true,
         draft: true,
@@ -55,17 +72,19 @@ export class ContentService {
     );
   }
 
-  async saveHomepageDraft(
+  async saveDraft(
+    key: string,
     rawContent: Record<string, unknown>,
     actorId: string,
   ) {
+    const contentKey = this.validateKey(key);
     const content = this.validateContent(rawContent);
 
     return this.prisma.$transaction(async (tx) => {
       const record = await tx.siteContent.upsert({
-        where: { key: HOMEPAGE_KEY },
+        where: { key: contentKey },
         create: {
-          key: HOMEPAGE_KEY,
+          key: contentKey,
           draft: content,
           updatedById: actorId,
         },
@@ -90,7 +109,7 @@ export class ContentService {
           action: 'CONTENT_DRAFT_SAVED',
           entity: 'SiteContent',
           entityId: record.id,
-          details: { key: HOMEPAGE_KEY },
+          details: { key: contentKey },
         },
       });
 
@@ -98,10 +117,11 @@ export class ContentService {
     });
   }
 
-  async publishHomepage(actorId: string) {
+  async publish(key: string, actorId: string) {
+    const contentKey = this.validateKey(key);
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.siteContent.findUnique({
-        where: { key: HOMEPAGE_KEY },
+        where: { key: contentKey },
       });
       if (!current) {
         throw new BadRequestException('Save the homepage draft first');
@@ -133,7 +153,7 @@ export class ContentService {
           action: 'CONTENT_PUBLISHED',
           entity: 'SiteContent',
           entityId: current.id,
-          details: { key: HOMEPAGE_KEY, publishedAt },
+          details: { key: contentKey, publishedAt },
         },
       });
 
@@ -141,9 +161,10 @@ export class ContentService {
     });
   }
 
-  async getHomepageRevisions() {
+  async getRevisions(key: string) {
+    const contentKey = this.validateKey(key);
     const record = await this.prisma.siteContent.findUnique({
-      where: { key: HOMEPAGE_KEY },
+      where: { key: contentKey },
       select: { id: true },
     });
     if (!record) return [];
@@ -155,12 +176,13 @@ export class ContentService {
     });
   }
 
-  async restoreHomepageRevision(revisionId: string, actorId: string) {
+  async restoreRevision(key: string, revisionId: string, actorId: string) {
+    const contentKey = this.validateKey(key);
     const revision = await this.prisma.siteContentRevision.findUnique({
       where: { id: revisionId },
       include: { content: { select: { id: true, key: true } } },
     });
-    if (!revision || revision.content.key !== HOMEPAGE_KEY) {
+    if (!revision || revision.content.key !== contentKey) {
       throw new NotFoundException('Content revision not found');
     }
 
@@ -189,12 +211,19 @@ export class ContentService {
           action: 'CONTENT_REVISION_RESTORED',
           entity: 'SiteContent',
           entityId: record.id,
-          details: { key: HOMEPAGE_KEY, revisionId },
+          details: { key: contentKey, revisionId },
         },
       });
 
       return record;
     });
+  }
+
+  private validateKey(key: string): ContentKey {
+    if (!CONTENT_KEYS.includes(key as ContentKey)) {
+      throw new NotFoundException('Content section not found');
+    }
+    return key as ContentKey;
   }
 
   private validateContent(
