@@ -8,10 +8,15 @@ import {
   Post,
   Put,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -27,6 +32,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { S3Service } from '../common/services/s3.service';
+import { CreateReviewSubmissionDto } from './dto/create-review-submission.dto';
+import { ModerateReviewSubmissionDto } from './dto/moderate-review-submission.dto';
 
 const CONTENT_ROLES = [Role.CONTENT_MANAGER, Role.SUPER_ADMIN];
 
@@ -37,6 +44,49 @@ export class ContentController {
     private readonly contentService: ContentService,
     private readonly s3: S3Service,
   ) {}
+
+  @Post('public/reviews/submit')
+  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'video', maxCount: 1 },
+      ],
+      { limits: { fileSize: 100 * 1024 * 1024 } },
+    ),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Submit a public review for moderation' })
+  submitReview(
+    @Body() dto: CreateReviewSubmissionDto,
+    @UploadedFiles()
+    files?: { image?: Express.Multer.File[]; video?: Express.Multer.File[] },
+  ) {
+    return this.contentService.submitReview(dto, files);
+  }
+
+  @Get('review-submissions')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_ROLES)
+  @ApiOperation({ summary: 'List public review submissions' })
+  getReviewSubmissions() {
+    return this.contentService.getReviewSubmissions();
+  }
+
+  @Put('review-submissions/:id/moderate')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_ROLES)
+  @ApiOperation({ summary: 'Approve or reject a public review' })
+  moderateReview(
+    @Param('id') id: string,
+    @Body() dto: ModerateReviewSubmissionDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.contentService.moderateReview(id, dto.status, actorId);
+  }
 
   @Post('media/upload')
   @ApiBearerAuth()

@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { S3Service } from '../common/services/s3.service';
+import { CreateReviewSubmissionDto } from './dto/create-review-submission.dto';
 
 const MAX_CONTENT_BYTES = 250_000;
 
@@ -26,7 +28,198 @@ export type ContentKey = (typeof CONTENT_KEYS)[number];
 
 @Injectable()
 export class ContentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3: S3Service,
+  ) {}
+
+  async submitReview(
+    dto: CreateReviewSubmissionDto,
+    files?: { image?: Express.Multer.File[]; video?: Express.Multer.File[] },
+  ) {
+    if (!dto.consent) {
+      throw new BadRequestException(
+        'Необходимо согласие на обработку и публикацию отзыва',
+      );
+    }
+
+    const image = files?.image?.[0];
+    const video = files?.video?.[0];
+    if (image && !image.mimetype.startsWith('image/')) {
+      throw new BadRequestException(
+        'В поле фотографии можно загрузить только изображение',
+      );
+    }
+    if (image && image.size > 10 * 1024 * 1024) {
+      throw new BadRequestException('Фотография должна быть меньше 10 МБ');
+    }
+    if (video && !video.mimetype.startsWith('video/')) {
+      throw new BadRequestException(
+        'В поле видео можно загрузить только видеофайл',
+      );
+    }
+    let imageUrl: string | undefined;
+    let videoUrl: string | undefined;
+
+    try {
+      if (image) imageUrl = await this.s3.uploadPublicContent(image);
+      if (video) videoUrl = await this.s3.uploadPublicContent(video);
+    } catch (error) {
+      if (imageUrl) await this.s3.deleteFile(imageUrl);
+      throw error;
+    }
+
+    const account = await this.prisma.user.findUnique({
+      where: { phone: dto.phone },
+      select: { role: true },
+    });
+    const expectedRole = dto.authorRole === 'STUDENT' ? 'STUDENT' : 'PARENT';
+
+    return this.prisma.reviewSubmission.create({
+      data: {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        authorRole: dto.authorRole,
+        rating: dto.rating,
+        text: dto.text,
+        imageUrl,
+        videoUrl,
+        consent: dto.consent,
+        isVerified: account?.role === expectedRole,
+      },
+      select: { id: true, status: true, createdAt: true },
+    });
+  }
+
+  getReviewSubmissions() {
+    return this.prisma.reviewSubmission.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async moderateReview(
+    id: string,
+    status: 'APPROVED' | 'REJECTED',
+    actorId: string,
+  ) {
+    const submission = await this.prisma.reviewSubmission.findUnique({
+      where: { id },
+    });
+    if (!submission) throw new NotFoundException('Отзыв не найден');
+    if (submission.status !== 'PENDING') {
+      throw new BadRequestException('Этот отзыв уже обработан');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (status === 'APPROVED') {
+        const record = await tx.siteContent.findUnique({
+          where: { key: 'reviews' },
+        });
+        if (!record) {
+          throw new BadRequestException(
+            'Сначала сохраните раздел отзывов в панели контента',
+          );
+        }
+
+        const item = this.reviewSubmissionToContentItem(submission);
+        const draft = this.appendContentItem(record.draft, item);
+        const published = this.appendContentItem(
+          record.published ?? record.draft,
+          item,
+        );
+        await tx.siteContent.update({
+          where: { id: record.id },
+          data: {
+            draft: draft as Prisma.InputJsonValue,
+            published: published as Prisma.InputJsonValue,
+            updatedById: actorId,
+            publishedById: actorId,
+            publishedAt: new Date(),
+          },
+        });
+        await tx.siteContentRevision.create({
+          data: {
+            contentId: record.id,
+            snapshot: published as Prisma.InputJsonValue,
+            action: 'PUBLISHED',
+            actorId,
+          },
+        });
+      }
+
+      const updated = await tx.reviewSubmission.update({
+        where: { id },
+        data: { status, reviewedById: actorId, reviewedAt: new Date() },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: actorId,
+          action: `REVIEW_${status}`,
+          entity: 'ReviewSubmission',
+          entityId: id,
+          details: {
+            fullName: submission.fullName,
+            isVerified: submission.isVerified,
+          },
+        },
+      });
+      return updated;
+    });
+  }
+
+  private appendContentItem(
+    content: Prisma.JsonValue,
+    item: Prisma.InputJsonObject,
+  ) {
+    const value =
+      content && typeof content === 'object' && !Array.isArray(content)
+        ? content
+        : {};
+    const items = Array.isArray(value.items) ? value.items : [];
+    return { ...value, items: [...items, item] };
+  }
+
+  private reviewSubmissionToContentItem(submission: {
+    id: string;
+    fullName: string;
+    authorRole: string;
+    rating: number;
+    text: string;
+    imageUrl: string | null;
+    videoUrl: string | null;
+    isVerified: boolean;
+    createdAt: Date;
+  }): Prisma.InputJsonObject {
+    const roleRu = submission.authorRole === 'PARENT' ? 'Родитель' : 'Ученик';
+    const roleUz = submission.authorRole === 'PARENT' ? 'Ota-ona' : 'O‘quvchi';
+    return {
+      id: `review-${submission.id}`,
+      isActive: true,
+      date: submission.createdAt.toISOString().slice(0, 10),
+      imageUrl: submission.imageUrl ?? '',
+      videoUrl: submission.videoUrl ?? '',
+      actionUrl: '',
+      rating: submission.rating,
+      isVerified: submission.isVerified,
+      ru: {
+        title: submission.fullName,
+        subtitle: roleRu,
+        description: submission.text,
+        badge: submission.isVerified ? 'Проверенный отзыв' : 'Отзыв посетителя',
+        actionLabel: 'Подробнее',
+      },
+      uz: {
+        title: submission.fullName,
+        subtitle: roleUz,
+        description: submission.text,
+        badge: submission.isVerified
+          ? 'Tasdiqlangan fikr'
+          : 'Tashrif buyuruvchi fikri',
+        actionLabel: 'Batafsil',
+      },
+    };
+  }
 
   async getPublic(key: string) {
     const contentKey = this.validateKey(key);
