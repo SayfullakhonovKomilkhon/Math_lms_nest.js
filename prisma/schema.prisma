@@ -473,6 +473,8 @@ model AdmissionApplication {
   fullName      String
   phone         String
   childAge      Int
+  parentFullName String?
+  parentPhone    String?
   source        ApplicationSource     @default(WEBSITE)
   sourceDetails String?
   status        ApplicationStatus     @default(NEW)
@@ -486,6 +488,7 @@ model AdmissionApplication {
 
   @@index([createdAt])
   @@index([phone])
+  @@index([parentPhone])
   @@index([source])
   @@index([assignedToId, status])
   @@index([nextCallAt])

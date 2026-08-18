@@ -154,6 +154,8 @@ export class ApplicationsService {
       where.OR = [
         { fullName: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search } },
+        { parentFullName: { contains: search, mode: 'insensitive' } },
+        { parentPhone: { contains: search } },
       ];
     }
 

@@ -11,6 +11,8 @@ describe('ApplicationsService', () => {
       childAge: 14,
       source: ApplicationSource.ADVERTISEMENT,
       sourceDetails: 'Instagram SAT',
+      parentFullName: 'Малика Каримова',
+      parentPhone: '+998901234568',
       assignedToId: 'manager-1',
     };
     const transaction = {
@@ -34,6 +36,8 @@ describe('ApplicationsService', () => {
         childAge: 14,
         source: ApplicationSource.ADVERTISEMENT,
         sourceDetails: 'Instagram SAT',
+        parentFullName: 'Малика Каримова',
+        parentPhone: '+998901234568',
         note: 'Хочет подготовиться к поступлению',
       },
       { id: 'manager-1', role: Role.SALES_MANAGER },
@@ -44,6 +48,8 @@ describe('ApplicationsService', () => {
       data: expect.objectContaining({
         assignedToId: 'manager-1',
         source: ApplicationSource.ADVERTISEMENT,
+        parentFullName: 'Малика Каримова',
+        parentPhone: '+998901234568',
       }),
     });
     expect(transaction.applicationActivity.create).toHaveBeenCalledWith({
