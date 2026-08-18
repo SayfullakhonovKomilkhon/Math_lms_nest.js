@@ -20,7 +20,7 @@ const ALLOWED_MIME_TYPES = [
   'video/webm',
   'video/quicktime',
 ];
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const MIME_TYPE_TO_EXTENSION: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -73,7 +73,7 @@ export class S3Service {
 
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestException(
-        'Файл слишком большой. Максимальный размер: 100MB',
+        'Файл слишком большой. Максимальный размер: 500MB',
       );
     }
 

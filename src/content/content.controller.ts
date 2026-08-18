@@ -43,7 +43,7 @@ export class ContentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...CONTENT_ROLES)
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }),
+    FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }),
   )
   @ApiConsumes('multipart/form-data')
   @ApiBody({

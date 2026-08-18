@@ -21,10 +21,10 @@
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}
 		header_up X-Forwarded-Proto {scheme}
-		# Длительные таймауты для загрузки больших файлов (10MB лимит в S3Service).
+		# Длительные таймауты для загрузки больших видео (до 500 MB).
 		transport http {
-			read_timeout 300s
-			write_timeout 300s
+			read_timeout 900s
+			write_timeout 900s
 		}
 	}
 
