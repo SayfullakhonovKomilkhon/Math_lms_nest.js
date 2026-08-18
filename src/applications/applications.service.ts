@@ -12,6 +12,18 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
+import { CreateManualApplicationDto } from './dto/create-manual-application.dto';
+
+const applicationSourceLabels = {
+  WEBSITE: 'Сайт',
+  ADVERTISEMENT: 'Объявление / реклама',
+  INSTAGRAM: 'Instagram',
+  TELEGRAM: 'Telegram',
+  PHONE_CALL: 'Входящий звонок',
+  WALK_IN: 'Пришёл в учебный центр',
+  REFERRAL: 'Рекомендация',
+  OTHER: 'Другое',
+} as const;
 
 type AuthUser = { id: string; role: Role };
 type ApplicationFilters = {
@@ -76,6 +88,54 @@ export class ApplicationsService {
       }
 
       return application;
+    });
+  }
+
+  async createManual(dto: CreateManualApplicationDto, user: AuthUser) {
+    const { note, ...applicationData } = dto;
+    const assignedToId =
+      user.role === Role.SALES_MANAGER
+        ? user.id
+        : (
+            await this.prisma.user.findFirst({
+              where: { role: Role.SALES_MANAGER, isActive: true },
+              orderBy: { createdAt: 'asc' },
+              select: { id: true },
+            })
+          )?.id;
+
+    return this.prisma.$transaction(async (tx) => {
+      const application = await tx.admissionApplication.create({
+        data: {
+          ...applicationData,
+          assignedToId,
+        },
+      });
+
+      const sourceLabel = applicationSourceLabels[dto.source];
+      const sourceText = dto.sourceDetails
+        ? `${sourceLabel}: ${dto.sourceDetails}`
+        : sourceLabel;
+      const activityNote = [
+        `Лид добавлен вручную. Источник: ${sourceText}`,
+        note,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      await tx.applicationActivity.create({
+        data: {
+          applicationId: application.id,
+          actorId: user.id,
+          type: ApplicationActivityType.ASSIGNMENT,
+          note: activityNote,
+        },
+      });
+
+      return tx.admissionApplication.findUniqueOrThrow({
+        where: { id: application.id },
+        include: applicationInclude,
+      });
     });
   }
 

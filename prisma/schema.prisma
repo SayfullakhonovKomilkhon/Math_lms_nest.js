@@ -35,6 +35,17 @@ enum ApplicationActivityType {
   ASSIGNMENT
 }
 
+enum ApplicationSource {
+  WEBSITE
+  ADVERTISEMENT
+  INSTAGRAM
+  TELEGRAM
+  PHONE_CALL
+  WALK_IN
+  REFERRAL
+  OTHER
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -462,6 +473,8 @@ model AdmissionApplication {
   fullName      String
   phone         String
   childAge      Int
+  source        ApplicationSource     @default(WEBSITE)
+  sourceDetails String?
   status        ApplicationStatus     @default(NEW)
   assignedToId  String?
   assignedTo    User?                 @relation("ApplicationAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
@@ -473,6 +486,7 @@ model AdmissionApplication {
 
   @@index([createdAt])
   @@index([phone])
+  @@index([source])
   @@index([assignedToId, status])
   @@index([nextCallAt])
 }

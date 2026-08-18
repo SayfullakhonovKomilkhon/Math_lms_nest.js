@@ -21,6 +21,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
+import { CreateManualApplicationDto } from './dto/create-manual-application.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -41,6 +42,19 @@ export class ApplicationsController {
   @ApiResponse({ status: 400, description: 'Invalid application data' })
   create(@Body() dto: CreateApplicationDto) {
     return this.applicationsService.create(dto);
+  }
+
+  @Post('manual')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SALES_MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a lead manually on behalf of staff' })
+  createManual(
+    @Body() dto: CreateManualApplicationDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.applicationsService.createManual(dto, user);
   }
 
   @Get()
