@@ -144,7 +144,7 @@ model SiteContentRevision {
 model ReviewSubmission {
   id           String   @id @default(cuid())
   fullName     String
-  phone        String
+  phone        String?
   authorRole   String
   rating       Int
   text         String

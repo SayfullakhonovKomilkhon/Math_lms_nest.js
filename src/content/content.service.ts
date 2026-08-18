@@ -69,16 +69,18 @@ export class ContentService {
       throw error;
     }
 
-    const account = await this.prisma.user.findUnique({
-      where: { phone: dto.phone },
-      select: { role: true },
-    });
+    const account = dto.phone
+      ? await this.prisma.user.findUnique({
+          where: { phone: dto.phone },
+          select: { role: true },
+        })
+      : null;
     const expectedRole = dto.authorRole === 'STUDENT' ? 'STUDENT' : 'PARENT';
 
     return this.prisma.reviewSubmission.create({
       data: {
         fullName: dto.fullName,
-        phone: dto.phone,
+        phone: dto.phone ?? null,
         authorRole: dto.authorRole,
         rating: dto.rating,
         text: dto.text,

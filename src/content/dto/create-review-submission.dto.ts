@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsOptional,
   IsString,
   Matches,
   Max,
@@ -21,12 +22,13 @@ export class CreateReviewSubmissionDto {
   )
   fullName: string;
 
+  @IsOptional()
   @IsString()
   @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? normalizePhone(value) : value,
+    typeof value === 'string' && value.trim() ? normalizePhone(value) : undefined,
   )
   @Matches(/^\+[0-9]{9,15}$/)
-  phone: string;
+  phone?: string;
 
   @IsIn(['STUDENT', 'PARENT'])
   authorRole: 'STUDENT' | 'PARENT';

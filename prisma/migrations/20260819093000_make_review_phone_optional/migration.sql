@@ -1,0 +1,2 @@
+ALTER TABLE "ReviewSubmission"
+ALTER COLUMN "phone" DROP NOT NULL;
