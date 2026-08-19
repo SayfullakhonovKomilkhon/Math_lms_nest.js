@@ -9,6 +9,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
+import { NOTIFICATION_JOB_OPTIONS } from '../notifications/notification-job-options';
 
 const hwSelect = {
   id: true,
@@ -61,10 +62,11 @@ export class HomeworkService {
       select: hwSelect,
     });
 
-    await this.notificationsQueue.add('send-homework-notification', {
-      groupId: dto.groupId,
-      homeworkId: homework.id,
-    });
+    await this.notificationsQueue.add(
+      'send-homework-notification',
+      { groupId: dto.groupId, homeworkId: homework.id },
+      NOTIFICATION_JOB_OPTIONS,
+    );
 
     return homework;
   }

@@ -6,6 +6,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { NOTIFICATION_JOB_OPTIONS } from '../notifications/notification-job-options';
 
 @Injectable()
 export class SalaryService {
@@ -204,11 +205,11 @@ export class SalaryService {
 
     // Notify the teacher only if the rate actually changed.
     if (oldRate !== rate) {
-      await this.notificationsQueue.add('send-salary-notification', {
-        teacherId,
-        oldRate,
-        newRate: rate,
-      });
+      await this.notificationsQueue.add(
+        'send-salary-notification',
+        { teacherId, oldRate, newRate: rate },
+        NOTIFICATION_JOB_OPTIONS,
+      );
     }
 
     return updated;

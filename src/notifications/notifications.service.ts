@@ -36,6 +36,11 @@ export class NotificationsService {
   async sendToUser(userId: string, payload: SendPayload): Promise<void> {
     const channel = payload.channel ?? NotificationChannel.IN_APP;
 
+    if (channel === NotificationChannel.TELEGRAM) {
+      await this.pushTelegramSafely(userId, payload.message);
+      return;
+    }
+
     await this.prisma.notification.create({
       data: {
         userId,
@@ -47,21 +52,24 @@ export class NotificationsService {
       },
     });
 
-    if (channel === NotificationChannel.TELEGRAM) {
-      await this.pushTelegram(userId, payload.message);
-    } else {
-      await this.expoPush.sendToUser(
+    await this.enqueuePushSafely(() =>
+      this.expoPush.sendToUser(
         userId,
         'KhanovMath Academy',
         payload.message,
         payload.data,
-      );
-    }
+      ),
+    );
   }
 
   async sendToMany(userIds: string[], payload: SendPayload): Promise<void> {
     if (userIds.length === 0) return;
     const channel = payload.channel ?? NotificationChannel.IN_APP;
+
+    if (channel === NotificationChannel.TELEGRAM) {
+      await this.pushTelegramToManySafely(userIds, payload.message);
+      return;
+    }
 
     await this.prisma.notification.createMany({
       data: userIds.map((userId) => ({
@@ -74,28 +82,14 @@ export class NotificationsService {
       })),
     });
 
-    if (channel === NotificationChannel.TELEGRAM) {
-      const users = await this.prisma.user.findMany({
-        where: {
-          id: { in: userIds },
-          role: { not: Role.PARENT },
-          telegramChatId: { not: null },
-        },
-        select: { telegramChatId: true },
-      });
-      for (const u of users) {
-        if (u.telegramChatId) {
-          await this.telegram.sendMessage(u.telegramChatId, payload.message);
-        }
-      }
-    } else {
-      await this.expoPush.sendToUsers(
+    await this.enqueuePushSafely(() =>
+      this.expoPush.sendToUsers(
         userIds,
         'KhanovMath Academy',
         payload.message,
         payload.data,
-      );
-    }
+      ),
+    );
   }
 
   private async pushTelegram(userId: string, message: string): Promise<void> {
@@ -105,6 +99,63 @@ export class NotificationsService {
     });
     if (!user?.telegramChatId) return;
     await this.telegram.sendMessage(user.telegramChatId, message);
+  }
+
+  private async pushTelegramSafely(
+    userId: string,
+    message: string,
+  ): Promise<void> {
+    try {
+      await this.pushTelegram(userId, message);
+    } catch (error) {
+      this.logger.warn(
+        `Telegram delivery failed for user=${userId}: ${this.errorMessage(error)}`,
+      );
+    }
+  }
+
+  private async pushTelegramToManySafely(
+    userIds: string[],
+    message: string,
+  ): Promise<void> {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: {
+          id: { in: [...new Set(userIds)] },
+          role: { not: Role.PARENT },
+          telegramChatId: { not: null },
+        },
+        select: { id: true, telegramChatId: true },
+      });
+      await Promise.all(
+        users.map(async (user) => {
+          if (!user.telegramChatId) return;
+          try {
+            await this.telegram.sendMessage(user.telegramChatId, message);
+          } catch (error) {
+            this.logger.warn(
+              `Telegram delivery failed for user=${user.id}: ${this.errorMessage(error)}`,
+            );
+          }
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(`Telegram fan-out failed: ${this.errorMessage(error)}`);
+    }
+  }
+
+  private async enqueuePushSafely(operation: () => Promise<unknown>) {
+    try {
+      await operation();
+    } catch (error) {
+      // The in-app record remains authoritative. A Redis outage must not roll
+      // back the domain mutation that triggered the notification.
+      this.logger.error(`Push enqueue failed: ${this.errorMessage(error)}`);
+    }
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
   }
 
   // Helper used by all domain notifications: stores an IN_APP record AND
@@ -126,8 +177,12 @@ export class NotificationsService {
         isRead: false,
       },
     });
-    await this.pushTelegram(userId, message);
-    await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
+    await Promise.all([
+      this.pushTelegramSafely(userId, message),
+      this.enqueuePushSafely(() =>
+        this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data),
+      ),
+    ]);
   }
 
   /** Parent mobile channel: notification center + smartphone push, no Telegram. */
@@ -147,7 +202,9 @@ export class NotificationsService {
         isRead: false,
       },
     });
-    await this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data);
+    await this.enqueuePushSafely(() =>
+      this.expoPush.sendToUser(userId, 'KhanovMath Academy', message, data),
+    );
   }
 
   // ── Domain methods ──────────────────────────────────────────────────────
@@ -320,11 +377,12 @@ export class NotificationsService {
     minutesUntil: number,
   ): Promise<void> {
     if (userIds.length === 0) return;
+    const uniqueUserIds = [...new Set(userIds)];
 
     const message = tpl.lessonReminder(groupName, startTime, minutesUntil);
 
     await this.prisma.notification.createMany({
-      data: userIds.map((userId) => ({
+      data: uniqueUserIds.map((userId) => ({
         userId,
         type: NotificationType.LESSON_REMINDER,
         message,
@@ -334,18 +392,14 @@ export class NotificationsService {
       })),
     });
 
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: userIds }, telegramChatId: { not: null } },
-      select: { telegramChatId: true },
-    });
-    for (const u of users) {
-      if (u.telegramChatId) {
-        await this.telegram.sendMessage(u.telegramChatId, message);
-      }
-    }
-    await this.expoPush.sendToUsers(userIds, 'Скоро занятие', message, {
-      screen: 'schedule',
-    });
+    await Promise.all([
+      this.pushTelegramToManySafely(uniqueUserIds, message),
+      this.enqueuePushSafely(() =>
+        this.expoPush.sendToUsers(uniqueUserIds, 'Скоро занятие', message, {
+          screen: 'schedule',
+        }),
+      ),
+    ]);
   }
 
   async sendAttendanceReminder(

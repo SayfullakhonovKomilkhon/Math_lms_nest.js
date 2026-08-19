@@ -13,6 +13,7 @@ import {
   QueryAttendanceDto,
   SummaryQueryDto,
 } from './dto/query-attendance.dto';
+import { NOTIFICATION_JOB_OPTIONS } from '../notifications/notification-job-options';
 
 @Injectable()
 export class AttendanceService {
@@ -70,12 +71,16 @@ export class AttendanceService {
     // up, not only when they skipped class. The notifications service does
     // the per-status filtering for self-notifications.
     for (const r of dto.records) {
-      await this.notificationsQueue.add('send-attendance-to-parents', {
-        studentId: r.studentId,
-        groupId: dto.groupId,
-        status: r.status,
-        date: dto.date,
-      });
+      await this.notificationsQueue.add(
+        'send-attendance-to-parents',
+        {
+          studentId: r.studentId,
+          groupId: dto.groupId,
+          status: r.status,
+          date: dto.date,
+        },
+        NOTIFICATION_JOB_OPTIONS,
+      );
     }
 
     return { saved: results.length };

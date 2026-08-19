@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BulkGradesDto } from './dto/bulk-grades.dto';
 import { EditGradeDto } from './dto/edit-grade.dto';
 import { QueryGradesDto, RatingQueryDto } from './dto/query-grades.dto';
+import { NOTIFICATION_JOB_OPTIONS } from '../notifications/notification-job-options';
 
 @Injectable()
 export class GradesService {
@@ -85,9 +86,11 @@ export class GradesService {
     // Fanout AFTER the transaction commits — otherwise queue worker may try
     // to read a grade that's still inside the open tx.
     for (const gradeId of createdGradeIds) {
-      await this.notificationsQueue.add('send-grade-notification', {
-        gradeId,
-      });
+      await this.notificationsQueue.add(
+        'send-grade-notification',
+        { gradeId },
+        NOTIFICATION_JOB_OPTIONS,
+      );
     }
 
     return { created: written };
@@ -257,8 +260,10 @@ export class GradesService {
       // by raw totalPoints, then by name. This ensures a student who
       // scored 50/50 ranks above one who scored 60/100.
       .sort((a, b) => {
-        if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore;
-        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.averageScore !== a.averageScore)
+          return b.averageScore - a.averageScore;
+        if (b.totalPoints !== a.totalPoints)
+          return b.totalPoints - a.totalPoints;
         return a.fullName.localeCompare(b.fullName);
       })
       .map((s, i) => ({ place: i + 1, ...s }));

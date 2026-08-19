@@ -7,6 +7,7 @@ import { Queue } from 'bullmq';
 import { NotificationsService } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus, PaymentStatus } from '@prisma/client';
+import { NOTIFICATION_JOB_OPTIONS } from './notification-job-options';
 
 @Processor('notifications')
 export class NotificationsProcessor extends WorkerHost {
@@ -27,7 +28,11 @@ export class NotificationsProcessor extends WorkerHost {
   @Cron('0 4 * * *')
   async checkPaymentReminders() {
     this.logger.log('Checking payment reminders...');
-    await this.notificationsQueue.add('check-payment-reminders', {});
+    await this.notificationsQueue.add(
+      'check-payment-reminders',
+      {},
+      NOTIFICATION_JOB_OPTIONS,
+    );
   }
 
   async process(job: Job) {
@@ -67,11 +72,11 @@ export class NotificationsProcessor extends WorkerHost {
           );
       }
     } catch (err) {
-      console.error(
+      this.logger.error(
         `[NotificationsProcessor] Error processing job ${job.name} (${job.id}):`,
         err,
       );
-      // Don't rethrow — log and continue so queue doesn't stall
+      throw err;
     }
   }
 
