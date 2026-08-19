@@ -481,7 +481,7 @@ export class ParentsService {
       id: parent.id,
       // Login phone (User.phone) — kept in sync with parent.phone.
       fullName: parent.fullName,
-      phone: parent.phone ?? parent.user.phone,
+      phone: parent.user.phone,
       // Flatten the join table so the frontend gets a clean list of children.
       children: parent.students.map((s) => this.shapeChild(s.student)),
     };

@@ -132,10 +132,20 @@ export class AuthService {
       select: {
         id: true,
         phone: true,
+        fullName: true,
         role: true,
         isActive: true,
+        telegramChatId: true,
       },
     });
+
+    // Keep the parent's contact phone aligned with their login phone.
+    if (wantsPhoneChange && updated.role === 'PARENT') {
+      await this.prisma.parent.updateMany({
+        where: { userId },
+        data: { phone: updated.phone },
+      });
+    }
 
     // Rotate refresh tokens (invalidate all other sessions, issue a fresh pair
     // for the current session so the caller can keep working seamlessly).
