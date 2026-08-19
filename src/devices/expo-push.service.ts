@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 export type PushData = Record<string, string | number | boolean | null>;
 
@@ -15,7 +17,10 @@ export class ExpoPushService {
   private readonly logger = new Logger(ExpoPushService.name);
   private readonly endpoint = 'https://exp.host/--/api/v2/push/send';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('push-receipts') private readonly receiptsQueue: Queue,
+  ) {}
 
   async sendToUser(
     userId: string,
@@ -32,15 +37,20 @@ export class ExpoPushService {
     body: string,
     data?: PushData,
   ) {
-    if (userIds.length === 0) return;
+    const uniqueUserIds = [...new Set(userIds)];
+    if (uniqueUserIds.length === 0) return;
     const devices = await this.prisma.devicePushToken.findMany({
-      where: { userId: { in: userIds }, isActive: true },
+      where: { userId: { in: uniqueUserIds }, isActive: true },
       select: { token: true },
     });
     if (devices.length === 0) return;
 
-    for (let offset = 0; offset < devices.length; offset += 100) {
-      const chunk = devices.slice(offset, offset + 100);
+    const uniqueDevices = [
+      ...new Map(devices.map((item) => [item.token, item])).values(),
+    ];
+
+    for (let offset = 0; offset < uniqueDevices.length; offset += 100) {
+      const chunk = uniqueDevices.slice(offset, offset + 100);
       try {
         const response = await fetch(this.endpoint, {
           method: 'POST',
@@ -57,7 +67,7 @@ export class ExpoPushService {
               body: this.toPlainText(body),
               data: data ?? {},
               priority: 'high',
-              channelId: 'default',
+              channelId: this.channelIdFor(data),
             })),
           ),
         });
@@ -80,6 +90,32 @@ export class ExpoPushService {
             data: { isActive: false },
           });
         }
+
+        const receipts = chunk.flatMap((device, index) => {
+          const ticket = payload.data?.[index];
+          if (ticket?.status !== 'ok' || !ticket.id) {
+            if (ticket?.status === 'error') {
+              this.logger.warn(
+                `Expo rejected push: ${ticket.details?.error ?? ticket.message ?? 'unknown error'}`,
+              );
+            }
+            return [];
+          }
+          return [{ id: ticket.id, token: device.token }];
+        });
+        if (receipts.length > 0) {
+          await this.receiptsQueue.add(
+            'check',
+            { receipts },
+            {
+              delay: 15 * 60 * 1000,
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5 * 60 * 1000 },
+              removeOnComplete: 100,
+              removeOnFail: 250,
+            },
+          );
+        }
       } catch (error) {
         this.logger.warn(
           `Expo push delivery failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -93,5 +129,21 @@ export class ExpoPushService {
       .replace(/<[^>]*>/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private channelIdFor(data?: PushData) {
+    switch (data?.screen) {
+      case 'schedule':
+        return 'lessons';
+      case 'grades':
+      case 'attendance':
+      case 'homework':
+      case 'achievements':
+        return 'progress';
+      case 'payment':
+        return 'payments';
+      default:
+        return 'general';
+    }
   }
 }

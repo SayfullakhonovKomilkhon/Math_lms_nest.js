@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AchievementType, Gender, NotificationType } from '@prisma/client';
+import { AchievementType, Gender } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   MONTHLY_ACHIEVEMENTS,
   SPECIAL_ACHIEVEMENTS,
@@ -11,7 +12,10 @@ import {
 export class GamificationService {
   private readonly logger = new Logger(GamificationService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async calculateMonthlyAchievements(month: number, year: number) {
     const startDate = new Date(year, month - 1, 1);
@@ -21,7 +25,6 @@ export class GamificationService {
     const students = await this.prisma.student.findMany({
       where: { isActive: true },
       include: {
-        user: { select: { id: true } },
         attendances: {
           where: { date: { gte: startDate, lte: endDate } },
           select: { status: true },
@@ -87,7 +90,9 @@ export class GamificationService {
 
       const isNew = !existing;
 
-      // Achievement + Notification in one transaction
+      // Keep the achievement mutation atomic. Notification fan-out happens
+      // through NotificationsService afterwards so it reaches the in-app
+      // center, Telegram (student) and smartphone push (student + parents).
       await this.prisma.$transaction(async (tx) => {
         await tx.achievement.upsert({
           where: {
@@ -115,34 +120,14 @@ export class GamificationService {
             description: titleData.description,
           },
         });
-
-        if (isNew) {
-          // Notify student
-          await tx.notification.create({
-            data: {
-              userId: student.userId,
-              type: NotificationType.ACHIEVEMENT,
-              message: `🏆 Новое достижение: ${titleData.title} ${titleData.icon}`,
-              isRead: false,
-            },
-          });
-
-          const parentLinks = await tx.parentStudent.findMany({
-            where: { studentId: student.id },
-            select: { parent: { select: { userId: true } } },
-          });
-          for (const link of parentLinks) {
-            await tx.notification.create({
-              data: {
-                userId: link.parent.userId,
-                type: NotificationType.ACHIEVEMENT,
-                message: `🏆 ${student.fullName} получил новое достижение: ${titleData.title} ${titleData.icon}`,
-                isRead: false,
-              },
-            });
-          }
-        }
       });
+
+      if (isNew) {
+        await this.notifications.sendAchievementNotification(student.id, {
+          title: titleData.title,
+          icon: titleData.icon,
+        });
+      }
 
       results.push({
         studentId: student.id,
@@ -318,11 +303,11 @@ export class GamificationService {
     // Get student userId for notification
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      select: { userId: true, fullName: true },
+      select: { id: true },
     });
     if (!student) return;
 
-    // Achievement + Notification in one transaction
+    // Store the achievement first, then use the common notification fan-out.
     await this.prisma.$transaction(async (tx) => {
       await tx.achievement.create({
         data: {
@@ -335,30 +320,11 @@ export class GamificationService {
           description: config.description,
         },
       });
+    });
 
-      await tx.notification.create({
-        data: {
-          userId: student.userId,
-          type: NotificationType.ACHIEVEMENT,
-          message: `🏆 Особое достижение: ${config.title} ${config.icon}`,
-          isRead: false,
-        },
-      });
-
-      const parentLinks = await tx.parentStudent.findMany({
-        where: { studentId },
-        select: { parent: { select: { userId: true } } },
-      });
-      for (const link of parentLinks) {
-        await tx.notification.create({
-          data: {
-            userId: link.parent.userId,
-            type: NotificationType.ACHIEVEMENT,
-            message: `🏆 ${student.fullName} получил особое достижение: ${config.title} ${config.icon}`,
-            isRead: false,
-          },
-        });
-      }
+    await this.notifications.sendAchievementNotification(studentId, {
+      title: config.title,
+      icon: config.icon,
     });
   }
 
@@ -673,7 +639,10 @@ export class GamificationService {
 // Title bands match the design: 5 tiers, with the same emojis the student
 // panel header uses today. Kept as a free function so the service stays
 // testable without touching prisma.
-function computeProgressionTitle(level: number): { title: string; emoji: string } {
+function computeProgressionTitle(level: number): {
+  title: string;
+  emoji: string;
+} {
   if (level >= 20) return { title: 'Гений KhanovMath Academy', emoji: '👑' };
   if (level >= 15) return { title: 'Легенда', emoji: '🏆' };
   if (level >= 10) return { title: 'Стратег', emoji: '🎯' };
