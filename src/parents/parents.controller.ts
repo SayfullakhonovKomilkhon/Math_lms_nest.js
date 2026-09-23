@@ -28,7 +28,6 @@ import { UpdateParentDto } from './dto/update-parent.dto';
 import { UpdateParentCredentialsDto } from './dto/update-credentials.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { UploadThrottleGuard } from '../common/guards/upload-throttle.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -131,7 +130,6 @@ export class ParentsController {
 
   @Post('me/child/payments/receipt')
   @Roles(Role.PARENT)
-  @UseGuards(UploadThrottleGuard)
   @Throttle({ default: { limit: 20, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')

@@ -45,6 +45,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    if (statusCode === HttpStatus.TOO_MANY_REQUESTS) {
+      const retryAfter = Number(response.getHeader('Retry-After')) || 60;
+      message = `Слишком много запросов. Повторите через ${retryAfter} сек.`;
+      error = 'Too Many Requests';
+    }
+
     response.status(statusCode).json({
       statusCode,
       message,

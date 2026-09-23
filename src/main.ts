@@ -1,4 +1,5 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -6,7 +7,10 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Production API is reachable only through the single Caddy Docker proxy.
+  // Caddy overwrites X-Forwarded-For; direct deployments leave this disabled.
+  app.set('trust proxy', process.env.TRUST_PROXY_HOPS === '1' ? 1 : false);
   app.useLogger(['error', 'warn', 'log']);
 
   // CORS: read allowed origins from FRONTEND_URL env (comma-separated for
@@ -21,6 +25,12 @@ async function bootstrap() {
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    exposedHeaders: [
+      'Retry-After',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ],
   });
 
   app.useGlobalPipes(

@@ -65,6 +65,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
+      TRUST_PROXY_HOPS: "1"
       PORT: 3000
     depends_on:
       postgres:

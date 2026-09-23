@@ -5,6 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -48,7 +49,33 @@ export class AuthService {
     };
   }
 
+  private readonly refreshInFlight = new Map<
+    string,
+    Promise<{ accessToken: string; refreshToken: string }>
+  >();
+
   async refresh(userId: string, refreshToken: string) {
+    const existing = this.refreshInFlight.get(refreshToken);
+    if (existing) return existing;
+    const pending = this.rotateRefresh(userId, refreshToken);
+    this.refreshInFlight.set(refreshToken, pending);
+    try {
+      return await pending;
+    } finally {
+      this.refreshInFlight.delete(refreshToken);
+    }
+  }
+
+  private async rotateRefresh(userId: string, refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>('jwt.refreshSecret'),
+        algorithms: ['HS256'],
+      });
+      if (payload.sub !== userId) throw new Error('Invalid subject');
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
     });
@@ -62,10 +89,25 @@ export class AuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Token rotation: delete old, create new
-    await this.prisma.refreshToken.delete({ where: { token: refreshToken } });
     const tokens = await this.generateTokens(user.id, user.phone, user.role);
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
+    // Atomic consumption prevents double deletion and rolls back if insertion fails.
+    await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.refreshToken.deleteMany({
+        where: { token: refreshToken, userId },
+      });
+      if (consumed.count !== 1)
+        throw new UnauthorizedException('Refresh token already used');
+      const payload = this.jwtService.decode(tokens.refreshToken) as {
+        exp: number;
+      };
+      await tx.refreshToken.create({
+        data: {
+          token: tokens.refreshToken,
+          userId,
+          expiresAt: new Date(payload.exp * 1000),
+        },
+      });
+    });
 
     return tokens;
   }
@@ -190,6 +232,7 @@ export class AuthService {
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: refreshSecret,
+      jwtid: randomUUID(),
       expiresIn: refreshExpiresIn as any,
     });
 
@@ -197,8 +240,8 @@ export class AuthService {
   }
 
   private async saveRefreshToken(userId: string, token: string) {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    const payload = this.jwtService.decode(token) as { exp: number };
+    const expiresAt = new Date(payload.exp * 1000);
 
     await this.prisma.refreshToken.create({
       data: { token, userId, expiresAt },

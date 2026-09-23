@@ -25,7 +25,6 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { UploadThrottleGuard } from '../common/guards/upload-throttle.guard';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { QueryExpensesDto } from './dto/query-expenses.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -40,7 +39,6 @@ export class ExpensesController {
   constructor(private service: ExpensesService) {}
 
   @Post()
-  @UseGuards(UploadThrottleGuard)
   @Throttle({ default: { limit: 120, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data', 'application/json')
@@ -99,7 +97,6 @@ export class ExpensesController {
   }
 
   @Post(':id/receipt')
-  @UseGuards(UploadThrottleGuard)
   @Throttle({ default: { limit: 30, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')

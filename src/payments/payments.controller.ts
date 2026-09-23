@@ -31,7 +31,6 @@ import {
 import { QueryPaymentsDto } from './dto/query-payments.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { UploadThrottleGuard } from '../common/guards/upload-throttle.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -87,7 +86,6 @@ export class PaymentsController {
 
   @Post('manual')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(UploadThrottleGuard)
   @Throttle({ default: { limit: 60, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -117,7 +115,6 @@ export class PaymentsController {
 
   @Post('upload-receipt')
   @Roles(Role.PARENT, Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(UploadThrottleGuard)
   @Throttle({ default: { limit: 20, ttl: 1000 * 60 * 60 } })
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
