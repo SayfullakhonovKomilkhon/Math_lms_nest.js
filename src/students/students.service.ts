@@ -1,3 +1,4 @@
+import { assertNoSupportConflict } from '../support/support-conflicts';
 import {
   BadRequestException,
   ConflictException,
@@ -89,9 +90,7 @@ function shapeStudent(s: RawStudent): StudentDto {
     monthlyFee: monthlyFeeTotal,
     monthlyFeeTotal,
     groupId: primary?.groupId ?? null,
-    group: primary
-      ? { id: primary.groupId, name: primary.groupName }
-      : null,
+    group: primary ? { id: primary.groupId, name: primary.groupName } : null,
   };
 }
 
@@ -172,7 +171,9 @@ export class StudentsService {
   }
 
   async findAll() {
-    const rows = await this.prisma.student.findMany({ include: studentInclude });
+    const rows = await this.prisma.student.findMany({
+      include: studentInclude,
+    });
     return rows.map(shapeStudent);
   }
 
@@ -200,9 +201,7 @@ export class StudentsService {
           'You can only view students in your groups',
         );
       }
-      const teachesAny = student.groups.some(
-        (g) => g.teacherId === teacher.id,
-      );
+      const teachesAny = student.groups.some((g) => g.teacherId === teacher.id);
       if (!teachesAny) {
         throw new ForbiddenException(
           'You can only view students in your groups',
@@ -464,19 +463,27 @@ export class StudentsService {
         ? payload.monthlyFee
         : Number(group.defaultMonthlyFee);
 
-    await this.prisma.studentGroup.upsert({
-      where: {
-        studentId_groupId: { studentId: id, groupId: payload.groupId },
-      },
-      create: {
-        studentId: id,
-        groupId: payload.groupId,
-        monthlyFee: fee,
-      },
-      update:
-        payload.monthlyFee !== undefined
-          ? { monthlyFee: payload.monthlyFee }
-          : {},
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(73510421)`;
+      const current = await tx.group.findUniqueOrThrow({
+        where: { id: payload.groupId },
+      });
+      if (current.isActive)
+        await assertNoSupportConflict(tx, current.schedule, undefined, [id]);
+      await tx.studentGroup.upsert({
+        where: {
+          studentId_groupId: { studentId: id, groupId: payload.groupId },
+        },
+        create: {
+          studentId: id,
+          groupId: payload.groupId,
+          monthlyFee: fee,
+        },
+        update:
+          payload.monthlyFee !== undefined
+            ? { monthlyFee: payload.monthlyFee }
+            : {},
+      });
     });
 
     await this.prisma.auditLog.create({

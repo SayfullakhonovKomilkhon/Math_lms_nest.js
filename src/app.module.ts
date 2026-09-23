@@ -1,3 +1,4 @@
+import { SupportModule } from './support/support.module';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -82,6 +83,7 @@ import { ContentModule } from './content/content.module';
     ApplicationsModule,
     DevicesModule,
     ContentModule,
+    SupportModule,
   ],
   providers: [
     {

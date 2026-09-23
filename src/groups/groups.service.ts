@@ -1,3 +1,4 @@
+import { assertNoSupportConflict } from '../support/support-conflicts';
 import {
   Injectable,
   NotFoundException,
@@ -46,15 +47,19 @@ export class GroupsService {
       throw new NotFoundException('Teacher not found');
     }
 
-    const group = await this.prisma.group.create({
-      data: {
-        name: dto.name,
-        teacherId: dto.teacherId,
-        maxStudents: dto.maxStudents ?? 20,
-        schedule: dto.schedule as Prisma.InputJsonValue,
-        defaultMonthlyFee: dto.defaultMonthlyFee ?? 0,
-      },
-      select: groupSelect,
+    const group = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(73510421)`;
+      await assertNoSupportConflict(tx, dto.schedule, dto.teacherId);
+      return tx.group.create({
+        data: {
+          name: dto.name,
+          teacherId: dto.teacherId,
+          maxStudents: dto.maxStudents ?? 20,
+          schedule: dto.schedule as Prisma.InputJsonValue,
+          defaultMonthlyFee: dto.defaultMonthlyFee ?? 0,
+        },
+        select: groupSelect,
+      });
     });
 
     await this.prisma.auditLog.create({
@@ -170,14 +175,28 @@ export class GroupsService {
 
     const { teacherId, schedule, ...rest } = dto;
 
-    const updated = await this.prisma.group.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(teacherId && { teacher: { connect: { id: teacherId } } }),
-        ...(schedule && { schedule: schedule as Prisma.InputJsonValue }),
-      },
-      select: groupSelect,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(73510421)`;
+      const current = await tx.group.findUniqueOrThrow({
+        where: { id },
+        include: { students: { select: { studentId: true } } },
+      });
+      if (current.isActive)
+        await assertNoSupportConflict(
+          tx,
+          schedule ?? current.schedule,
+          teacherId ?? current.teacherId,
+          current.students.map((s) => s.studentId),
+        );
+      return tx.group.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(teacherId && { teacher: { connect: { id: teacherId } } }),
+          ...(schedule && { schedule: schedule as Prisma.InputJsonValue }),
+        },
+        select: groupSelect,
+      });
     });
 
     await this.prisma.auditLog.create({
@@ -223,10 +242,23 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    const restored = await this.prisma.group.update({
-      where: { id },
-      data: { isActive: true, archivedAt: null },
-      select: groupSelect,
+    const restored = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(73510421)`;
+      const current = await tx.group.findUniqueOrThrow({
+        where: { id },
+        include: { students: { select: { studentId: true } } },
+      });
+      await assertNoSupportConflict(
+        tx,
+        current.schedule,
+        current.teacherId,
+        current.students.map((s) => s.studentId),
+      );
+      return tx.group.update({
+        where: { id },
+        data: { isActive: true, archivedAt: null },
+        select: groupSelect,
+      });
     });
 
     await this.prisma.auditLog.create({
