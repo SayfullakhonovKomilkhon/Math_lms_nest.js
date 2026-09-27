@@ -33,6 +33,24 @@ export class SupportController {
   @Get('me') me(@CurrentUser() user: SupportActor) {
     return this.service.overview(user);
   }
+  @Get('statistics')
+  @Roles(Role.TEACHER)
+  statistics(
+    @Query('groupId') groupId: string,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.statistics(groupId, user);
+  }
+  @Get('student-feedback')
+  @Roles(Role.TEACHER)
+  studentFeedback(
+    @Query('groupId') groupId: string,
+    @Query('studentId') studentId: string,
+    @Query('cursor') cursor: string,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.studentFeedback(groupId, studentId, cursor, user);
+  }
   @Get('group-context')
   @Roles(Role.TEACHER)
   groupContext(

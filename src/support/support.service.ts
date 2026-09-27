@@ -186,6 +186,72 @@ export class SupportService {
     return { feedback, bookings };
   }
 
+  private async statisticsScope(
+    groupId: string | undefined,
+    user: SupportActor,
+  ) {
+    const teacher = await this.teacher(this.prisma, user);
+    if (
+      groupId &&
+      !(await this.prisma.group.findFirst({
+        where: { id: groupId, teacherId: teacher.id },
+      }))
+    )
+      throw new ForbiddenException();
+    return { teacherId: teacher.id, ...(groupId ? { groupId } : {}) };
+  }
+  async statistics(groupId: string | undefined, user: SupportActor) {
+    const scope = await this.statisticsScope(groupId, user);
+    const rows = await this.prisma.lessonFeedback.groupBy({
+      by: ['studentId'],
+      where: { ...scope, understanding: { in: ['NEEDS_HELP', 'PRACTICE'] } },
+      _count: { _all: true },
+      _max: { date: true },
+      orderBy: { _max: { date: 'desc' } },
+    });
+    const students = await this.prisma.student.findMany({
+      where: { id: { in: rows.map((r) => r.studentId) } },
+      select: person,
+    });
+    const people = new Map(students.map((s) => [s.id, s]));
+    return rows.map((r) => ({
+      student: people.get(r.studentId),
+      count: r._count._all,
+      lastDate: r._max.date,
+    }));
+  }
+  async studentFeedback(
+    groupId: string | undefined,
+    studentId: string,
+    cursor: string | undefined,
+    user: SupportActor,
+  ) {
+    if (!studentId) throw new BadRequestException('Укажите ученика');
+    const scope = await this.statisticsScope(groupId, user);
+    if (
+      cursor &&
+      !(await this.prisma.lessonFeedback.findFirst({
+        where: { ...scope, studentId, id: cursor },
+      }))
+    )
+      throw new BadRequestException('Некорректная страница');
+    const rows = await this.prisma.lessonFeedback.findMany({
+      where: { ...scope, studentId },
+      include: {
+        student: { select: person },
+        teacher: { select: person },
+        group: { select: { id: true, name: true } },
+      },
+      orderBy: [{ date: 'desc' }, { id: 'desc' }],
+      take: 51,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    return {
+      items: rows.slice(0, 50),
+      nextCursor: rows.length > 50 ? rows[49].id : null,
+    };
+  }
+
   async saveFeedback(dto: FeedbackDto, user: SupportActor) {
     if (dto.date > localDate(new Date()))
       throw new BadRequestException('Нельзя оставлять отзыв о будущем уроке');
@@ -216,11 +282,6 @@ export class SupportService {
         create: { ...values, date: new Date(date), teacherId: teacher.id },
         update: { ...values, teacherId: teacher.id },
       });
-      await this.notify(
-        db,
-        await this.family(db, dto.studentId),
-        `Преподаватель оставил отзыв за ${date}: ${dto.topic}. Подробности в разделе «Отзывы и помощь».`,
-      );
       return feedback;
     });
   }
@@ -249,16 +310,18 @@ export class SupportService {
         orderBy: { session: { startAt: 'asc' } },
         take: 1000,
       }),
-      this.prisma.lessonFeedback.findMany({
-        where: teacher ? { teacherId: teacher.id } : { student: studentScope },
-        include: {
-          student: { select: person },
-          teacher: { select: person },
-          group: { select: { id: true, name: true } },
-        },
-        orderBy: { date: 'desc' },
-        take: 100,
-      }),
+      teacher
+        ? this.prisma.lessonFeedback.findMany({
+            where: { teacherId: teacher.id },
+            include: {
+              student: { select: person },
+              teacher: { select: person },
+              group: { select: { id: true, name: true } },
+            },
+            orderBy: { date: 'desc' },
+            take: 100,
+          })
+        : [],
       teacher
         ? this.prisma.supportAvailability.findMany({
             where: { teacherId: teacher.id },
@@ -277,11 +340,14 @@ export class SupportService {
       isSupport: teacher?.isSupport ?? false,
       availability,
       timeOff,
-      feedback: feedback.map(({ privateNote, ...f }) =>
-        staff ? { ...f, privateNote } : f,
-      ),
+      feedback: staff ? feedback : [],
       bookings: bookings.map(({ feedback: f, ...b }) => {
-        const { privateNote: _privateNote, ...publicFeedback } = f;
+        const publicFeedback = {
+          id: f.id,
+          topic: f.topic,
+          date: f.date,
+          group: f.group,
+        };
         return { ...b, feedback: staff ? f : publicFeedback };
       }),
     };

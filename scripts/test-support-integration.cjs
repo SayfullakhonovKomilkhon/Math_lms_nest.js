@@ -70,6 +70,8 @@ async function main() {
       },
     },
   });
+  const noticesBefore = await db.notification.count();
+  const outboxBefore = await db.supportPushOutbox.count();
   const feedback = [];
   for (const s of students)
     feedback.push(
@@ -80,7 +82,7 @@ async function main() {
           date: today,
           topic: 'Fractions',
           understanding: 'NEEDS_HELP',
-          comment: 'Practice',
+          comment: 'TEACHER-COMMENT-SECRET',
           privateNote: 'STAFF-SECRET',
         },
         actor(t),
@@ -102,6 +104,12 @@ async function main() {
       ),
     403,
   );
+  assert.equal(
+    await db.notification.count(),
+    noticesBefore,
+    'private feedback must not notify families',
+  );
+  assert.equal(await db.supportPushOutbox.count(), outboxBefore);
   const admin = await db.user.create({
     data: { phone: `${run}-admin`, passwordHash: 'test-only', role: 'ADMIN' },
   });
@@ -225,19 +233,81 @@ async function main() {
   );
   const parentView = await service.overview({ id: p.id, role: 'PARENT' });
   assert(!JSON.stringify(parentView).includes('STAFF-SECRET'));
-  assert(parentView.feedback.every((f) => f.studentId === students[0].id));
+  assert.deepEqual(parentView.feedback, []);
+  assert(!JSON.stringify(parentView).includes('TEACHER-COMMENT-SECRET'));
+  assert(
+    parentView.bookings.every(
+      (b) => !('comment' in b.feedback) && !('understanding' in b.feedback),
+    ),
+  );
   assert(parentView.bookings.every((b) => b.student.id === students[0].id));
   const studentView = await service.overview({
     id: students[0].userId,
     role: 'STUDENT',
   });
   assert(!JSON.stringify(studentView).includes('STAFF-SECRET'));
+  assert.deepEqual(studentView.feedback, []);
+  assert(!JSON.stringify(studentView).includes('TEACHER-COMMENT-SECRET'));
   const supportView = await service.overview(actor(support));
   assert.equal(supportView.bookings.length, 2);
   assert(
     supportView.bookings.every(
       (b) => b.feedback.privateNote === 'STAFF-SECRET',
     ),
+  );
+  const summaries = await service.statistics(g.id, actor(t));
+  assert.equal(summaries.length, 4);
+  assert(summaries.every((r) => r.count === 1));
+  assert.deepEqual(await service.statistics(undefined, actor(stranger)), []);
+  await expectReject(() => service.statistics(g.id, actor(stranger)), 403);
+  await expectReject(
+    () =>
+      service.studentFeedback(g.id, students[0].id, undefined, actor(stranger)),
+    403,
+  );
+  for (let i = 1; i <= 51; i++) {
+    await db.lessonFeedback.create({
+      data: {
+        groupId: g.id,
+        studentId: students[0].id,
+        teacherId: t.id,
+        date: new Date(Date.parse(today) - i * 86400000),
+        topic: `History ${i}`,
+        understanding: 'UNDERSTOOD',
+        comment: 'Private history',
+        privateNote: '',
+      },
+    });
+  }
+  assert.equal(
+    (await service.statistics(g.id, actor(t))).length,
+    4,
+    'one row per student, only marked difficulties',
+  );
+  const firstPage = await service.studentFeedback(
+    g.id,
+    students[0].id,
+    undefined,
+    actor(t),
+  );
+  assert.equal(firstPage.items.length, 50);
+  assert(firstPage.nextCursor);
+  const secondPage = await service.studentFeedback(
+    g.id,
+    students[0].id,
+    firstPage.nextCursor,
+    actor(t),
+  );
+  assert.equal(secondPage.items.length, 2);
+  assert.equal(secondPage.nextCursor, null);
+  assert.equal(
+    new Set([...firstPage.items, ...secondPage.items].map((f) => f.id)).size,
+    52,
+  );
+  await expectReject(
+    () =>
+      service.studentFeedback(g.id, students[0].id, feedback[1].id, actor(t)),
+    400,
   );
   const context = await service.groupContext(g.id, today, today, actor(t));
   assert.equal(context.feedback.length, 4);
@@ -487,6 +557,17 @@ async function main() {
   );
   await app.init();
   try {
+    for (const path of ['/support/statistics', '/support/student-feedback']) {
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-test-role', 'PARENT')
+        .query({ groupId: g.id, studentId: students[0].id })
+        .expect(403);
+      await request(app.getHttpServer())
+        .get(path)
+        .query({ groupId: g.id, studentId: students[0].id })
+        .expect(200);
+    }
     for (const role of ['TEACHER', 'PARENT'])
       await request(app.getHttpServer())
         .patch(`/teachers/${support.id}/support`)
