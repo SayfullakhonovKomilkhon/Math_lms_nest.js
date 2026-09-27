@@ -11,7 +11,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import {
+  UpdateTeacherDto,
+  SupportEligibilityDto,
+} from './dto/update-teacher.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -54,6 +57,20 @@ export class TeachersController {
     @CurrentUser('id') actorId: string,
   ) {
     return this.teachersService.update(id, dto, actorId);
+  }
+
+  @Patch(':id/support')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  setSupport(
+    @Param('id') id: string,
+    @Body() dto: SupportEligibilityDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.teachersService.setSupportEligibility(
+      id,
+      dto.isSupport,
+      actorId,
+    );
   }
 
   @Patch(':id/deactivate')

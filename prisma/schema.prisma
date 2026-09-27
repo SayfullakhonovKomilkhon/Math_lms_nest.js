@@ -243,6 +243,7 @@ model ParentStudent {
 }
 
 model Teacher {
+  isSupport           Boolean               @default(false)
   lessonFeedback      LessonFeedback[]
   supportAvailability SupportAvailability[]
   supportTimeOff      SupportTimeOff[]

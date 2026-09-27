@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -45,4 +46,9 @@ export class UpdateTeacherDto {
   @Min(0)
   @Type(() => Number)
   ratePerStudent?: number;
+}
+
+export class SupportEligibilityDto {
+  @IsBoolean()
+  isSupport: boolean;
 }

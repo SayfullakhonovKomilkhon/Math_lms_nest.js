@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const { PrismaService } = require('../dist/prisma/prisma.service');
 const { SupportService } = require('../dist/support/support.service');
+const { TeachersService } = require('../dist/teachers/teachers.service');
 const { GroupsService } = require('../dist/groups/groups.service');
 const { StudentsService } = require('../dist/students/students.service');
 const { clashesWithSchedule } = require('../dist/support/support-time');
@@ -101,6 +102,16 @@ async function main() {
       ),
     403,
   );
+  const admin = await db.user.create({
+    data: { phone: `${run}-admin`, passwordHash: 'test-only', role: 'ADMIN' },
+  });
+  const teachersService = new TeachersService(db, {});
+  assert.equal(support.isSupport, false, 'teachers are not support by default');
+  await expectReject(
+    () => service.setAvailability({ windows: [] }, actor(support)),
+    403,
+  );
+  await teachersService.setSupportEligibility(support.id, true, admin.id);
   await service.setAvailability(
     {
       windows: [
@@ -150,19 +161,17 @@ async function main() {
   const initial = await service.slots(support.id, feedback[0].id, actor(t));
   assert(initial.some((s) => s.startAt.getTime() === start.getTime()));
   const attempts = await Promise.allSettled(
-    feedback
-      .slice(0, 3)
-      .map((f) =>
-        service.book(
-          {
-            feedbackId: f.id,
-            teacherId: support.id,
-            startAt: start.toISOString(),
-            task: 'Practice fractions',
-          },
-          actor(t),
-        ),
+    feedback.slice(0, 3).map((f) =>
+      service.book(
+        {
+          feedbackId: f.id,
+          teacherId: support.id,
+          startAt: start.toISOString(),
+          task: 'Practice fractions',
+        },
+        actor(t),
       ),
+    ),
   );
   assert.equal(
     attempts.filter((x) => x.status === 'fulfilled').length,
@@ -230,6 +239,50 @@ async function main() {
       (b) => b.feedback.privateNote === 'STAFF-SECRET',
     ),
   );
+  const context = await service.groupContext(g.id, today, today, actor(t));
+  assert.equal(context.feedback.length, 4);
+  assert.equal(context.bookings.length, 2);
+  await expectReject(
+    () => service.groupContext(g.id, today, today, actor(stranger)),
+    403,
+  );
+  await expectReject(
+    () => service.groupContext(g.id, '2026-02-31', today, actor(t)),
+    400,
+  );
+  await teachersService.setSupportEligibility(support.id, false, admin.id);
+  assert(
+    !(await service.teachers()).some((x) => x.id === support.id),
+    'disabled support must be hidden even with booked sessions',
+  );
+  await expectReject(
+    () => service.setAvailability({ windows: [] }, actor(support)),
+    403,
+  );
+  await expectReject(
+    () => service.slots(support.id, feedback[3].id, actor(t)),
+    400,
+  );
+  await expectReject(
+    () =>
+      service.book(
+        {
+          feedbackId: feedback[3].id,
+          teacherId: support.id,
+          startAt: new Date(start.getTime() + 7200000).toISOString(),
+          task: 'Bypass dropdown',
+        },
+        actor(t),
+      ),
+    400,
+  );
+  assert.equal(
+    (await service.overview(actor(support))).bookings.length,
+    2,
+    'existing appointments stay visible',
+  );
+  assert.equal((await service.overview(actor(support))).isSupport, false);
+  await teachersService.setSupportEligibility(support.id, true, admin.id);
   const groupService = new GroupsService(db);
   const conflictSchedule = {
     days: [
@@ -356,6 +409,7 @@ async function main() {
       ),
     403,
   );
+  await teachersService.setSupportEligibility(support.id, false, admin.id);
   await service.result(
     prior.id,
     { status: 'COMPLETED', outcome: 'NEEDS_MORE', result: 'Needs revision' },
@@ -365,6 +419,7 @@ async function main() {
     (await db.supportBooking.findUnique({ where: { id: prior.id } })).outcome,
     'NEEDS_MORE',
   );
+  await teachersService.setSupportEligibility(support.id, true, admin.id);
   // Support teacher may arrange a follow-up for the pupil they actually taught.
   await service.book(
     {
@@ -398,8 +453,14 @@ async function main() {
   const { JwtAuthGuard } = require('../dist/common/guards/jwt-auth.guard');
   const request = require('supertest');
   const module = await Test.createTestingModule({
-    controllers: [SupportController],
-    providers: [{ provide: SupportService, useValue: service }],
+    controllers: [
+      SupportController,
+      require('../dist/teachers/teachers.controller').TeachersController,
+    ],
+    providers: [
+      { provide: SupportService, useValue: service },
+      { provide: TeachersService, useValue: teachersService },
+    ],
   })
     .overrideGuard(JwtAuthGuard)
     .useValue({
@@ -408,7 +469,10 @@ async function main() {
         req.user =
           req.headers['x-test-role'] === 'PARENT'
             ? { id: p.id, role: 'PARENT' }
-            : actor(t);
+            : req.headers['x-test-role'] === 'ADMIN' ||
+                req.headers['x-test-role'] === 'SUPER_ADMIN'
+              ? { id: admin.id, role: req.headers['x-test-role'] }
+              : actor(t);
         return true;
       },
     })
@@ -423,6 +487,33 @@ async function main() {
   );
   await app.init();
   try {
+    for (const role of ['TEACHER', 'PARENT'])
+      await request(app.getHttpServer())
+        .patch(`/teachers/${support.id}/support`)
+        .set('x-test-role', role)
+        .send({ isSupport: true })
+        .expect(403);
+    for (const role of ['ADMIN', 'SUPER_ADMIN'])
+      await request(app.getHttpServer())
+        .patch(`/teachers/${support.id}/support`)
+        .set('x-test-role', role)
+        .send({ isSupport: true })
+        .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/teachers/${support.id}/support`)
+      .set('x-test-role', 'ADMIN')
+      .send({ isSupport: 'false' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`/teachers/${support.id}/support`)
+      .set('x-test-role', 'ADMIN')
+      .send({ isSupport: false, ratePerStudent: 1 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/support/group-context')
+      .set('x-test-role', 'PARENT')
+      .query({ groupId: g.id, from: today, to: today })
+      .expect(403);
     const family = await request(app.getHttpServer())
       .get('/support/me')
       .set('x-test-role', 'PARENT')

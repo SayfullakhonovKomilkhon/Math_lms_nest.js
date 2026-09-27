@@ -33,6 +33,16 @@ export class SupportController {
   @Get('me') me(@CurrentUser() user: SupportActor) {
     return this.service.overview(user);
   }
+  @Get('group-context')
+  @Roles(Role.TEACHER)
+  groupContext(
+    @Query('groupId') groupId: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.groupContext(groupId, from, to, user);
+  }
   @Get('feedback')
   @Roles(Role.TEACHER)
   feedback(

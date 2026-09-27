@@ -149,6 +149,43 @@ export class SupportService {
       orderBy: { createdAt: 'asc' },
     });
   }
+  async groupContext(
+    groupId: string,
+    from: string,
+    to: string,
+    user: SupportActor,
+  ) {
+    const validDate = (value: string) =>
+      /^\d{4}-\d{2}-\d{2}$/.test(value ?? '') &&
+      Number.isFinite(Date.parse(value)) &&
+      new Date(value).toISOString().slice(0, 10) === value;
+    if (
+      !groupId ||
+      !validDate(from) ||
+      !validDate(to) ||
+      from > to ||
+      Date.parse(to) - Date.parse(from) > 31 * DAY
+    )
+      throw new BadRequestException('Укажите группу и период до 32 дней');
+    const teacher = await this.teacher(this.prisma, user);
+    if (
+      !(await this.prisma.group.findFirst({
+        where: { id: groupId, teacherId: teacher.id },
+      }))
+    )
+      throw new ForbiddenException();
+    const where = { groupId, date: { gte: new Date(from), lte: new Date(to) } };
+    const [feedback, bookings] = await Promise.all([
+      this.prisma.lessonFeedback.findMany({ where }),
+      this.prisma.supportBooking.findMany({
+        where: { feedback: where },
+        include: bookingInclude,
+        orderBy: { session: { startAt: 'asc' } },
+      }),
+    ]);
+    return { feedback, bookings };
+  }
+
   async saveFeedback(dto: FeedbackDto, user: SupportActor) {
     if (dto.date > localDate(new Date()))
       throw new BadRequestException('Нельзя оставлять отзыв о будущем уроке');
@@ -237,6 +274,7 @@ export class SupportService {
     ]);
     return {
       teacherId: teacher?.id,
+      isSupport: teacher?.isSupport ?? false,
       availability,
       timeOff,
       feedback: feedback.map(({ privateNote, ...f }) =>
@@ -252,6 +290,7 @@ export class SupportService {
     return this.prisma.teacher.findMany({
       where: {
         isActive: true,
+        isSupport: true,
         user: { isActive: true },
         OR: [
           { supportAvailability: { some: {} } },
@@ -282,6 +321,8 @@ export class SupportService {
     }
     return this.transaction(async (db) => {
       const teacher = await this.teacher(db, user);
+      if (!teacher.isSupport)
+        throw new ForbiddenException('Администратор не назначил вас суппортом');
       await db.supportAvailability.deleteMany({
         where: { teacherId: teacher.id },
       });
@@ -303,6 +344,8 @@ export class SupportService {
       throw new BadRequestException('Проверьте даты и причину отсутствия');
     return this.transaction(async (db) => {
       const teacher = await this.teacher(db, user);
+      if (!teacher.isSupport)
+        throw new ForbiddenException('Администратор не назначил вас суппортом');
       if (
         await db.supportBooking.findFirst({
           where: {
@@ -331,6 +374,8 @@ export class SupportService {
   async deleteTimeOff(id: string, user: SupportActor) {
     return this.transaction(async (db) => {
       const teacher = await this.teacher(db, user);
+      if (!teacher.isSupport)
+        throw new ForbiddenException('Администратор не назначил вас суппортом');
       return db.supportTimeOff.deleteMany({
         where: { id, teacherId: teacher.id },
       });
@@ -345,7 +390,12 @@ export class SupportService {
     const now = new Date(),
       until = new Date(Date.now() + 28 * DAY);
     const teacher = await db.teacher.findFirst({
-      where: { id: teacherId, isActive: true, user: { isActive: true } },
+      where: {
+        id: teacherId,
+        isActive: true,
+        isSupport: true,
+        user: { isActive: true },
+      },
       include: {
         supportAvailability: true,
         groups: { where: { isActive: true } },

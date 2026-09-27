@@ -16,6 +16,7 @@ const teacherSelect = {
   phone: true,
   ratePerStudent: true,
   isActive: true,
+  isSupport: true,
   createdAt: true,
   updatedAt: true,
   user: { select: { id: true, phone: true, role: true, isActive: true } },
@@ -118,6 +119,33 @@ export class TeachersService {
     });
 
     return updated;
+  }
+
+  async setSupportEligibility(id: string, isSupport: boolean, actorId: string) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Serialize with bookings so disabling and reserving the last slot cannot race.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(73510421)`;
+        const existing = await tx.teacher.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Teacher not found');
+        const teacher = await tx.teacher.update({
+          where: { id },
+          data: { isSupport },
+          select: teacherSelect,
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: actorId,
+            action: 'UPDATE_SUPPORT_ELIGIBILITY',
+            entity: 'Teacher',
+            entityId: id,
+            details: { previous: existing.isSupport, isSupport },
+          },
+        });
+        return teacher;
+      },
+      { timeout: 15000, maxWait: 10000 },
+    );
   }
 
   async deactivate(id: string, actorId: string) {
