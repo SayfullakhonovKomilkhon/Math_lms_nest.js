@@ -64,3 +64,12 @@ export class ResultDto {
   @IsEnum(SupportOutcome) outcome: SupportOutcome;
   @IsString() @IsNotEmpty() @MaxLength(2000) result: string;
 }
+
+export class DirectionDto {
+  @IsString() @IsNotEmpty() feedbackId: string;
+  @IsString() @IsNotEmpty() teacherId: string;
+}
+export class DirectionResultDto {
+  @IsEnum(SupportOutcome) outcome: SupportOutcome;
+  @IsString() @IsNotEmpty() @MaxLength(2000) result: string;
+}

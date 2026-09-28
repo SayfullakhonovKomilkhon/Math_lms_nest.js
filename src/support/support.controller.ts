@@ -16,6 +16,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SupportService, SupportActor } from './support.service';
 import {
+  DirectionDto,
+  DirectionResultDto,
   AvailabilityDto,
   BookingDto,
   FeedbackDto,
@@ -32,6 +34,39 @@ export class SupportController {
   constructor(private readonly service: SupportService) {}
   @Get('me') me(@CurrentUser() user: SupportActor) {
     return this.service.overview(user);
+  }
+  @Post('directions')
+  @Roles(Role.TEACHER)
+  createDirection(
+    @Body() dto: DirectionDto,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.createDirection(dto, user);
+  }
+  @Post('directions/:id/start')
+  @Roles(Role.TEACHER)
+  startDirection(@Param('id') id: string, @CurrentUser() user: SupportActor) {
+    return this.service.updateDirection(id, 'IN_PROGRESS', user);
+  }
+  @Post('directions/:id/result')
+  @Roles(Role.TEACHER)
+  directionResult(
+    @Param('id') id: string,
+    @Body() dto: DirectionResultDto,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.updateDirection(id, 'COMPLETED', user, dto);
+  }
+  @Post('directions/:id/cancel')
+  @Roles(Role.TEACHER)
+  cancelDirection(
+    @Param('id') id: string,
+    @Body() dto: ReasonDto,
+    @CurrentUser() user: SupportActor,
+  ) {
+    return this.service.updateDirection(id, 'CANCELLED', user, {
+      result: dto.reason,
+    });
   }
   @Get('statistics')
   @Roles(Role.TEACHER)

@@ -243,6 +243,8 @@ model ParentStudent {
 }
 
 model Teacher {
+  incomingDirections  SupportDirection[]    @relation("DirectionAssignee")
+  outgoingDirections  SupportDirection[]    @relation("DirectionReferrer")
   isSupport           Boolean               @default(false)
   lessonFeedback      LessonFeedback[]
   supportAvailability SupportAvailability[]
@@ -576,6 +578,7 @@ model LessonFeedback {
   understanding LessonUnderstanding
   comment       String
   privateNote   String              @default("")
+  directions    SupportDirection[]
   bookings      SupportBooking[]
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
@@ -655,4 +658,30 @@ model SupportPushOutbox {
   userIds   String[]
   message   String
   createdAt DateTime @default(now())
+}
+
+enum SupportDirectionStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model SupportDirection {
+  id         String                 @id @default(cuid())
+  feedbackId String
+  feedback   LessonFeedback         @relation(fields: [feedbackId], references: [id])
+  teacherId  String
+  teacher    Teacher                @relation("DirectionAssignee", fields: [teacherId], references: [id])
+  referrerId String
+  referrer   Teacher                @relation("DirectionReferrer", fields: [referrerId], references: [id])
+  status     SupportDirectionStatus @default(NEW)
+  result     String                 @default("")
+  outcome    SupportOutcome?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@index([teacherId, status])
+  @@index([referrerId, createdAt])
+  @@index([feedbackId])
 }

@@ -11,6 +11,8 @@ import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpoPushService } from '../devices/expo-push.service';
 import {
+  DirectionDto,
+  DirectionResultDto,
   AvailabilityDto,
   BookingDto,
   FeedbackDto,
@@ -36,6 +38,17 @@ const bookingInclude = {
   referrer: { select: person },
   feedback: { include: { group: { select: { id: true, name: true } } } },
 } satisfies Prisma.SupportBookingInclude;
+
+const directionInclude = {
+  teacher: { select: person },
+  referrer: { select: person },
+  feedback: {
+    include: {
+      student: { select: person },
+      group: { select: { id: true, name: true } },
+    },
+  },
+} satisfies Prisma.SupportDirectionInclude;
 
 @Injectable()
 export class SupportService {
@@ -183,7 +196,15 @@ export class SupportService {
         orderBy: { session: { startAt: 'asc' } },
       }),
     ]);
-    return { feedback, bookings };
+    const directions = await this.prisma.supportDirection.findMany({
+      where: {
+        feedback: where,
+        OR: [{ referrerId: teacher.id }, { teacherId: teacher.id }],
+      },
+      include: directionInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+    return { feedback, bookings, directions };
   }
 
   private async statisticsScope(
@@ -336,6 +357,15 @@ export class SupportService {
         : [],
     ]);
     return {
+      directions: teacher
+        ? await this.prisma.supportDirection.findMany({
+            where: {
+              OR: [{ teacherId: teacher.id }, { referrerId: teacher.id }],
+            },
+            include: directionInclude,
+            orderBy: { createdAt: 'desc' },
+          })
+        : [],
       teacherId: teacher?.id,
       isSupport: teacher?.isSupport ?? false,
       availability,
@@ -352,17 +382,114 @@ export class SupportService {
       }),
     };
   }
+  async createDirection(dto: DirectionDto, user: SupportActor) {
+    return this.transaction(async (db) => {
+      const sender = await this.teacher(db, user);
+      const feedback = await db.lessonFeedback.findFirst({
+        where: {
+          id: dto.feedbackId,
+          teacherId: sender.id,
+          group: { teacherId: sender.id, isActive: true },
+          student: { isActive: true },
+        },
+      });
+      if (
+        !feedback ||
+        !(await db.studentGroup.findFirst({
+          where: { studentId: feedback.studentId, groupId: feedback.groupId },
+        }))
+      )
+        throw new ForbiddenException(
+          'Можно направлять только учеников своей активной группы',
+        );
+      if (!feedback.topic.trim() || !feedback.comment.trim())
+        throw new BadRequestException('Сначала заполните тему и отзыв');
+      const target = await db.teacher.findFirst({
+        where: {
+          id: dto.teacherId,
+          isSupport: true,
+          isActive: true,
+          user: { isActive: true },
+        },
+      });
+      if (!target)
+        throw new BadRequestException(
+          'Преподаватель не назначен активным суппортом',
+        );
+      if (
+        await db.supportDirection.findFirst({
+          where: {
+            feedbackId: feedback.id,
+            status: { in: ['NEW', 'IN_PROGRESS'] },
+          },
+        })
+      )
+        throw new ConflictException(
+          'По этому отзыву уже есть активное направление',
+        );
+      const direction = await db.supportDirection.create({
+        data: {
+          feedbackId: feedback.id,
+          teacherId: target.id,
+          referrerId: sender.id,
+        },
+        include: directionInclude,
+      });
+      await this.notify(
+        db,
+        [target.userId],
+        'Вам направлен ученик. Откройте раздел «Отзывы и суппорт».',
+      );
+      return direction;
+    });
+  }
+  async updateDirection(
+    id: string,
+    status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
+    user: SupportActor,
+    dto?: { result: string; outcome?: DirectionResultDto['outcome'] },
+  ) {
+    return this.transaction(async (db) => {
+      const teacher = await this.teacher(db, user);
+      const row = await db.supportDirection.findUnique({
+        where: { id },
+        include: { teacher: true, referrer: true },
+      });
+      if (!row) throw new NotFoundException();
+      if (
+        row.teacherId !== teacher.id &&
+        !(status === 'CANCELLED' && row.referrerId === teacher.id)
+      )
+        throw new ForbiddenException();
+      if (
+        !['NEW', 'IN_PROGRESS'].includes(row.status) ||
+        (status === 'IN_PROGRESS' && row.status !== 'NEW')
+      )
+        throw new ConflictException('Направление уже обработано');
+      if (status !== 'IN_PROGRESS' && !dto?.result.trim())
+        throw new BadRequestException('Укажите результат или причину');
+      const result = await db.supportDirection.update({
+        where: { id },
+        data: {
+          status,
+          ...(dto ? { result: dto.result.trim(), outcome: dto.outcome } : {}),
+        },
+        include: directionInclude,
+      });
+      await this.notify(
+        db,
+        [...new Set([row.teacher.userId, row.referrer.userId])].filter(
+          (id) => id !== user.id,
+        ),
+        'Обновлён статус направления к суппорту. Откройте раздел «Отзывы и суппорт».',
+      );
+      return result;
+    });
+  }
+
   async teachers() {
     return this.prisma.teacher.findMany({
-      where: {
-        isActive: true,
-        isSupport: true,
-        user: { isActive: true },
-        OR: [
-          { supportAvailability: { some: {} } },
-          { supportSessions: { some: { startAt: { gt: new Date() } } } },
-        ],
-      },
+      where: { isActive: true, isSupport: true, user: { isActive: true } },
       select: person,
       orderBy: { fullName: 'asc' },
     });

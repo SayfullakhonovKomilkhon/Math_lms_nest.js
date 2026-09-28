@@ -120,6 +120,139 @@ async function main() {
     403,
   );
   await teachersService.setSupportEligibility(support.id, true, admin.id);
+  const newlyAssigned = (await service.teachers()).find(
+    (x) => x.id === support.id,
+  );
+  assert(
+    newlyAssigned,
+    'assigned support must be selectable before publishing availability',
+  );
+
+  assert(!(await service.teachers()).some((x) => x.id === stranger.id));
+  await db.user.update({
+    where: { id: support.userId },
+    data: { isActive: false },
+  });
+  assert(
+    !(await service.teachers()).some((x) => x.id === support.id),
+    'inactive account must stay hidden',
+  );
+  await db.user.update({
+    where: { id: support.userId },
+    data: { isActive: true },
+  });
+
+  await expectReject(
+    () =>
+      service.createDirection(
+        { feedbackId: feedback[0].id, teacherId: stranger.id },
+        actor(t),
+      ),
+    400,
+  );
+  await expectReject(
+    () =>
+      service.createDirection(
+        { feedbackId: feedback[0].id, teacherId: support.id },
+        actor(stranger),
+      ),
+    403,
+  );
+  const direction = await service.createDirection(
+    { feedbackId: feedback[0].id, teacherId: support.id },
+    actor(t),
+  );
+  assert.equal(direction.status, 'NEW');
+  assert.equal(
+    await db.supportSession.count({ where: { teacherId: support.id } }),
+    0,
+    'directions never invent a lesson time',
+  );
+  await expectReject(
+    () => service.updateDirection(direction.id, 'IN_PROGRESS', actor(t)),
+    403,
+  );
+  assert.equal(
+    (await service.updateDirection(direction.id, 'IN_PROGRESS', actor(support)))
+      .status,
+    'IN_PROGRESS',
+  );
+  await teachersService.setSupportEligibility(support.id, false, admin.id);
+  const completedDirection = await service.updateDirection(
+    direction.id,
+    'COMPLETED',
+    actor(support),
+    { result: 'Understood fractions', outcome: 'RESOLVED' },
+  );
+  assert.equal(
+    completedDirection.status,
+    'COMPLETED',
+    'disabling support preserves existing work',
+  );
+  await expectReject(
+    () =>
+      service.createDirection(
+        { feedbackId: feedback[0].id, teacherId: support.id },
+        actor(t),
+      ),
+    400,
+  );
+  await teachersService.setSupportEligibility(support.id, true, admin.id);
+  const duplicates = await Promise.allSettled(
+    [1, 2].map(() =>
+      service.createDirection(
+        { feedbackId: feedback[1].id, teacherId: support.id },
+        actor(t),
+      ),
+    ),
+  );
+  assert.equal(duplicates.filter((r) => r.status === 'fulfilled').length, 1);
+  assert.equal(
+    duplicates.filter(
+      (r) => r.status === 'rejected' && r.reason.getStatus() === 409,
+    ).length,
+    1,
+  );
+  const activeDirection = await db.supportDirection.findFirstOrThrow({
+    where: { feedbackId: feedback[1].id, status: 'NEW' },
+  });
+  await expectReject(
+    () =>
+      service.updateDirection(
+        activeDirection.id,
+        'COMPLETED',
+        actor(stranger),
+        { result: 'forged', outcome: 'RESOLVED' },
+      ),
+    403,
+  );
+  await expectReject(
+    () =>
+      service.updateDirection(activeDirection.id, 'COMPLETED', actor(support), {
+        result: '  ',
+        outcome: 'RESOLVED',
+      }),
+    400,
+  );
+  await service.updateDirection(activeDirection.id, 'CANCELLED', actor(t), {
+    result: 'Wrong referral',
+  });
+  await expectReject(
+    () =>
+      service.updateDirection(
+        activeDirection.id,
+        'IN_PROGRESS',
+        actor(support),
+      ),
+    409,
+  );
+  assert.equal(
+    (await service.groupContext(g.id, today, today, actor(t))).directions
+      .length,
+    2,
+  );
+  assert.equal((await service.overview(actor(support))).directions.length, 2);
+  assert.equal((await service.overview(actor(stranger))).directions.length, 0);
   await service.setAvailability(
     {
       windows: [
@@ -234,6 +367,7 @@ async function main() {
   const parentView = await service.overview({ id: p.id, role: 'PARENT' });
   assert(!JSON.stringify(parentView).includes('STAFF-SECRET'));
   assert.deepEqual(parentView.feedback, []);
+  assert.deepEqual(parentView.directions, []);
   assert(!JSON.stringify(parentView).includes('TEACHER-COMMENT-SECRET'));
   assert(
     parentView.bookings.every(
@@ -247,6 +381,7 @@ async function main() {
   });
   assert(!JSON.stringify(studentView).includes('STAFF-SECRET'));
   assert.deepEqual(studentView.feedback, []);
+  assert.deepEqual(studentView.directions, []);
   assert(!JSON.stringify(studentView).includes('TEACHER-COMMENT-SECRET'));
   const supportView = await service.overview(actor(support));
   assert.equal(supportView.bookings.length, 2);
@@ -557,6 +692,21 @@ async function main() {
   );
   await app.init();
   try {
+    for (const path of [
+      '/support/directions',
+      '/support/directions/invalid/start',
+      '/support/directions/invalid/result',
+      '/support/directions/invalid/cancel',
+    ])
+      await request(app.getHttpServer())
+        .post(path)
+        .set('x-test-role', 'PARENT')
+        .send({})
+        .expect(403);
+    await request(app.getHttpServer())
+      .post('/support/directions')
+      .send({ feedbackId: feedback[0].id, teacherId: support.id, startAt: day })
+      .expect(400);
     for (const path of ['/support/statistics', '/support/student-feedback']) {
       await request(app.getHttpServer())
         .get(path)
